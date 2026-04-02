@@ -1,0 +1,42 @@
+services:
+  auth:
+    container_name: vox-auth-app
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+    env_file:
+      - .env.development
+    ports:
+      - "10000:${APP_PORT}"
+    networks:
+      - vox-shared-network
+      - vox-auth-local-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    container_name: vox-auth-db
+    image: postgres:17
+    env_file:
+      - .env.development
+    ports:
+      - "10001:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vox-auth-local-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+networks:
+  vox-shared-network:
+    external: true
+  vox-auth-local-network:
+    name: vox-auth-local-network
