@@ -1,1 +1,0 @@
-executing a ListServersOfUser query for user '019b8bc7-1746-7540-88d8-75651d52fdab': retrieving servers of user '019b8bc7-1746-7540-88d8-75651d52fdab': scanning a row into a server: sql: Scan error on column index 0, name "uuid": unsupported Scan, storing driver.Value type []uint8 into type *uuidv7.UUID

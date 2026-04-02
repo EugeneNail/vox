@@ -1,1 +1,0 @@
-executing a createServerChat command: writing a chat to the database: executing an INSERT sql query: pq: insert or update on table "chats" violates foreign key constraint "chats_server_uuid_fkey"

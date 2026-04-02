@@ -1,1 +1,0 @@
-executing a createServerChat command: validation a CreateServerChat command: cannot validate the name field: cannot compile pattern "^(?!.*--)[a-zа-яё]+(-[a-zа-яё]+)*$": error parsing regexp: invalid or unsupported Perl syntax: `(?!`
