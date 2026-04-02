@@ -1,0 +1,34 @@
+{
+  "uuid": "019ba8be-d62a-7191-898a-fa08a9039bd5",
+  "name": "Just the best server ever",
+  "icon": "",
+  "users": [
+    "019b8e49-0f93-7e98-9981-792af16fa232"
+  ],
+  "textChats": [
+    {
+      "uuid": "019ba8c1-f296-7c2a-a8e1-f5cdb204f4b2",
+      "name": "The best chat"
+    },
+    {
+      "uuid": "019ba985-0a80-7afe-b035-6c0a3b34ee32",
+      "name": "Five Five Five Five Five Five "
+    },
+    {
+      "uuid": "019ba985-23c0-72f3-ba2f-54b04d42bac8",
+      "name": "Five Five Five Five Five Five 2"
+    },
+    {
+      "uuid": "019ba986-6a7d-76f6-8517-c4710f60c73c",
+      "name": "Test"
+    },
+    {
+      "uuid": "019ba986-f80c-7a25-97ff-98754493b84e",
+      "name": "Test"
+    },
+    {
+      "uuid": "019ba9de-15f2-7306-b19f-a0390af157df",
+      "name": "chat-for-neophytes"
+    }
+  ]
+}

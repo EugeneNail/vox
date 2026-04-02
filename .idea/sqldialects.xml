@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/vox-app-chat/deploy/migrations/20260105145510_create_hubs_table.down.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/vox-app-chat/deploy/migrations/20260109032011_replace_string_key_with_uuid_of_servers_table.down.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/vox-app-chat/internal/infrastructure/repositories/postgres/server_repository.go" dialect="GenericSQL" />
+    <file url="PROJECT" dialect="PostgreSQL" />
+  </component>
+</project>

@@ -1,0 +1,1 @@
+executing a ListServersOfUser query for user '019b8e49-0f93-7e98-9981-792af16fa232': retrieving servers of user '019b8e49-0f93-7e98-9981-792af16fa232': executing a select SQL query to retrieve servers of user '019b8e49-0f93-7e98-9981-792af16fa232': pq: column "server_uuid" does not exist
