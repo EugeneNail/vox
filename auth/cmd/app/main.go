@@ -25,7 +25,7 @@ func main() {
 		_, _ = writer.Write([]byte("pong"))
 	})
 
-	address := "0.0.0.0:" + strconv.Itoa(configuration.App.Port)
+	address := ":" + strconv.Itoa(configuration.App.Port)
 
 	log.Printf("auth service listening on %s", address)
 	if err := http.ListenAndServe(address, webServer); err != nil {
