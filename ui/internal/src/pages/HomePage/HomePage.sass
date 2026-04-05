@@ -1,6 +1,6 @@
 .home-page
   display: flex
-  min-height: 100vh
+  min-height: 100dvh
   padding: 32px
 
 .home-page__panel
@@ -33,6 +33,9 @@
   line-height: 1.6
 
 .home-page__actions
+  display: flex
+  flex-wrap: wrap
+  gap: 12px
   margin-top: 28px
 
 .home-page__button
@@ -46,6 +49,11 @@
   color: #101722
   font-size: 14px
   font-weight: 600
+
+.home-page__button--secondary
+  background: transparent
+  border: 1px solid rgba(255, 255, 255, 0.14)
+  color: #f6efe4
 
 @media (max-width: 640px)
   .home-page

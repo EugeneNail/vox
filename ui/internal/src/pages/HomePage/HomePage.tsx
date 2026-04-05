@@ -12,7 +12,10 @@ export default function HomePage() {
         </p>
         <div className="home-page__actions">
           <Link className="home-page__button" to="/login">
-            Open login page
+            Open login
+          </Link>
+          <Link className="home-page__button home-page__button--secondary" to="/signup">
+            Create account
           </Link>
         </div>
       </section>
