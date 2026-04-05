@@ -46,7 +46,7 @@ func (handler *Handler) Refresh(request *http.Request) (int, any) {
 			return http.StatusUnprocessableEntity, validationError.Violations()
 		}
 
-		if errors.Is(err, refresh.ErrInvalidRefreshToken) {
+		if errors.Is(err, refresh.ErrInvalidToken) {
 			validationError = validation.NewError()
 			validationError.AddViolation("refreshToken", "Invalid refresh token")
 			return http.StatusUnauthorized, validationError.Violations()

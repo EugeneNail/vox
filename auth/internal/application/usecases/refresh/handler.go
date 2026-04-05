@@ -4,22 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/EugeneNail/vox/auth/internal/application"
+	"github.com/EugeneNail/vox/auth/internal/application/services"
 	"github.com/EugeneNail/vox/auth/internal/domain"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
-// ErrInvalidRefreshToken is returned when the provided refresh token is invalid.
-var ErrInvalidRefreshToken = errors.New("invalid refresh token")
+// ErrInvalidToken is returned when the provided refresh token is invalid.
+var ErrInvalidToken = errors.New("invalid token")
 
 // Handler validates refresh tokens and issues a new login token.
 type Handler struct {
-	repository domain.UserRepository
+	repository  domain.UserRepository
+	tokenSigner *services.TokenSigner
 }
 
 // Query contains the input required to refresh tokens.
@@ -28,9 +26,10 @@ type Query struct {
 }
 
 // NewHandler constructs a refresh handler with its dependencies.
-func NewHandler(repository domain.UserRepository) *Handler {
+func NewHandler(repository domain.UserRepository, tokenSigner *services.TokenSigner) *Handler {
 	return &Handler{
-		repository: repository,
+		repository:  repository,
+		tokenSigner: tokenSigner,
 	}
 }
 
@@ -51,35 +50,12 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, error)
 		return "", fmt.Errorf("validating refresh query: %w", err)
 	}
 
-	claims := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(query.RefreshToken, claims, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			return nil, ErrInvalidRefreshToken
-		}
-
-		return []byte(application.TokenSalt), nil
-	})
+	userUuid, err := handler.tokenSigner.ValidateRefreshToken(query.RefreshToken)
+	if errors.Is(err, services.ErrInvalidToken) {
+		return "", ErrInvalidToken
+	}
 	if err != nil {
-		return "", ErrInvalidRefreshToken
-	}
-
-	if !token.Valid {
-		return "", ErrInvalidRefreshToken
-	}
-
-	tokenType, ok := claims["type"].(string)
-	if !ok || tokenType != application.RefreshTokenType {
-		return "", ErrInvalidRefreshToken
-	}
-
-	userUuidString, ok := claims["sub"].(string)
-	if !ok || userUuidString == "" {
-		return "", ErrInvalidRefreshToken
-	}
-
-	userUuid, err := uuid.Parse(userUuidString)
-	if err != nil {
-		return "", ErrInvalidRefreshToken
+		return "", fmt.Errorf("validating refresh token: %w", err)
 	}
 
 	user, err := handler.repository.FindByUuid(ctx, userUuid)
@@ -88,11 +64,10 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, error)
 	}
 
 	if user == nil {
-		return "", ErrInvalidRefreshToken
+		return "", ErrInvalidToken
 	}
 
-	now := time.Now().UTC()
-	loginToken, err := application.GenerateToken(application.LoginTokenType, user.Uuid.String(), now.Add(application.LoginTokenTTL))
+	loginToken, err := handler.tokenSigner.NewLoginToken(user.Uuid.String())
 	if err != nil {
 		return "", fmt.Errorf("generating login token for user %q: %w", user.Uuid, err)
 	}

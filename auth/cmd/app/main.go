@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/EugeneNail/vox/auth/internal/application/services"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
@@ -26,9 +27,10 @@ func main() {
 	defer database.Close()
 
 	userRepository := postgres.NewUserRepository(database)
+	tokenSigner := services.NewTokenSigner()
 	createUserHandler := create_user.NewHandler(userRepository)
-	authenticateHandler := authenticate.NewHandler(userRepository)
-	refreshHandler := refresh.NewHandler(userRepository)
+	authenticateHandler := authenticate.NewHandler(userRepository, tokenSigner)
+	refreshHandler := refresh.NewHandler(userRepository, tokenSigner)
 	httpHandler := transport_http.NewHandler(createUserHandler, authenticateHandler, refreshHandler)
 
 	webServer := http.NewServeMux()
