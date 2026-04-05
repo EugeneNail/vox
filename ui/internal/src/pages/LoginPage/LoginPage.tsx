@@ -1,43 +1,135 @@
 import { AxiosError } from "axios";
-import { useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
+import { getApiMessage, getApiViolations } from "../../api/getApiViolations";
+import { storeAuthTokens } from "../../auth/authTokens";
 import { useApiClient } from "../../hooks/useApiClient";
 import "./LoginPage.sass";
 
+type LoginForm = {
+  email: string;
+  password: string;
+};
+
+type LoginViolations = Partial<Record<keyof LoginForm, string>>;
+
+type AuthenticateResponse = {
+  loginToken: string;
+  refreshToken: string;
+};
+
+const initialForm: LoginForm = {
+  email: "",
+  password: "",
+};
+
 export default function LoginPage() {
   const apiClient = useApiClient();
-  const [statusText, setStatusText] = useState("Request has not been sent yet.");
+  const [form, setForm] = useState<LoginForm>(initialForm);
+  const [violations, setViolations] = useState<LoginViolations>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleDefaultLogin() {
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
+
+    setViolations((currentViolations) => ({
+      ...currentViolations,
+      [name]: undefined,
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setIsSubmitting(true);
+    setViolations({});
+
     try {
-      const response = await apiClient.post("/api/v1/auth/users/authenticate", {
-        email: "test@example.com",
-        password: "Strong123!",
-      });
+      const { data } = await apiClient.post<AuthenticateResponse>(
+        "/api/v1/auth/users/authenticate",
+        form,
+      );
 
-      setStatusText(`Request completed successfully with status ${response.status}.`);
+      storeAuthTokens(data);
     } catch (error) {
-      if (error instanceof AxiosError) {
-        setStatusText(`Request failed with status ${error.response?.status ?? "unknown"}.`);
+      const nextViolations = getApiViolations(error);
+      if (nextViolations) {
+        setViolations(nextViolations);
         return;
       }
 
-      setStatusText("Request failed with an unexpected error.");
+      if (error instanceof AxiosError) {
+        const responseMessage = getApiMessage(error);
+        if (responseMessage) {
+          setViolations({
+            email: responseMessage,
+            password: responseMessage,
+          });
+        }
+
+        return;
+      }
+
+      setViolations({
+        email: "Unexpected error. Try again.",
+        password: "Unexpected error. Try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
     <section className="login-page">
-      <p className="login-page__eyebrow">Login</p>
-      <h1 className="login-page__title">Login page rendered successfully.</h1>
-      <p className="login-page__text">
-        Guest layout is active and ready for future authentication forms.
-      </p>
-      <div className="login-page__actions">
-        <button className="login-page__button" type="button" onClick={handleDefaultLogin}>
-          Send default login request
-        </button>
+      <div className="login-page__panel">
+        <p className="login-page__eyebrow">Authentication</p>
+        <h1 className="login-page__title">Sign in to Vox.</h1>
+        <p className="login-page__text">Welcome back. Pick up the conversation in seconds.</p>
+        <form className="login-page__form" onSubmit={handleSubmit}>
+          <label className="login-page__field">
+            <span className="login-page__label">Email</span>
+            <input
+              className="login-page__input"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="name@example.com"
+              value={form.email}
+              onChange={handleInputChange}
+            />
+            {violations.email ? <span className="login-page__error">{violations.email}</span> : null}
+          </label>
+          <label className="login-page__field">
+            <span className="login-page__label">Password</span>
+            <input
+              className="login-page__input"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={form.password}
+              onChange={handleInputChange}
+            />
+            {violations.password ? (
+              <span className="login-page__error">{violations.password}</span>
+            ) : null}
+          </label>
+          <button className="login-page__button" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
+        <p className="login-page__switch">
+          New here?{" "}
+          <Link className="login-page__switch-link" to="/signup">
+            Create an account
+          </Link>
+        </p>
       </div>
-      <p className="login-page__status">{statusText}</p>
     </section>
   );
 }
