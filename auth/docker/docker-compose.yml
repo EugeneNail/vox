@@ -6,14 +6,11 @@ services:
       dockerfile: docker/app.Dockerfile
     env_file:
       - .env.development
-    ports:
-      - "10000:${APP_PORT}"
     networks:
       - vox-shared-network
       - vox-auth-local-network
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
 
   postgres:
     container_name: ${POSTGRES_HOST}
@@ -26,11 +23,6 @@ services:
       - vox-auth-postgres-data:/var/lib/postgresql/data
     networks:
       - vox-auth-local-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   vox-auth-postgres-data:
