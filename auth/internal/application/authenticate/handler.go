@@ -7,21 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EugeneNail/vox/auth/internal/application"
 	"github.com/EugeneNail/vox/auth/internal/domain"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
-
-// tempSalt signs JWTs until a dedicated secret is introduced.
-const tempSalt = "TEMP_SALT"
-
-// loginTokenTTL defines how long the login token stays valid.
-const loginTokenTTL = 15 * time.Minute
-
-// refreshTokenTTL defines how long the refresh token stays valid.
-const refreshTokenTTL = 7 * 24 * time.Hour
 
 // ErrInvalidCredentials is returned when the provided credentials do not match a user.
 var ErrInvalidCredentials = errors.New("invalid credentials")
@@ -83,32 +74,15 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, string
 	}
 
 	now := time.Now().UTC()
-	loginToken, err := generateToken("login-token", user.Email, now.Add(loginTokenTTL))
+	loginToken, err := application.GenerateToken(application.LoginTokenType, user.Uuid.String(), now.Add(application.LoginTokenTTL))
 	if err != nil {
 		return "", "", fmt.Errorf("generating login token for user %q: %w", email, err)
 	}
 
-	refreshToken, err := generateToken("refresh-token", user.Email, now.Add(refreshTokenTTL))
+	refreshToken, err := application.GenerateToken(application.RefreshTokenType, user.Uuid.String(), now.Add(application.RefreshTokenTTL))
 	if err != nil {
 		return "", "", fmt.Errorf("generating refresh token for user %q: %w", email, err)
 	}
 
 	return loginToken, refreshToken, nil
-}
-
-// generateToken signs a JWT for the given token type and expiration time.
-func generateToken(tokenType string, email string, expiresAt time.Time) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  email,
-		"type": tokenType,
-		"iat":  time.Now().UTC().Unix(),
-		"exp":  expiresAt.Unix(),
-	})
-
-	signedToken, err := token.SignedString([]byte(tempSalt))
-	if err != nil {
-		return "", fmt.Errorf("signing jwt token: %w", err)
-	}
-
-	return signedToken, nil
 }
