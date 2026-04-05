@@ -46,6 +46,7 @@
 
 ## Frontend Styles
 - CSS class names must follow BEM naming.
+- Use 4 spaces for indentation in `.tsx` files.
 
 ## Validation
 - Shared validation must live in `lib-common`, not be copied into services.
