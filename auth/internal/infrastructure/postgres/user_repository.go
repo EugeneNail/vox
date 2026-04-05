@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/EugeneNail/vox/auth/internal/domain"
+	"github.com/google/uuid"
 )
 
 type UserRepository struct {
@@ -42,6 +43,33 @@ func (repository *UserRepository) FindByEmail(ctx context.Context, email string)
 		}
 
 		return nil, fmt.Errorf("finding user by email %q: %w", email, err)
+	}
+
+	return &user, nil
+}
+
+// FindByUuid returns a user by UUID or nil when the user does not exist.
+func (repository *UserRepository) FindByUuid(ctx context.Context, userUuid uuid.UUID) (*domain.User, error) {
+	const query = `
+		SELECT uuid, email, password, created_at, updated_at
+		FROM users
+		WHERE uuid = $1
+	`
+
+	var user domain.User
+
+	if err := repository.database.QueryRowContext(ctx, query, userUuid).Scan(
+		&user.Uuid,
+		&user.Email,
+		&user.Password,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("finding user by uuid %q: %w", userUuid, err)
 	}
 
 	return &user, nil
