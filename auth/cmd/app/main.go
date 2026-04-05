@@ -15,15 +15,6 @@ func main() {
 	}
 
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("/auth/ping", func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet {
-			writer.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		writer.WriteHeader(http.StatusOK)
-		_, _ = writer.Write([]byte("pong"))
-	})
 
 	address := ":" + strconv.Itoa(configuration.App.Port)
 
