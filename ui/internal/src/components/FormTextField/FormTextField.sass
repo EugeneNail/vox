@@ -1,0 +1,33 @@
+.form-text-field
+  display: grid
+  gap: 8px
+
+.form-text-field__label
+  color: rgba(246, 239, 228, 0.82)
+  font-size: 14px
+  font-weight: 600
+
+.form-text-field__input
+  width: 100%
+  min-height: 54px
+  padding: 0 16px
+  border: 1px solid rgba(255, 255, 255, 0.14)
+  border-radius: 16px
+  background: rgba(255, 255, 255, 0.03)
+  color: #f6efe4
+  font: inherit
+
+.form-text-field__input::placeholder
+  color: rgba(246, 239, 228, 0.4)
+
+.form-text-field__input:-webkit-autofill,
+.form-text-field__input:-webkit-autofill:hover,
+.form-text-field__input:-webkit-autofill:focus
+  -webkit-text-fill-color: #f6efe4
+  box-shadow: inset 0 0 0 1000px rgba(255, 255, 255, 0.03)
+  caret-color: #f6efe4
+  transition: background-color 9999s ease-out 0s
+
+.form-text-field__error
+  color: #ff9e89
+  font-size: 13px

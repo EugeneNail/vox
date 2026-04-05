@@ -3,6 +3,9 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { getApiMessage, getApiViolations } from "../../api/getApiViolations";
 import { storeAuthTokens } from "../../auth/authTokens";
+import AuthFormCard from "../../components/AuthFormCard/AuthFormCard";
+import FormSubmitButton from "../../components/FormSubmitButton/FormSubmitButton";
+import FormTextField from "../../components/FormTextField/FormTextField";
 import { useApiClient } from "../../hooks/useApiClient";
 import "./LoginPage.sass";
 
@@ -86,44 +89,35 @@ export default function LoginPage() {
 
     return (
         <section className="login-page">
-            <div className="login-page__panel">
-                <p className="login-page__eyebrow">Authentication</p>
-                <h1 className="login-page__title">Sign in to Vox.</h1>
-                <p className="login-page__text">Welcome back. Pick up the conversation in seconds.</p>
+            <AuthFormCard
+                eyebrow="Authentication"
+                title="Sign in to Vox."
+                text="Welcome back. Pick up the conversation in seconds."
+            >
                 <form className="login-page__form" onSubmit={handleSubmit}>
-                    <label className="login-page__field">
-                        <span className="login-page__label">Email</span>
-                        <input
-                            className="login-page__input"
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            placeholder="name@example.com"
-                            value={form.email}
-                            onChange={handleInputChange}
-                        />
-                        {violations.email ? (
-                            <span className="login-page__error">{violations.email}</span>
-                        ) : null}
-                    </label>
-                    <label className="login-page__field">
-                        <span className="login-page__label">Password</span>
-                        <input
-                            className="login-page__input"
-                            name="password"
-                            type="password"
-                            autoComplete="current-password"
-                            placeholder="Enter your password"
-                            value={form.password}
-                            onChange={handleInputChange}
-                        />
-                        {violations.password ? (
-                            <span className="login-page__error">{violations.password}</span>
-                        ) : null}
-                    </label>
-                    <button className="login-page__button" type="submit" disabled={isSubmitting}>
+                    <FormTextField
+                        label="Email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="name@example.com"
+                        value={form.email}
+                        error={violations.email}
+                        onChange={handleInputChange}
+                    />
+                    <FormTextField
+                        label="Password"
+                        name="password"
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
+                        value={form.password}
+                        error={violations.password}
+                        onChange={handleInputChange}
+                    />
+                    <FormSubmitButton disabled={isSubmitting}>
                         {isSubmitting ? "Signing in..." : "Sign in"}
-                    </button>
+                    </FormSubmitButton>
                 </form>
                 <p className="login-page__switch">
                     New here?{" "}
@@ -131,7 +125,7 @@ export default function LoginPage() {
                         Create an account
                     </Link>
                 </p>
-            </div>
+            </AuthFormCard>
         </section>
     );
 }

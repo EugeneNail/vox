@@ -3,6 +3,9 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { getApiMessage, getApiViolations } from "../../api/getApiViolations";
 import { storeAuthTokens } from "../../auth/authTokens";
+import AuthFormCard from "../../components/AuthFormCard/AuthFormCard";
+import FormSubmitButton from "../../components/FormSubmitButton/FormSubmitButton";
+import FormTextField from "../../components/FormTextField/FormTextField";
 import { useApiClient } from "../../hooks/useApiClient";
 import "./SignupPage.sass";
 
@@ -91,59 +94,45 @@ export default function SignupPage() {
 
     return (
         <section className="signup-page">
-            <div className="signup-page__panel">
-                <p className="signup-page__eyebrow">Registration</p>
-                <h1 className="signup-page__title">Create a Vox account.</h1>
-                <p className="signup-page__text">Join once and step straight into your next server.</p>
+            <AuthFormCard
+                eyebrow="Registration"
+                title="Create a Vox account."
+                text="Join once and step straight into your next server."
+            >
                 <form className="signup-page__form" onSubmit={handleSubmit}>
-                    <label className="signup-page__field">
-                        <span className="signup-page__label">Email</span>
-                        <input
-                            className="signup-page__input"
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            placeholder="name@example.com"
-                            value={form.email}
-                            onChange={handleInputChange}
-                        />
-                        {violations.email ? (
-                            <span className="signup-page__error">{violations.email}</span>
-                        ) : null}
-                    </label>
-                    <label className="signup-page__field">
-                        <span className="signup-page__label">Password</span>
-                        <input
-                            className="signup-page__input"
-                            name="password"
-                            type="password"
-                            autoComplete="new-password"
-                            placeholder="Create a strong password"
-                            value={form.password}
-                            onChange={handleInputChange}
-                        />
-                        {violations.password ? (
-                            <span className="signup-page__error">{violations.password}</span>
-                        ) : null}
-                    </label>
-                    <label className="signup-page__field">
-                        <span className="signup-page__label">Confirm password</span>
-                        <input
-                            className="signup-page__input"
-                            name="passwordConfirmation"
-                            type="password"
-                            autoComplete="new-password"
-                            placeholder="Repeat the password"
-                            value={form.passwordConfirmation}
-                            onChange={handleInputChange}
-                        />
-                        {violations.passwordConfirmation ? (
-                            <span className="signup-page__error">{violations.passwordConfirmation}</span>
-                        ) : null}
-                    </label>
-                    <button className="signup-page__button" type="submit" disabled={isSubmitting}>
+                    <FormTextField
+                        label="Email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="name@example.com"
+                        value={form.email}
+                        error={violations.email}
+                        onChange={handleInputChange}
+                    />
+                    <FormTextField
+                        label="Password"
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Create a strong password"
+                        value={form.password}
+                        error={violations.password}
+                        onChange={handleInputChange}
+                    />
+                    <FormTextField
+                        label="Confirm password"
+                        name="passwordConfirmation"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Repeat the password"
+                        value={form.passwordConfirmation}
+                        error={violations.passwordConfirmation}
+                        onChange={handleInputChange}
+                    />
+                    <FormSubmitButton disabled={isSubmitting}>
                         {isSubmitting ? "Creating account..." : "Create account"}
-                    </button>
+                    </FormSubmitButton>
                 </form>
                 <p className="signup-page__switch">
                     Already have an account?{" "}
@@ -151,7 +140,7 @@ export default function SignupPage() {
                         Sign in
                     </Link>
                 </p>
-            </div>
+            </AuthFormCard>
         </section>
     );
 }
