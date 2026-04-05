@@ -2,11 +2,11 @@ import { Outlet } from "react-router-dom";
 import "./GuestLayout.sass";
 
 export default function GuestLayout() {
-  return (
-    <main className="guest-layout">
-      <div className="guest-layout__body">
-        <Outlet />
-      </div>
-    </main>
-  );
+    return (
+        <main className="guest-layout">
+            <div className="guest-layout__body">
+                <Outlet />
+            </div>
+        </main>
+    );
 }
