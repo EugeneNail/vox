@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/EugeneNail/vox/auth/internal/application/authenticate"
-	"github.com/EugeneNail/vox/auth/internal/application/create_user"
-	"github.com/EugeneNail/vox/auth/internal/application/refresh"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/postgres"
@@ -42,7 +42,7 @@ func main() {
 	)
 	webServer.HandleFunc(
 		"POST /api/v1/auth/refresh",
-		middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.Refresh)),
+		middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.Refresh)),
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)

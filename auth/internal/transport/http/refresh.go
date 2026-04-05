@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/EugeneNail/vox/auth/internal/application/refresh"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
 )

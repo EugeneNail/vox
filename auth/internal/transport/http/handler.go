@@ -1,9 +1,9 @@
 package http
 
 import (
-	"github.com/EugeneNail/vox/auth/internal/application/authenticate"
-	"github.com/EugeneNail/vox/auth/internal/application/create_user"
-	"github.com/EugeneNail/vox/auth/internal/application/refresh"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 )
 
 type Handler struct {
