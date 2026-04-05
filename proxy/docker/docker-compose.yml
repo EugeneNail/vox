@@ -1,0 +1,14 @@
+services:
+  proxy:
+    container_name: vox-proxy-app
+    image: nginx:1.29-alpine
+    ports:
+      - "${PROXY_PORT}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - vox-shared-network
+
+networks:
+  vox-shared-network:
+    external: true
