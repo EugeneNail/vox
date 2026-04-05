@@ -4,7 +4,7 @@ DOCKER_COMPOSE := docker compose --env-file docker/.env.development -f docker/do
 .PHONY: up down env
 
 up: env
-	$(DOCKER_COMPOSE) up --build -d
+	$(DOCKER_COMPOSE) up --build --force-recreate -d
 
 down:
 	$(DOCKER_COMPOSE) down
