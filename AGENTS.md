@@ -26,6 +26,10 @@
 - Use one package per use-case.
 - Do not add an extra `command/` or `query/` package level unless there is an explicit architectural need.
 - A use-case handler should default to a struct with dependencies and a `Handle` method.
+- Return simple values from a use-case when a dedicated result type does not add real value.
+- Do not place the happy path above error handling.
+- Do not check `errors.Is` or `errors.As` before a general `if err != nil` when it makes the code harder to read.
+- Wrap errors with context at the current layer instead of returning a bare `err`.
 
 ## HTTP Transport
 - Keep HTTP as a thin adapter layer.
@@ -35,8 +39,10 @@
 - Apply middleware in `main`, not by calling it manually inside route handlers.
 - It is acceptable to keep one shared HTTP handler object with route methods.
 - The internal HTTP handler signature is `func(request *http.Request) (status int, payload any)`.
+- Use HTTP method-aware route patterns in `main`, for example `POST /auth/users`.
 - HTTP request example files must be named after the route pattern.
 - Path parameters in HTTP request example file names must keep curly braces, for example `GET api.v1.journal.habits.{uuid}.http`.
+- Keep structural validation in transport separate from business validation.
 
 ## Frontend Styles
 - CSS class names must follow BEM naming.
@@ -54,6 +60,9 @@
 - Error messages must be as specific as possible.
 - If an error can be tied to a concrete entity, include the entity identifier in the message.
 - Prefer messages such as `detaching habit '%uuid%' from entry '%uuid%'` over generic variants such as `detaching habit from entry`.
+
+## Repositories
+- For repository query methods, use the contract `nil, nil` for "not found" when absence of the entity is not an exceptional situation.
 
 ## Docker And Runtime
 - Each microservice is encapsulated in Docker.
