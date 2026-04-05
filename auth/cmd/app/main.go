@@ -33,7 +33,7 @@ func main() {
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc(
-		"POST /auth/users",
+		"POST /api/v1/auth/users",
 		middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateUser)),
 	)
 	webServer.HandleFunc(
@@ -42,7 +42,7 @@ func main() {
 	)
 	webServer.HandleFunc(
 		"POST /api/v1/auth/refresh",
-		middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.Refresh)),
+		middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.Refresh)),
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
