@@ -2,3 +2,4 @@ docker/.env.development
 internal/dist
 internal/node_modules
 /ui
+/app
