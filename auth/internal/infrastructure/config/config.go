@@ -11,18 +11,22 @@ type Config struct {
 	Postgres PostgresConfig
 }
 
+// AppConfig contains application runtime settings.
 type AppConfig struct {
 	Port int
 }
 
+// PostgresConfig contains PostgreSQL connection settings.
 type PostgresConfig struct {
 	Host     string
 	Port     int
 	Database string
 	User     string
 	Password string
+	SSLMode  string
 }
 
+// NewConfig reads application configuration from environment variables.
 func NewConfig() (*Config, error) {
 	appPort, err := readIntEnv("APP_PORT")
 	if err != nil {
@@ -54,6 +58,11 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	postgresSSLMode, err := readRequiredEnv("POSTGRES_SSLMODE")
+	if err != nil {
+		return nil, err
+	}
+
 	configuration := &Config{
 		App: AppConfig{
 			Port: appPort,
@@ -64,12 +73,14 @@ func NewConfig() (*Config, error) {
 			Database: postgresDatabase,
 			User:     postgresUser,
 			Password: postgresPassword,
+			SSLMode:  postgresSSLMode,
 		},
 	}
 
 	return configuration, nil
 }
 
+// readRequiredEnv reads a required string environment variable.
 func readRequiredEnv(key string) (string, error) {
 	value := os.Getenv(key)
 	if value == "" {
@@ -79,6 +90,7 @@ func readRequiredEnv(key string) (string, error) {
 	return value, nil
 }
 
+// readIntEnv reads and parses a required integer environment variable.
 func readIntEnv(key string) (int, error) {
 	value := os.Getenv(key)
 	if value == "" {
