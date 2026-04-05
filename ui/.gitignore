@@ -1,5 +1,6 @@
 docker/.env.development
 internal/dist
 internal/node_modules
+internal/*.tsbuildinfo
 /ui
 /app
