@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import "./HomePage.sass";
+import "./home-page.sass";
 
 export default function HomePage() {
     return (

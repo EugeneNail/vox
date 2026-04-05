@@ -1,13 +1,13 @@
 import { AxiosError } from "axios";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { getApiMessage, getApiViolations } from "../../api/getApiViolations";
-import { storeAuthTokens } from "../../auth/authTokens";
-import AuthFormCard from "../../components/AuthFormCard/AuthFormCard";
-import FormSubmitButton from "../../components/FormSubmitButton/FormSubmitButton";
-import FormTextField from "../../components/FormTextField/FormTextField";
-import { useApiClient } from "../../hooks/useApiClient";
-import "./LoginPage.sass";
+import { getApiMessage, getApiViolations } from "../../api/get-api-violations";
+import { storeAuthTokens } from "../../auth/auth-tokens";
+import AuthFormCard from "../../components/auth-form-card/auth-form-card";
+import FormSubmitButton from "../../components/form-submit-button/form-submit-button";
+import FormTextField from "../../components/form-text-field/form-text-field";
+import { useApiClient } from "../../hooks/use-api-client";
+import "./login-page.sass";
 
 type LoginForm = {
     email: string;

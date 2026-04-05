@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import "./GuestLayout.sass";
+import "./guest-layout.sass";
 
 export default function GuestLayout() {
     return (

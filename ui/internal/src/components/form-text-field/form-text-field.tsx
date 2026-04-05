@@ -1,4 +1,4 @@
-import "./FormTextField.sass";
+import "./form-text-field.sass";
 
 type FormTextFieldProps = {
     label: string;

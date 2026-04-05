@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import "./AuthFormCard.sass";
+import "./auth-form-card.sass";
 
 type AuthFormCardProps = {
     eyebrow: string;

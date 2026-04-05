@@ -1,11 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import GuestLayout from "./layouts/GuestLayout/GuestLayout";
-import HomePage from "./pages/HomePage/HomePage";
-import LoginPage from "./pages/LoginPage/LoginPage";
-import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
-import SignupPage from "./pages/SignupPage/SignupPage";
+import GuestLayout from "./layouts/guest-layout/guest-layout";
+import HomePage from "./pages/home-page/home-page";
+import LoginPage from "./pages/login-page/login-page";
+import NotFoundPage from "./pages/not-found-page/not-found-page";
+import SignupPage from "./pages/signup-page/signup-page";
 import "./main.sass";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

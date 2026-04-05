@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import "./FormSubmitButton.sass";
+import "./form-submit-button.sass";
 
 type FormSubmitButtonProps = {
     disabled?: boolean;
