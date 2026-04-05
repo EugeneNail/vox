@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/EugeneNail/vox/auth/internal/application/authenticate"
 	"github.com/EugeneNail/vox/auth/internal/application/create_user"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/http/middleware"
@@ -25,12 +26,17 @@ func main() {
 
 	userRepository := postgres.NewUserRepository(database)
 	createUserHandler := create_user.NewHandler(userRepository)
-	httpHandler := transport_http.NewHandler(createUserHandler)
+	authenticateHandler := authenticate.NewHandler(userRepository)
+	httpHandler := transport_http.NewHandler(createUserHandler, authenticateHandler)
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc(
 		"POST /auth/users",
 		middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateUser)),
+	)
+	webServer.HandleFunc(
+		"POST /api/v1/auth/users/authenticate",
+		middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.Authenticate)),
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
