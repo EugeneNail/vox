@@ -1,5 +1,5 @@
 ENV_EXAMPLE_FILES := $(wildcard docker/.env.*.example)
-DOCKER_COMPOSE := docker compose --env-file docker/.env.development -f docker/docker-compose.yml
+DOCKER_COMPOSE := docker compose -p vox-auth --env-file docker/.env.development -f docker/docker-compose.yml
 MIGRATOR_IMAGE := vox-auth-migrator:latest
 MIGRATOR_DOCKER_RUN := docker run --rm --env-file docker/.env.development --network vox-auth-local-network -v $(CURDIR)/migrations:/migrations
 

@@ -1,5 +1,5 @@
 ENV_EXAMPLE_FILES := $(wildcard docker/.env.*.example)
-DOCKER_COMPOSE := docker compose --env-file docker/.env.development -f docker/docker-compose.yml
+DOCKER_COMPOSE := docker compose -p vox-proxy --env-file docker/.env.development -f docker/docker-compose.yml
 
 .PHONY: up down env
 
