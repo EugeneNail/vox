@@ -1,0 +1,79 @@
+package http
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
+	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
+	"github.com/google/uuid"
+)
+
+type createMessagePayload struct {
+	Text string `json:"text"`
+}
+
+// CreateMessage decodes the request, applies transport validation, and calls the use-case.
+func (handler *Handler) CreateMessage(request *http.Request) (int, any) {
+	chatUuid, err := uuid.Parse(request.PathValue("chatUuid"))
+	if err != nil {
+		validationError := validation.NewError()
+		validationError.AddViolation("chatUuid", "Must be a valid UUID")
+		return http.StatusBadRequest, validationError.Violations()
+	}
+
+	var payload createMessagePayload
+	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
+	}
+
+	validator := validation.NewValidator(map[string]any{
+		"text": payload.Text,
+	}, map[string][]rules.Rule{
+		"text": {rules.Required(), rules.Max(3000)},
+	})
+
+	if err := validator.Validate(); err != nil {
+		var validationError validation.Error
+		if errors.As(err, &validationError) {
+			return http.StatusBadRequest, validationError.Violations()
+		}
+
+		return http.StatusInternalServerError, fmt.Errorf("validating create message payload: %w", err)
+	}
+
+	// TODO
+	// Extract into 'authentication' package
+	userUuid, ok := message_middleware.UserUuidFromContext(request.Context())
+	if !ok {
+		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
+	}
+
+	messageUuid, err := handler.createMessageHandler.Handle(request.Context(), create_message.Command{
+		ChatUuid: chatUuid,
+		UserUuid: userUuid,
+		Text:     payload.Text,
+	})
+	if err != nil {
+		var validationError validation.Error
+		if errors.As(err, &validationError) {
+			return http.StatusUnprocessableEntity, validationError.Violations()
+		}
+
+		if errors.Is(err, create_message.ErrChatNotFound) {
+			return http.StatusNotFound, err
+		}
+
+		if errors.Is(err, create_message.ErrChatAccessDenied) {
+			return http.StatusForbidden, err
+		}
+
+		return http.StatusInternalServerError, fmt.Errorf("handling the CreateMessage usecase: %w", err)
+	}
+
+	return http.StatusCreated, messageUuid
+}

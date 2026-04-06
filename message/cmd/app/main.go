@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/EugeneNail/vox/lib-common/http/middleware"
 	"log"
 	"net/http"
 
+	"github.com/EugeneNail/vox/lib-common/http/middleware"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
+	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
 	transport_http "github.com/EugeneNail/vox/message/internal/transport/http"
 )
@@ -23,12 +25,20 @@ func main() {
 	}
 	defer database.Close()
 
-	httpHandler := transport_http.NewHandler()
+	messageRepository := postgres.NewMessageRepository(database)
+	createMessageHandler := create_message.NewHandler(messageRepository)
+	httpHandler := transport_http.NewHandler(createMessageHandler)
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc(
 		"GET /api/v1/message/ping",
 		middleware.WriteJsonResponse(httpHandler.Ping),
+	)
+	webServer.HandleFunc(
+		"POST /api/v1/message/chats/{chatUuid}/messages",
+		message_middleware.RequireAuthenticatedUser(
+			middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage)),
+		),
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
