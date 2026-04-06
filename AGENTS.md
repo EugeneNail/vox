@@ -43,6 +43,18 @@
 - HTTP request example files must be named after the route pattern.
 - Path parameters in HTTP request example file names must keep curly braces, for example `GET api.v1.journal.habits.{uuid}.http`.
 - Keep structural validation in transport separate from business validation.
+- Use HTTP for operations that change or read business state in a request-response manner, for example creating messages, fetching message history, creating chats, adding users, or any operation whose result must be validated, persisted, and returned explicitly.
+- Do not use WebSocket as the default transport for business write operations when ordinary HTTP semantics are sufficient. Prefer HTTP first, then publish the resulting domain event to realtime delivery mechanisms after the state change succeeds.
+
+## WebSocket Transport
+- Use WebSocket for server-to-client realtime delivery and other connection-scoped runtime interactions.
+- Runtime subscription state over WebSocket is not business state and must not be modeled as persisted domain data unless the product explicitly requires persisted subscriptions.
+- Chat subscribe and unsubscribe actions that only control which live events are pushed to the current browser connection must go through WebSocket, not HTTP.
+- A WebSocket subscribe or unsubscribe command controls only the current live connection, for example "start sending events from chat X to this socket" or "stop sending events from chat X to this socket".
+- Do not treat runtime chat subscription as chat membership. Membership, permissions, and other durable access rules are business state and belong to HTTP/application/domain flows backed by persistence.
+- Use WebSocket for ephemeral, connection-bound actions such as realtime message delivery, typing indicators, presence updates, transient chat subscription changes, and WebRTC signaling.
+- When a browser opens a chat, the expected model is: history is fetched through HTTP, then realtime updates for the currently open chat are subscribed through WebSocket.
+- When a browser switches from one chat to another, the expected model is: unsubscribe from the old chat over WebSocket, subscribe to the new chat over WebSocket, and fetch any required persisted history through HTTP.
 
 ## Frontend Styles
 - CSS class names must follow BEM naming.
