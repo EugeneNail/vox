@@ -22,15 +22,23 @@ func NewDatabase(configuration config.PostgresConfig) (*sql.DB, error) {
 	database.SetMaxIdleConns(10)
 	database.SetConnMaxLifetime(time.Hour)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	deadline := time.Now().Add(15 * time.Second)
 
-	if err := database.PingContext(ctx); err != nil {
-		_ = database.Close()
-		return nil, fmt.Errorf("pinging postgres connection: %w", err)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := database.PingContext(ctx)
+		cancel()
+		if err == nil {
+			return database, nil
+		}
+
+		if time.Now().After(deadline) {
+			_ = database.Close()
+			return nil, fmt.Errorf("pinging postgres connection: %w", err)
+		}
+
+		time.Sleep(500 * time.Millisecond)
 	}
-
-	return database, nil
 }
 
 // buildConnectionString builds a PostgreSQL DSN from application config.
