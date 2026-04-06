@@ -3,3 +3,4 @@
 auth/docker/.env.development
 /.idea
 proxy/docker/.env.development
+message/docker/.env.development
