@@ -49,6 +49,39 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 	return &chat, nil
 }
 
+// FindAllDirectByMemberUuid returns direct chats that include the given member.
+func (repository *ChatRepository) FindAllDirectByMemberUuid(ctx context.Context, memberUuid uuid.UUID) ([]domain.Chat, error) {
+	const query = `
+		SELECT chats.uuid, chats.name, chats.is_direct, chats.created_at, chats.updated_at, chats.server_uuid
+		FROM chats
+		INNER JOIN chat_members ON chat_members.chat_uuid = chats.uuid
+		WHERE chat_members.member_uuid = $1 AND chats.is_direct = TRUE
+		ORDER BY chats.updated_at DESC
+	`
+
+	rows, err := repository.database.QueryContext(ctx, query, memberUuid)
+	if err != nil {
+		return nil, fmt.Errorf("finding direct chats by member uuid %q: %w", memberUuid, err)
+	}
+	defer rows.Close()
+
+	chats := make([]domain.Chat, 0)
+	for rows.Next() {
+		var chat domain.Chat
+		if err := rows.Scan(&chat.Uuid, &chat.Name, &chat.IsDirect, &chat.CreatedAt, &chat.UpdatedAt, &chat.ServerUuid); err != nil {
+			return nil, fmt.Errorf("scanning direct chat for member uuid %q: %w", memberUuid, err)
+		}
+
+		chats = append(chats, chat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("reading direct chats by member uuid %q: %w", memberUuid, err)
+	}
+
+	return chats, nil
+}
+
 // Create persists a new chat in PostgreSQL.
 func (repository *ChatRepository) Create(ctx context.Context, chat domain.Chat) error {
 	_, err := repository.database.ExecContext(
