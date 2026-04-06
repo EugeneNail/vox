@@ -1,17 +1,16 @@
 package domain
 
 import (
-	"time"
-
 	"github.com/google/uuid"
+	"time"
 )
 
-type Message struct {
+type Chat struct {
 	Uuid      uuid.UUID
-	Text      string
+	Name      *string
+	IsDirect  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	ChatUuid uuid.UUID
-	UserUuid uuid.UUID
+	ServerUuid *uuid.UUID
 }
