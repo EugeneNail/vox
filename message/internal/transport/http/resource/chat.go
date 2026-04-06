@@ -2,7 +2,9 @@ package resource
 
 import "github.com/google/uuid"
 
-type Chat struct {
-	Uuid uuid.UUID `json:"uuid"`
-	Name *string   `json:"name"`
+// DirectChat represents a direct chat resource returned by HTTP endpoints.
+type DirectChat struct {
+	Uuid             uuid.UUID `json:"uuid"`
+	FirstMemberUuid  uuid.UUID `json:"firstMemberUuid"`
+	SecondMemberUuid uuid.UUID `json:"secondMemberUuid"`
 }

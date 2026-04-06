@@ -21,11 +21,12 @@ func (handler *Handler) ListDirectChats(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("handling the ListDirectChats usecase: %w", err)
 	}
 
-	resources := make([]resource.Chat, 0, len(chats))
+	resources := make([]resource.DirectChat, 0, len(chats))
 	for _, chat := range chats {
-		resources = append(resources, resource.Chat{
-			Uuid: chat.Uuid,
-			Name: chat.Name,
+		resources = append(resources, resource.DirectChat{
+			Uuid:             chat.Uuid,
+			FirstMemberUuid:  chat.FirstMemberUuid,
+			SecondMemberUuid: chat.SecondMemberUuid,
 		})
 	}
 

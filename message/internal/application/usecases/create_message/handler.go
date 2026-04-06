@@ -20,8 +20,7 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 // Handler creates messages through the create_message use-case.
 type Handler struct {
 	messageRepository    domain.MessageRepository
-	chatRepository       domain.ChatRepository
-	chatMemberRepository domain.ChatMemberRepository
+	directChatRepository domain.DirectChatRepository
 }
 
 // Command contains the input required to create a message.
@@ -32,11 +31,10 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository) *Handler {
 	return &Handler{
 		messageRepository:    messageRepository,
-		chatRepository:       chatRepository,
-		chatMemberRepository: chatMemberRepository,
+		directChatRepository: directChatRepository,
 	}
 }
 
@@ -63,21 +61,16 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("validating create message command: %w", err)
 	}
 
-	chat, err := handler.chatRepository.FindByUuid(ctx, command.ChatUuid)
+	directChat, err := handler.directChatRepository.FindByUuid(ctx, command.ChatUuid)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("finding chat by uuid %q: %w", command.ChatUuid, err)
+		return uuid.Nil, fmt.Errorf("finding direct chat by uuid %q: %w", command.ChatUuid, err)
 	}
 
-	if chat == nil {
+	if directChat == nil {
 		return uuid.Nil, ErrChatNotFound
 	}
 
-	chatMember, err := handler.chatMemberRepository.FindByChatUuidAndMemberUuid(ctx, command.ChatUuid, command.UserUuid)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("finding chat member %q in chat %q: %w", command.UserUuid, command.ChatUuid, err)
-	}
-
-	if chatMember == nil {
+	if directChat.FirstMemberUuid != command.UserUuid && directChat.SecondMemberUuid != command.UserUuid {
 		return uuid.Nil, ErrChatAccessDenied
 	}
 

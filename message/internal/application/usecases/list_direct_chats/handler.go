@@ -10,7 +10,7 @@ import (
 
 // Handler lists direct chats through the list_direct_chats use-case.
 type Handler struct {
-	chatRepository domain.ChatRepository
+	directChatRepository domain.DirectChatRepository
 }
 
 // Query contains the input required to list direct chats.
@@ -19,15 +19,15 @@ type Query struct {
 }
 
 // NewHandler constructs a list_direct_chats handler with its dependencies.
-func NewHandler(chatRepository domain.ChatRepository) *Handler {
+func NewHandler(directChatRepository domain.DirectChatRepository) *Handler {
 	return &Handler{
-		chatRepository: chatRepository,
+		directChatRepository: directChatRepository,
 	}
 }
 
 // Handle returns direct chats available to the user.
-func (handler *Handler) Handle(ctx context.Context, query Query) ([]domain.Chat, error) {
-	chats, err := handler.chatRepository.FindAllDirectByMemberUuid(ctx, query.UserUuid)
+func (handler *Handler) Handle(ctx context.Context, query Query) ([]domain.DirectChat, error) {
+	chats, err := handler.directChatRepository.FindAllByMemberUuid(ctx, query.UserUuid)
 	if err != nil {
 		return nil, fmt.Errorf("finding direct chats by user uuid %q: %w", query.UserUuid, err)
 	}

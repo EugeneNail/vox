@@ -28,11 +28,10 @@ func main() {
 	defer database.Close()
 
 	messageRepository := postgres.NewMessageRepository(database)
-	chatRepository := postgres.NewChatRepository(database)
-	chatMemberRepository := postgres.NewChatMemberRepository(database)
-	createDirectChatHandler := create_direct_chat.NewHandler(chatRepository, chatMemberRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository)
-	listDirectChatsHandler := list_direct_chats.NewHandler(chatRepository)
+	directChatRepository := postgres.NewDirectChatRepository(database)
+	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
+	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository)
+	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
 	httpHandler := transport_http.NewHandler(createDirectChatHandler, createMessageHandler, listDirectChatsHandler)
 
 	webServer := http.NewServeMux()
