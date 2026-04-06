@@ -1,0 +1,35 @@
+services:
+  message:
+    container_name: vox-message-app
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+    env_file:
+      - .env.development
+    networks:
+      - vox-shared-network
+      - vox-message-local-network
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:17
+    env_file:
+      - .env.development
+    ports:
+      - "10002:${POSTGRES_PORT}"
+    volumes:
+      - vox-message-postgres-data:/var/lib/postgresql/data
+    networks:
+      - vox-message-local-network
+
+volumes:
+  vox-message-postgres-data:
+    name: vox-message-postgres-data
+
+networks:
+  vox-shared-network:
+    external: true
+  vox-message-local-network:
+    name: vox-message-local-network
