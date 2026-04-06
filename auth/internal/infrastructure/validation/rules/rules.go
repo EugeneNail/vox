@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"regexp"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Rule validates a field within the full data payload.
@@ -213,7 +214,7 @@ func extractMeasurableValue(value any) (float64, error) {
 	case float64:
 		return typedValue, nil
 	case string:
-		return float64(len(typedValue)), nil
+		return float64(utf8.RuneCountInString(typedValue)), nil
 	}
 
 	reflectedValue := reflect.ValueOf(value)
