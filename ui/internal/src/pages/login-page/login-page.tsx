@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 import { ChangeEvent, FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getApiMessage, getApiViolations } from "../../api/get-api-violations";
 import { storeAuthTokens } from "../../auth/auth-tokens";
 import AuthFormCard from "../../components/auth-form-card/auth-form-card";
@@ -28,6 +28,7 @@ const initialForm: LoginForm = {
 
 export default function LoginPage() {
     const apiClient = useApiClient();
+    const navigate = useNavigate();
     const [form, setForm] = useState<LoginForm>(initialForm);
     const [violations, setViolations] = useState<LoginViolations>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +60,7 @@ export default function LoginPage() {
             );
 
             storeAuthTokens(data);
+            navigate("/chats/@me", { replace: true });
         } catch (error) {
             const nextViolations = getApiViolations(error);
             if (nextViolations) {

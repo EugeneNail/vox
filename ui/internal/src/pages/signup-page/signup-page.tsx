@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 import { ChangeEvent, FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getApiMessage, getApiViolations } from "../../api/get-api-violations";
 import { storeAuthTokens } from "../../auth/auth-tokens";
 import AuthFormCard from "../../components/auth-form-card/auth-form-card";
@@ -10,26 +10,27 @@ import { useApiClient } from "../../hooks/use-api-client";
 import "./signup-page.sass";
 
 type SignupForm = {
-  email: string;
-  password: string;
-  passwordConfirmation: string;
+    email: string;
+    password: string;
+    passwordConfirmation: string;
 };
 
 type SignupViolations = Partial<Record<keyof SignupForm, string>>;
 
 type AuthenticateResponse = {
-  loginToken: string;
-  refreshToken: string;
+    loginToken: string;
+    refreshToken: string;
 };
 
 const initialForm: SignupForm = {
-  email: "",
-  password: "",
-  passwordConfirmation: "",
+    email: "",
+    password: "",
+    passwordConfirmation: "",
 };
 
 export default function SignupPage() {
     const apiClient = useApiClient();
+    const navigate = useNavigate();
     const [form, setForm] = useState<SignupForm>(initialForm);
     const [violations, setViolations] = useState<SignupViolations>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,6 +67,7 @@ export default function SignupPage() {
             );
 
             storeAuthTokens(data);
+            navigate("/chats/@me", { replace: true });
         } catch (error) {
             const nextViolations = getApiViolations(error);
             if (nextViolations) {

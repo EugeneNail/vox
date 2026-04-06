@@ -1,7 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import DesktopLayout from "./layouts/desktop-layout/desktop-layout";
 import GuestLayout from "./layouts/guest-layout/guest-layout";
+import ChatsMePage from "./pages/chats-me-page/chats-me-page";
 import HomePage from "./pages/home-page/home-page";
 import LoginPage from "./pages/login-page/login-page";
 import NotFoundPage from "./pages/not-found-page/not-found-page";
@@ -16,6 +18,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route element={<GuestLayout />}>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
+                </Route>
+                <Route element={<DesktopLayout />}>
+                    <Route path="/chats/@me" element={<ChatsMePage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>
