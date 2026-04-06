@@ -10,6 +10,8 @@ require (
 )
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b // indirect
 )
