@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/EugeneNail/vox/lib-common/http/middleware"
 	"log"
 	"net/http"
 
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
-	"github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
 	transport_http "github.com/EugeneNail/vox/message/internal/transport/http"
 )

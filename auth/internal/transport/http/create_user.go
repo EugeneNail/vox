@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
 	"net/http"
+
+	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
+	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
 
 type createUserPayload struct {

@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
+	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
 
 type refreshPayload struct {

@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/EugeneNail/vox/auth/internal/application/services"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/config"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/postgres"
 	transport_http "github.com/EugeneNail/vox/auth/internal/transport/http"
-	"log"
-	"net/http"
+	"github.com/EugeneNail/vox/lib-common/http/middleware"
 )
 
 func main() {

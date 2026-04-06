@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/samborkent/uuidv7"
 	"strings"
 	"time"
 
 	"github.com/EugeneNail/vox/auth/internal/domain"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation"
-	"github.com/EugeneNail/vox/auth/internal/infrastructure/validation/rules"
+	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/google/uuid"
+	"github.com/samborkent/uuidv7"
 	"golang.org/x/crypto/bcrypt"
 )
 
