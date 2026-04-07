@@ -6,7 +6,7 @@ type MessageWebSocketContextValue = {
     isConnected: boolean;
     subscribeDirectChat: (directChatUuid: string) => void;
     unsubscribeDirectChat: (directChatUuid: string) => void;
-    addMessageCreatedListener: (listener: MessageCreatedListener) => () => void;
+    addMessageListener: (listener: AddMessageListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
@@ -18,7 +18,7 @@ type MessageWebSocketEvent = {
     data?: unknown;
 };
 
-export type MessageCreatedEvent = {
+export type AddMessageEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
@@ -27,7 +27,7 @@ export type MessageCreatedEvent = {
     updatedAt: string;
 };
 
-type MessageCreatedListener = (event: MessageCreatedEvent) => void;
+type AddMessageListener = (event: AddMessageEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
     handleClose: () => void;
@@ -38,7 +38,7 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
     subscribeDirectChat,
     unsubscribeDirectChat,
-    addMessageCreatedListener,
+    addMessageListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
@@ -46,7 +46,7 @@ let messageWebSocketToken: string | null = null;
 let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
 const directChatSubscriptions = new Set<string>();
-const messageCreatedListeners = new Set<MessageCreatedListener>();
+const addMessageListeners = new Set<AddMessageListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
 
@@ -103,9 +103,9 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         function handleMessage(event: MessageEvent<string>) {
             try {
                 const websocketEvent = JSON.parse(event.data) as MessageWebSocketEvent;
-                if (websocketEvent.type === "message.created") {
-                    messageCreatedListeners.forEach((listener) => {
-                        listener(websocketEvent.data as MessageCreatedEvent);
+                if (websocketEvent.type === "chat.add_message") {
+                    addMessageListeners.forEach((listener) => {
+                        listener(websocketEvent.data as AddMessageEvent);
                     });
                     return;
                 }
@@ -130,7 +130,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageCreatedListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -231,10 +231,10 @@ function sendMessageWebSocketCommand(command: { type: string; chatUuid: string }
     messageWebSocket.send(JSON.stringify(command));
 }
 
-function addMessageCreatedListener(listener: MessageCreatedListener) {
-    messageCreatedListeners.add(listener);
+function addMessageListener(listener: AddMessageListener) {
+    addMessageListeners.add(listener);
 
     return () => {
-        messageCreatedListeners.delete(listener);
+        addMessageListeners.delete(listener);
     };
 }

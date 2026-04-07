@@ -2,7 +2,7 @@ import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
-import { MessageCreatedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import { AddMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./chats-me-page.sass";
 
@@ -33,7 +33,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
-    const { addMessageCreatedListener, subscribeDirectChat, unsubscribeDirectChat } = useMessageWebSocket();
+    const { addMessageListener, subscribeDirectChat, unsubscribeDirectChat } = useMessageWebSocket();
     const { directChatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
@@ -144,7 +144,7 @@ export default function ChatsMePage() {
     }, [selectedChatUuid, subscribeDirectChat, unsubscribeDirectChat]);
 
     useEffect(() => (
-        addMessageCreatedListener((event) => {
+        addMessageListener((event) => {
             if (event.chatUuid !== selectedChatUuid) {
                 return;
             }
@@ -156,11 +156,11 @@ export default function ChatsMePage() {
 
                 return [
                     ...currentMessages,
-                    messageCreatedEventToChatMessage(event),
+                    addMessageEventToChatMessage(event),
                 ];
             });
         })
-    ), [addMessageCreatedListener, selectedChatUuid]);
+    ), [addMessageListener, selectedChatUuid]);
 
     useEffect(() => {
         function handleWindowClick() {
@@ -411,7 +411,7 @@ function renderMessageText(text: string) {
     });
 }
 
-function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessage {
+function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
