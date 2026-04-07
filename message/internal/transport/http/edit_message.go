@@ -18,8 +18,18 @@ type editMessagePayload struct {
 	Text string `json:"text"`
 }
 
+type EditMessageHandler struct {
+	usecase *edit_message.Handler
+}
+
+func NewEditMessageHandler(usecase *edit_message.Handler) *EditMessageHandler {
+	return &EditMessageHandler{
+		usecase: usecase,
+	}
+}
+
 // EditMessage decodes the request, applies transport validation, and calls the use-case.
-func (handler *Handler) EditMessage(request *http.Request) (int, any) {
+func (handler *EditMessageHandler) Handle(request *http.Request) (int, any) {
 	messageUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("messageUuid")))
 	if err != nil {
 		validationError := validation.NewError()
@@ -54,7 +64,7 @@ func (handler *Handler) EditMessage(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	if err := handler.editMessageHandler.Handle(request.Context(), edit_message.Command{
+	if err := handler.usecase.Handle(request.Context(), edit_message.Command{
 		MessageUuid: messageUuid,
 		UserUuid:    userUuid,
 		Text:        payload.Text,

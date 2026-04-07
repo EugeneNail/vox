@@ -72,8 +72,15 @@ func main() {
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
 
 	// --- Section: HTTP transport ---
-	httpHandler := transport_http.NewHandler(authorizeDirectChatUpdatesHandler, createDirectChatHandler, createMessageHandler, deleteMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
+	createDirectChatHttpHandler := transport_http.NewCreateDirectChatHandler(createDirectChatHandler)
+	createMessageHttpHandler := transport_http.NewCreateMessageHandler(createMessageHandler)
+	deleteMessageHttpHandler := transport_http.NewDeleteMessageHandler(deleteMessageHandler)
+	editMessageHttpHandler := transport_http.NewEditMessageHandler(editMessageHandler)
+	listChatMessagesHttpHandler := transport_http.NewListChatMessagesHandler(listChatMessagesHandler)
+	listDirectChatsHttpHandler := transport_http.NewListDirectChatsHandler(listDirectChatsHandler)
+	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(authorizeDirectChatUpdatesHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
 
+	// --- Section: Event consumers ---
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -81,15 +88,17 @@ func main() {
 	messageEditedRedisConsumer.ListenAndConsume(ctx)
 	messageDeletedRedisConsumer.ListenAndConsume(ctx)
 
+	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("POST /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat))))
-	webServer.HandleFunc("GET /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListDirectChats)))
-	webServer.HandleFunc("POST /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage))))
-	webServer.HandleFunc("GET /api/v1/message/direct-chats/{directChatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)))
-	webServer.HandleFunc("PUT /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.EditMessage))))
-	webServer.HandleFunc("DELETE /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.DeleteMessage)))
-	webServer.HandleFunc("GET /api/v1/message/ws", httpHandler.OpenWebSocket)
+	webServer.HandleFunc("POST   /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createDirectChatHttpHandler.Handle))))
+	webServer.HandleFunc("GET    /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listDirectChatsHttpHandler.Handle)))
+	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
+	webServer.HandleFunc("GET    /api/v1/message/direct-chats/{directChatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatMessagesHttpHandler.Handle)))
+	webServer.HandleFunc("PUT    /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(editMessageHttpHandler.Handle))))
+	webServer.HandleFunc("DELETE /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(deleteMessageHttpHandler.Handle)))
+	webServer.HandleFunc("GET    /api/v1/message/ws", openWebSocketHttpHandler.Handle)
 
+	// --- Section: HTTP server ---
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
 
 	log.Printf("message service listening on %s", address)

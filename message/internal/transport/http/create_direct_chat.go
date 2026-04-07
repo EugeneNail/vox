@@ -16,8 +16,18 @@ type createDirectChatPayload struct {
 	CompanionUuid string `json:"companionUuid"`
 }
 
+type CreateDirectChatHandler struct {
+	usecase *create_direct_chat.Handler
+}
+
+func NewCreateDirectChatHandler(usecase *create_direct_chat.Handler) *CreateDirectChatHandler {
+	return &CreateDirectChatHandler{
+		usecase: usecase,
+	}
+}
+
 // CreateDirectChat decodes the request and calls the use-case.
-func (handler *Handler) CreateDirectChat(request *http.Request) (int, any) {
+func (handler *CreateDirectChatHandler) Handle(request *http.Request) (int, any) {
 	var payload createDirectChatPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
@@ -35,7 +45,7 @@ func (handler *Handler) CreateDirectChat(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	chatUuid, err := handler.createDirectChatHandler.Handle(request.Context(), create_direct_chat.Command{
+	chatUuid, err := handler.usecase.Handle(request.Context(), create_direct_chat.Command{
 		CompanionUuid: companionUuid,
 		CreatorUuid:   userUuid,
 	})

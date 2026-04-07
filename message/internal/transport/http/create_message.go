@@ -17,8 +17,18 @@ type createMessagePayload struct {
 	Text string `json:"text"`
 }
 
+type CreateMessageHandler struct {
+	usecase *create_message.Handler
+}
+
+func NewCreateMessageHandler(usecase *create_message.Handler) *CreateMessageHandler {
+	return &CreateMessageHandler{
+		usecase: usecase,
+	}
+}
+
 // CreateMessage decodes the request, applies transport validation, and calls the use-case.
-func (handler *Handler) CreateMessage(request *http.Request) (int, any) {
+func (handler *CreateMessageHandler) Handle(request *http.Request) (int, any) {
 	chatUuid, err := uuid.Parse(request.PathValue("chatUuid"))
 	if err != nil {
 		validationError := validation.NewError()
@@ -53,7 +63,7 @@ func (handler *Handler) CreateMessage(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	messageUuid, err := handler.createMessageHandler.Handle(request.Context(), create_message.Command{
+	messageUuid, err := handler.usecase.Handle(request.Context(), create_message.Command{
 		ChatUuid: chatUuid,
 		UserUuid: userUuid,
 		Text:     payload.Text,

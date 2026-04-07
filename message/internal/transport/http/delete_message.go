@@ -12,8 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type DeleteMessageHandler struct {
+	usecase *delete_message.Handler
+}
+
+func NewDeleteMessageHandler(usecase *delete_message.Handler) *DeleteMessageHandler {
+	return &DeleteMessageHandler{
+		usecase: usecase,
+	}
+}
+
 // DeleteMessage applies transport validation and calls the use-case.
-func (handler *Handler) DeleteMessage(request *http.Request) (int, any) {
+func (handler *DeleteMessageHandler) Handle(request *http.Request) (int, any) {
 	messageUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("messageUuid")))
 	if err != nil {
 		validationError := validation.NewError()
@@ -28,7 +38,7 @@ func (handler *Handler) DeleteMessage(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	if err := handler.deleteMessageHandler.Handle(request.Context(), delete_message.Command{
+	if err := handler.usecase.Handle(request.Context(), delete_message.Command{
 		MessageUuid: messageUuid,
 		UserUuid:    userUuid,
 	}); err != nil {

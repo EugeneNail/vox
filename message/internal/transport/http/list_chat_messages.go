@@ -17,8 +17,18 @@ import (
 const defaultChatMessagesLength = 250
 const maxChatMessagesLength = 250
 
+type ListChatMessagesHandler struct {
+	usecase *list_chat_messages.Handler
+}
+
+func NewListChatMessagesHandler(usecase *list_chat_messages.Handler) *ListChatMessagesHandler {
+	return &ListChatMessagesHandler{
+		usecase: usecase,
+	}
+}
+
 // ListChatMessages validates transport input and calls the use-case.
-func (handler *Handler) ListChatMessages(request *http.Request) (int, any) {
+func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any) {
 	chatUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("directChatUuid")))
 	if err != nil {
 		validationError := validation.NewError()
@@ -41,7 +51,7 @@ func (handler *Handler) ListChatMessages(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	messages, err := handler.listChatMessagesHandler.Handle(request.Context(), list_chat_messages.Query{
+	messages, err := handler.usecase.Handle(request.Context(), list_chat_messages.Query{
 		ChatUuid: chatUuid,
 		UserUuid: userUuid,
 		Length:   length,

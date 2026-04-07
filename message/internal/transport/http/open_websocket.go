@@ -20,6 +20,22 @@ type openWebSocketCommand struct {
 	ChatUuid string `json:"chatUuid"`
 }
 
+type OpenWebSocketHandler struct {
+	usecase              *authorize_direct_chat_updates.Handler
+	connectionHub        *websocket_infrastructure.ConnectionHub
+	subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry
+	connectionDropper    *websocket_infrastructure.ConnectionDropper
+}
+
+func NewOpenWebSocketHandler(usecase *authorize_direct_chat_updates.Handler, connectionHub *websocket_infrastructure.ConnectionHub, subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry, connectionDropper *websocket_infrastructure.ConnectionDropper) *OpenWebSocketHandler {
+	return &OpenWebSocketHandler{
+		usecase:              usecase,
+		connectionHub:        connectionHub,
+		subscriptionRegistry: subscriptionRegistry,
+		connectionDropper:    connectionDropper,
+	}
+}
+
 var openWebSocketUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -27,7 +43,7 @@ var openWebSocketUpgrader = websocket.Upgrader{
 }
 
 // OpenWebSocket streams realtime message updates to the current browser tab.
-func (handler *Handler) OpenWebSocket(writer http.ResponseWriter, request *http.Request) {
+func (handler *OpenWebSocketHandler) Handle(writer http.ResponseWriter, request *http.Request) {
 	token := request.URL.Query().Get("token")
 	userUuid, err := message_middleware.UserUuidFromLoginToken(token)
 	if err != nil {
@@ -57,7 +73,7 @@ func (handler *Handler) OpenWebSocket(writer http.ResponseWriter, request *http.
 	}
 }
 
-func (handler *Handler) handleOpenWebSocketCommand(request *http.Request, connection *websocket_infrastructure.Connection, payload []byte) error {
+func (handler *OpenWebSocketHandler) handleOpenWebSocketCommand(request *http.Request, connection *websocket_infrastructure.Connection, payload []byte) error {
 	var command openWebSocketCommand
 	if err := json.Unmarshal(payload, &command); err != nil {
 		return err
@@ -70,7 +86,7 @@ func (handler *Handler) handleOpenWebSocketCommand(request *http.Request, connec
 			return err
 		}
 
-		if err := handler.authorizeDirectChatUpdatesHandler.Handle(request.Context(), authorize_direct_chat_updates.Query{
+		if err := handler.usecase.Handle(request.Context(), authorize_direct_chat_updates.Query{
 			DirectChatUuid: chatUuid,
 			UserUuid:       connection.UserUuid(),
 		}); err != nil {
