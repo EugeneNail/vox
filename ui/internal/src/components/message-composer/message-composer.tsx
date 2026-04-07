@@ -13,6 +13,7 @@ const spellCheckStorageKey = "vox.messageComposer.spellCheck";
 
 export default function MessageComposer({ disabled = false, editingText = null, onCancelEdit, onSubmit }: MessageComposerProps) {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const shouldFocusAfterSubmitRef = useRef(false);
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,15 @@ export default function MessageComposer({ disabled = false, editingText = null, 
         resizeTextarea(textareaRef.current);
     }, [text]);
 
+    useLayoutEffect(() => {
+        if (!shouldFocusAfterSubmitRef.current || disabled || isSubmitting) {
+            return;
+        }
+
+        shouldFocusAfterSubmitRef.current = false;
+        textareaRef.current?.focus({ preventScroll: true });
+    }, [disabled, isSubmitting, text]);
+
     function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
         setError(null);
         setText(event.target.value);
@@ -54,6 +64,7 @@ export default function MessageComposer({ disabled = false, editingText = null, 
         setIsSubmitting(true);
         try {
             await onSubmit(message);
+            shouldFocusAfterSubmitRef.current = true;
             setText("");
             resetTextarea();
             setError(null);
