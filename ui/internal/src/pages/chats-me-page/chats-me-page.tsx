@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
 import { useApiClient } from "../../hooks/use-api-client";
@@ -10,13 +11,26 @@ type DirectChat = {
     secondMemberUuid: string;
 };
 
+type ChatMessage = {
+    uuid: string;
+    chatUuid: string;
+    userUuid: string;
+    text: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export default function ChatsMePage() {
     const apiClient = useApiClient();
+    const { directChatUuid } = useParams();
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
-    const [selectedChatUuid, setSelectedChatUuid] = useState<string | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isMessagesLoading, setIsMessagesLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [messagesError, setMessagesError] = useState<string | null>(null);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
+    const selectedChatUuid = directChatUuid ?? null;
 
     useEffect(() => {
         let isMounted = true;
@@ -29,7 +43,6 @@ export default function ChatsMePage() {
                 }
 
                 setDirectChats(data);
-                setSelectedChatUuid(data[0]?.uuid ?? null);
             } catch {
                 if (!isMounted) {
                     return;
@@ -50,16 +63,69 @@ export default function ChatsMePage() {
         };
     }, [apiClient]);
 
-    const selectedChat = directChats.find((chat) => chat.uuid === selectedChatUuid);
-
-    async function sendMessage(text: string) {
-        if (!selectedChat) {
+    useEffect(() => {
+        if (!selectedChatUuid) {
+            setMessages([]);
             return;
         }
 
-        await apiClient.post(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
+        let isMounted = true;
+
+        async function loadMessages() {
+            setIsMessagesLoading(true);
+            setMessagesError(null);
+
+            try {
+                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/direct-chats/${selectedChatUuid}/messages?length=250`);
+                if (!isMounted) {
+                    return;
+                }
+
+                setMessages([...data].reverse());
+            } catch {
+                if (!isMounted) {
+                    return;
+                }
+
+                setMessages([]);
+                setMessagesError("Could not load messages.");
+            } finally {
+                if (isMounted) {
+                    setIsMessagesLoading(false);
+                }
+            }
+        }
+
+        loadMessages();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [apiClient, selectedChatUuid]);
+
+    const selectedChat = directChats.find((chat) => chat.uuid === selectedChatUuid);
+
+    async function sendMessage(text: string) {
+        if (!selectedChat || !authenticatedUserUuid) {
+            return;
+        }
+
+        const { data: messageUuid } = await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
             text,
         });
+
+        const createdAt = new Date().toISOString();
+        setMessages((currentMessages) => [
+            ...currentMessages,
+            {
+                uuid: messageUuid,
+                chatUuid: selectedChat.uuid,
+                userUuid: authenticatedUserUuid,
+                text,
+                createdAt,
+                updatedAt: createdAt,
+            },
+        ]);
     }
 
     return (
@@ -77,19 +143,20 @@ export default function ChatsMePage() {
                         <p className="chats-me-page__state">No direct chats yet.</p>
                     )}
                     {directChats.map((chat) => (
-                        <button
+                        <NavLink
                             className={
-                                chat.uuid === selectedChatUuid
-                                    ? "chats-me-page__chat-button chats-me-page__chat-button--active"
-                                    : "chats-me-page__chat-button"
+                                ({ isActive }) => (
+                                    isActive
+                                        ? "chats-me-page__chat-button chats-me-page__chat-button--active"
+                                        : "chats-me-page__chat-button"
+                                )
                             }
                             key={chat.uuid}
-                            type="button"
-                            onClick={() => setSelectedChatUuid(chat.uuid)}
+                            to={`/chats/@me/${chat.uuid}`}
                         >
                             <span className="chats-me-page__avatar" aria-hidden="true" />
                             <span className="chats-me-page__chat-name">{getDirectChatTitle(chat, authenticatedUserUuid)}</span>
-                        </button>
+                        </NavLink>
                     ))}
                 </div>
             </aside>
@@ -97,15 +164,33 @@ export default function ChatsMePage() {
             <section className="chats-me-page__chat" aria-label="Chat">
                 {selectedChat ? (
                     <div className="chats-me-page__chat-shell">
-                        <div className="chats-me-page__chat-placeholder">
+                        <div className="chats-me-page__messages-panel">
                             <p className="chats-me-page__eyebrow">Selected chat</p>
                             <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
-                            <p className="chats-me-page__chat-text">
-                                Message history will appear here.
-                            </p>
+
+                            <div className="chats-me-page__messages" aria-live="polite">
+                                {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
+                                {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
+                                {!isMessagesLoading && !messagesError && messages.length === 0 && (
+                                    <p className="chats-me-page__state">No messages yet.</p>
+                                )}
+                                {messages.map((message) => (
+                                    <article
+                                        className={
+                                            message.userUuid === authenticatedUserUuid
+                                                ? "chats-me-page__message chats-me-page__message--own"
+                                                : "chats-me-page__message"
+                                        }
+                                        key={message.uuid}
+                                    >
+                                        <p className="chats-me-page__message-author">{message.userUuid}</p>
+                                        <p className="chats-me-page__message-text">{message.text}</p>
+                                    </article>
+                                ))}
+                            </div>
                         </div>
 
-                        <MessageComposer onSubmit={sendMessage} />
+                        <MessageComposer disabled={!authenticatedUserUuid} onSubmit={sendMessage} />
                     </div>
                 ) : (
                     <div className="chats-me-page__chat-placeholder">

@@ -21,6 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 </Route>
                 <Route element={<DesktopLayout />}>
                     <Route path="/chats/@me" element={<ChatsMePage />} />
+                    <Route path="/chats/@me/:directChatUuid" element={<ChatsMePage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>

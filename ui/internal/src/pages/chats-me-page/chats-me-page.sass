@@ -57,6 +57,7 @@
   cursor: pointer
   font: inherit
   text-align: left
+  text-decoration: none
 
 .chats-me-page__chat-button:hover,
 .chats-me-page__chat-button--active
@@ -101,6 +102,17 @@
   background: rgba(255, 255, 255, 0.03)
   text-align: center
 
+.chats-me-page__messages-panel
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr)
+  gap: 14px
+  width: 100%
+  min-height: 0
+  padding: 26px
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 28px
+  background: rgba(255, 255, 255, 0.03)
+
 .chats-me-page__chat-title
   max-width: 72ch
   overflow-wrap: anywhere
@@ -113,6 +125,45 @@
 
 .chats-me-page__state--error
   color: #ff9e89
+
+.chats-me-page__messages
+  display: flex
+  flex-direction: column
+  justify-content: flex-end
+  gap: 12px
+  min-height: 0
+  overflow-y: auto
+
+.chats-me-page__message
+  display: grid
+  gap: 6px
+  max-width: min(680px, 82%)
+  padding: 12px 14px
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 18px 18px 18px 6px
+  background: rgba(255, 255, 255, 0.06)
+
+.chats-me-page__message--own
+  align-self: end
+  border-radius: 18px 18px 6px 18px
+  background: rgba(240, 197, 169, 0.14)
+
+.chats-me-page__message-author,
+.chats-me-page__message-text
+  margin: 0
+
+.chats-me-page__message-author
+  overflow: hidden
+  color: rgba(240, 197, 169, 0.82)
+  font-size: 11px
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.chats-me-page__message-text
+  color: rgba(246, 239, 228, 0.88)
+  line-height: 1.5
+  overflow-wrap: anywhere
+  white-space: pre-wrap
 
 @media (max-width: 960px)
   .chats-me-page
