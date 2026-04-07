@@ -22,7 +22,7 @@ type MessageCreatedPublisher interface {
 	Publish(ctx context.Context, event MessageCreatedEvent) error
 }
 
-// MessageCreatedListener listens to message-created events.
-type MessageCreatedListener interface {
-	Listen(ctx context.Context, handler func(context.Context, MessageCreatedEvent) error) error
+// MessageCreatedConsumer consumes message-created events.
+type MessageCreatedConsumer interface {
+	Start(ctx context.Context) error
 }

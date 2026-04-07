@@ -8,24 +8,24 @@ import (
 	"github.com/EugeneNail/vox/message/internal/domain"
 )
 
-// MessageCreatedWebSocketSender sends message-created events to websocket connections selected by subscriptions.
-type MessageCreatedWebSocketSender struct {
+// AddMessageWebSocketSender sends add-message commands to websocket connections selected by subscriptions.
+type AddMessageWebSocketSender struct {
 	connectionHub        *ConnectionHub
 	subscriptionRegistry *ChatSubscriptionRegistry
 	connectionDropper    *ConnectionDropper
 }
 
-// NewMessageCreatedWebSocketSender constructs a message-created websocket sender.
-func NewMessageCreatedWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageCreatedWebSocketSender {
-	return &MessageCreatedWebSocketSender{
+// NewAddMessageWebSocketSender constructs an add-message websocket sender.
+func NewAddMessageWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *AddMessageWebSocketSender {
+	return &AddMessageWebSocketSender{
 		connectionHub:        connectionHub,
 		subscriptionRegistry: subscriptionRegistry,
 		connectionDropper:    connectionDropper,
 	}
 }
 
-// Send sends a message-created event to connections subscribed to the message chat.
-func (sender *MessageCreatedWebSocketSender) Send(ctx context.Context, event domain.MessageCreatedEvent) error {
+// Send sends an add-message command to connections subscribed to the message chat.
+func (sender *AddMessageWebSocketSender) Send(ctx context.Context, event domain.MessageCreatedEvent) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -33,11 +33,11 @@ func (sender *MessageCreatedWebSocketSender) Send(ctx context.Context, event dom
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"type": "message.created",
+		"type": "chat.add_message",
 		"data": event,
 	})
 	if err != nil {
-		return fmt.Errorf("marshalling message created websocket event %q: %w", event.MessageUuid, err)
+		return fmt.Errorf("marshalling add message websocket command for message %q: %w", event.MessageUuid, err)
 	}
 
 	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)

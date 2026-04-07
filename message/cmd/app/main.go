@@ -43,11 +43,11 @@ func main() {
 	messageRepository := postgres.NewMessageRepository(database)
 	directChatRepository := postgres.NewDirectChatRepository(database)
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
-	messageCreatedListener := redis_infrastructure.NewMessageCreatedListener(redisClient)
 	connectionHub := websocket_infrastructure.NewConnectionHub()
 	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
-	messageCreatedWebSocketSender := websocket_infrastructure.NewMessageCreatedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, addMessageWebSocketSender.Send)
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher, log.Default())
@@ -60,7 +60,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err := messageCreatedListener.Listen(ctx, messageCreatedWebSocketSender.Send); err != nil && !errors.Is(err, context.Canceled) {
+		if err := messageCreatedRedisConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message created events: %v", err)
 		}
 	}()
