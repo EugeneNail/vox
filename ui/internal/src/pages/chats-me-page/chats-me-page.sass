@@ -81,14 +81,25 @@
 .chats-me-page__chat
   display: flex
   min-width: 0
-  padding: 28px
+  padding: 0 28px 28px
 
 .chats-me-page__chat-shell
   display: grid
-  grid-template-rows: auto auto minmax(0, 1fr) auto
+  grid-template-rows: auto minmax(0, 1fr) auto
   gap: 14px
   width: 100%
   min-height: 100%
+
+.chats-me-page__chat-header
+  position: sticky
+  z-index: 2
+  top: 0
+  display: grid
+  gap: 8px
+  margin-right: -28px
+  margin-left: -28px
+  padding: 10px 28px 6px
+  background: rgba(13, 20, 29, 0.88)
 
 .chats-me-page__chat-placeholder
   display: grid
@@ -105,7 +116,7 @@
 .chats-me-page__chat-title
   max-width: 72ch
   overflow-wrap: anywhere
-  font-size: clamp(28px, 4vw, 46px)
+  font-size: clamp(20px, 2.5vw, 28px)
 
 .chats-me-page__chat-text,
 .chats-me-page__state

@@ -168,8 +168,10 @@ export default function ChatsMePage() {
             <section className="chats-me-page__chat" aria-label="Chat">
                 {selectedChat ? (
                     <div className="chats-me-page__chat-shell">
-                        <p className="chats-me-page__eyebrow">Selected chat</p>
-                        <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                        <header className="chats-me-page__chat-header">
+                            <p className="chats-me-page__eyebrow">Selected chat</p>
+                            <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                        </header>
 
                         <div className="chats-me-page__messages" aria-live="polite">
                             {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
