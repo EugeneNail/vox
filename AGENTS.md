@@ -55,6 +55,22 @@
 - Use WebSocket for ephemeral, connection-bound actions such as realtime message delivery, typing indicators, presence updates, transient chat subscription changes, and WebRTC signaling.
 - When a browser opens a chat, the expected model is: history is fetched through HTTP, then realtime updates for the currently open chat are subscribed through WebSocket.
 - When a browser switches from one chat to another, the expected model is: unsubscribe from the old chat over WebSocket, subscribe to the new chat over WebSocket, and fetch any required persisted history through HTTP.
+- Keep WebSocket connection management and runtime chat subscription management separate when these states can be separated.
+- Do not make `ChatSubscriptionRegistry` own sockets, and do not make `ConnectionHub` know about chats.
+- Centralize WebSocket connection cleanup in one idempotent method, for example `ConnectionDropper.Drop`, so adding new runtime registries does not require manually adding cleanup calls in every disconnect path.
+- Do not spread WebSocket cleanup across multiple manual calls such as `Unregister + Unsubscribe + Close`.
+- Name WebSocket senders by the client-facing action when they send commands for the UI. Prefer names such as `AddMessageWebSocketSender` over names tied to internal domain events such as `MessageCreatedWebSocketSender`.
+- Avoid generic names such as `Dispatcher`, `Realtime`, or `Manager` when the name does not explain the concrete action.
+- The frontend WebSocket client must support reconnecting and re-sending current runtime subscriptions after reconnect.
+
+## Event Consumers
+- If a Redis consumer handles one concrete event type, name it concretely, for example `MessageCreatedConsumer`.
+- A concrete Redis consumer should use `Start` as the method that starts the consumption loop.
+- Pass handlers to a concrete Redis consumer when creating the consumer, not when calling `Start`.
+- If a Redis event must be handled by multiple handlers, pass multiple handlers explicitly to the consumer instead of building a hidden in-process pub/sub layer over Redis Pub/Sub.
+
+## Application Bootstrap
+- When `main.go` dependency wiring becomes long, group the wiring with section comments.
 
 ## Frontend Styles
 - CSS class names must follow BEM naming.
