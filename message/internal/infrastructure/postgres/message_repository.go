@@ -122,3 +122,13 @@ func (repository *MessageRepository) Update(ctx context.Context, message domain.
 
 	return nil
 }
+
+// Delete removes the message from PostgreSQL.
+func (repository *MessageRepository) Delete(ctx context.Context, messageUuid uuid.UUID) error {
+	_, err := repository.database.ExecContext(ctx, `DELETE FROM messages WHERE uuid = $1`, messageUuid)
+	if err != nil {
+		return fmt.Errorf("deleting message %q: %w", messageUuid, err)
+	}
+
+	return nil
+}

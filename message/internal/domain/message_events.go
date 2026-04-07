@@ -46,3 +46,20 @@ type MessageEditedPublisher interface {
 type MessageEditedConsumer interface {
 	ListenAndConsume(ctx context.Context)
 }
+
+// MessageDeletedEvent describes a message that was deleted and can be delivered to realtime subscribers.
+type MessageDeletedEvent struct {
+	MessageUuid uuid.UUID `json:"messageUuid"`
+	ChatUuid    uuid.UUID `json:"chatUuid"`
+	UserUuid    uuid.UUID `json:"userUuid"`
+}
+
+// MessageDeletedPublisher publishes message-deleted events.
+type MessageDeletedPublisher interface {
+	Publish(ctx context.Context, event MessageDeletedEvent) error
+}
+
+// MessageDeletedConsumer consumes message-deleted events.
+type MessageDeletedConsumer interface {
+	ListenAndConsume(ctx context.Context)
+}

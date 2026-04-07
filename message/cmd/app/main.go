@@ -10,6 +10,7 @@ import (
 	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_direct_chat_updates"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_direct_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/delete_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/edit_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_direct_chats"
@@ -53,27 +54,32 @@ func main() {
 	// --- Section: Event delivery ---
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
 	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient)
+	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient)
 	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	updateMessageWebSocketSender := websocket_infrastructure.NewUpdateMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	removeMessageWebSocketSender := websocket_infrastructure.NewRemoveMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, addMessageWebSocketSender.Send)
 	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, updateMessageWebSocketSender.Send)
+	messageDeletedRedisConsumer := redis_infrastructure.NewMessageDeletedConsumer(redisClient, removeMessageWebSocketSender.Send)
 
 	// --- Section: Application use-cases ---
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher)
+	deleteMessageHandler := delete_message.NewHandler(messageRepository, directChatRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
 
 	// --- Section: HTTP transport ---
-	httpHandler := transport_http.NewHandler(authorizeDirectChatUpdatesHandler, createDirectChatHandler, createMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
+	httpHandler := transport_http.NewHandler(authorizeDirectChatUpdatesHandler, createDirectChatHandler, createMessageHandler, deleteMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	messageCreatedRedisConsumer.ListenAndConsume(ctx)
 	messageEditedRedisConsumer.ListenAndConsume(ctx)
+	messageDeletedRedisConsumer.ListenAndConsume(ctx)
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc("POST /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat))))
@@ -81,6 +87,7 @@ func main() {
 	webServer.HandleFunc("POST /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage))))
 	webServer.HandleFunc("GET /api/v1/message/direct-chats/{directChatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)))
 	webServer.HandleFunc("PUT /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.EditMessage))))
+	webServer.HandleFunc("DELETE /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.DeleteMessage)))
 	webServer.HandleFunc("GET /api/v1/message/ws", httpHandler.OpenWebSocket)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)

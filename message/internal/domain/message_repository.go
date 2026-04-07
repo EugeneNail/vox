@@ -12,4 +12,5 @@ type MessageRepository interface {
 	FindLastByChatUuid(ctx context.Context, chatUuid uuid.UUID, length int) ([]Message, error)
 	Create(ctx context.Context, message Message) error
 	Update(ctx context.Context, message Message) error
+	Delete(ctx context.Context, messageUuid uuid.UUID) error
 }
