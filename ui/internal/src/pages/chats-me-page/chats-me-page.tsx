@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useState } from "react";
+import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
@@ -33,6 +33,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const { directChatUuid } = useParams();
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +115,14 @@ export default function ChatsMePage() {
             isMounted = false;
         };
     }, [apiClient, selectedChatUuid]);
+
+    useLayoutEffect(() => {
+        if (!selectedChatUuid || isMessagesLoading || messages.length === 0) {
+            return;
+        }
+
+        messagesEndRef.current?.scrollIntoView({ block: "end" });
+    }, [isMessagesLoading, messages.length, selectedChatUuid]);
 
     useEffect(() => {
         setEditingMessage(null);
@@ -258,6 +267,7 @@ export default function ChatsMePage() {
                                             [
                                                 "chats-me-page__message",
                                                 isThreadStart ? "chats-me-page__message--thread-start" : "",
+                                                editingMessage?.uuid === message.uuid ? "chats-me-page__message--editing" : "",
                                             ].filter(Boolean).join(" ")
                                         }
                                         key={message.uuid}
@@ -283,6 +293,7 @@ export default function ChatsMePage() {
                                     </article>
                                 );
                             })}
+                            <div ref={messagesEndRef} className="chats-me-page__messages-end" aria-hidden="true" />
                         </div>
 
                         {messageContextMenu && (

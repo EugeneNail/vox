@@ -1,7 +1,7 @@
 .message-composer
   display: grid
-  grid-template-columns: 44px minmax(0, 1fr) 44px
-  align-items: end
+  grid-template-columns: 36px minmax(0, 1fr) 28px 36px
+  align-items: start
   gap: 12px
   width: 100%
   padding: 10px
@@ -15,12 +15,13 @@
   display: inline-flex
   align-items: center
   justify-content: center
-  width: 44px
-  height: 44px
+  width: 36px
+  height: 36px
   border: 0
   border-radius: 50%
   color: #f6efe4
   cursor: pointer
+  margin-top: 6px
 
 .message-composer__attach-button
   background: rgba(255, 255, 255, 0.08)
@@ -28,6 +29,36 @@
 .message-composer__send-button
   background: #f0c5a9
   color: #101722
+
+.message-composer__attach-button .material-symbols-rounded,
+.message-composer__send-button .material-symbols-rounded
+  font-size: 21px
+
+.message-composer__spellcheck-button
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 28px
+  height: 36px
+  margin-top: 6px
+  padding: 0
+  border: 0
+  background: transparent
+  color: rgba(246, 239, 228, 0.34)
+  cursor: pointer
+
+.message-composer__spellcheck-button:hover,
+.message-composer__spellcheck-button--active
+  color: rgba(246, 239, 228, 0.58)
+
+.message-composer__spellcheck-button .material-symbols-rounded
+  font-size: 21px
+
+.message-composer__editing-divider
+  grid-column: 1 / -1
+  height: 1px
+  margin: -4px -10px 0
+  background: rgba(255, 255, 255, 0.08)
 
 .message-composer__attach-button:disabled,
 .message-composer__send-button:disabled
@@ -40,23 +71,51 @@
   min-width: 0
 
 .message-composer__editing-state
-  display: flex
+  grid-column: 1 / -1
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
   align-items: center
-  justify-content: space-between
   gap: 12px
+  min-width: 0
+  padding: 12px 0 12px 8px
   color: rgba(240, 197, 169, 0.82)
   font-size: 12px
   line-height: 1.4
 
+.message-composer__editing-copy
+  display: grid
+  gap: 2px
+  min-width: 0
+  padding-left: 6px
+  border-left: 3px solid #f0c5a9
+
+.message-composer__editing-label
+  font-weight: 650
+
+.message-composer__editing-preview
+  overflow: hidden
+  color: rgba(246, 239, 228, 0.62)
+  text-overflow: ellipsis
+  white-space: nowrap
+
 .message-composer__cancel-edit-button
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 34px
+  height: 34px
   padding: 0
   border: 0
+  border-radius: 50%
   background: transparent
   color: rgba(246, 239, 228, 0.72)
   cursor: pointer
-  font: inherit
-  text-decoration: underline
-  text-underline-offset: 3px
+
+.message-composer__cancel-edit-button:hover
+  background: rgba(255, 255, 255, 0.08)
+
+.message-composer__cancel-edit-button .material-symbols-rounded
+  font-size: 22px
 
 .message-composer__textarea-shell
   position: relative

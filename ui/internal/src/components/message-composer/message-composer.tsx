@@ -9,12 +9,14 @@ type MessageComposerProps = {
 };
 
 const maxMessageLength = 2000;
+const spellCheckStorageKey = "vox.messageComposer.spellCheck";
 
 export default function MessageComposer({ disabled = false, editingText = null, onCancelEdit, onSubmit }: MessageComposerProps) {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isSpellCheckEnabled, setIsSpellCheckEnabled] = useState(() => localStorage.getItem(spellCheckStorageKey) === "enabled");
     const isEditing = editingText !== null;
 
     useEffect(() => {
@@ -76,6 +78,15 @@ export default function MessageComposer({ disabled = false, editingText = null, 
         onCancelEdit?.();
     }
 
+    function handleSpellCheckToggle() {
+        setIsSpellCheckEnabled((currentValue) => {
+            const nextValue = !currentValue;
+            localStorage.setItem(spellCheckStorageKey, nextValue ? "enabled" : "disabled");
+
+            return nextValue;
+        });
+    }
+
     function resetTextarea() {
         if (!textareaRef.current) {
             return;
@@ -86,19 +97,25 @@ export default function MessageComposer({ disabled = false, editingText = null, 
 
     return (
         <form className="message-composer" onSubmit={handleSubmit}>
+            {isEditing && (
+                <div className="message-composer__editing-state">
+                    <div className="message-composer__editing-copy">
+                        <span className="message-composer__editing-label">Editing message</span>
+                        <span className="message-composer__editing-preview">{editingText}</span>
+                    </div>
+                    <button className="message-composer__cancel-edit-button" type="button" aria-label="Cancel editing" onClick={handleCancelEdit}>
+                        <span className="material-symbols-rounded" aria-hidden="true">close</span>
+                    </button>
+                </div>
+            )}
+
+            {isEditing && <span className="message-composer__editing-divider" aria-hidden="true" />}
+
             <button className="message-composer__attach-button" type="button" aria-label="Attach image" disabled={disabled}>
                 <span className="material-symbols-rounded" aria-hidden="true">add</span>
             </button>
 
             <div className="message-composer__field">
-                {isEditing && (
-                    <div className="message-composer__editing-state">
-                        <span>Editing message</span>
-                        <button className="message-composer__cancel-edit-button" type="button" onClick={handleCancelEdit}>
-                            Cancel
-                        </button>
-                    </div>
-                )}
                 <div className="message-composer__textarea-shell">
                     <textarea
                         ref={textareaRef}
@@ -108,6 +125,7 @@ export default function MessageComposer({ disabled = false, editingText = null, 
                         value={text}
                         disabled={disabled || isSubmitting}
                         maxLength={maxMessageLength}
+                        spellCheck={isSpellCheckEnabled}
                         onChange={handleTextChange}
                         onKeyDown={handleKeyDown}
                     />
@@ -119,6 +137,20 @@ export default function MessageComposer({ disabled = false, editingText = null, 
                 )}
                 {error && <span className="message-composer__error">{error}</span>}
             </div>
+
+            <button
+                className={
+                    isSpellCheckEnabled
+                        ? "message-composer__spellcheck-button message-composer__spellcheck-button--active"
+                        : "message-composer__spellcheck-button"
+                }
+                type="button"
+                aria-label={isSpellCheckEnabled ? "Disable spellcheck" : "Enable spellcheck"}
+                aria-pressed={isSpellCheckEnabled}
+                onClick={handleSpellCheckToggle}
+            >
+                <span className="material-symbols-rounded" aria-hidden="true">spellcheck</span>
+            </button>
 
             <button
                 className="message-composer__send-button"
