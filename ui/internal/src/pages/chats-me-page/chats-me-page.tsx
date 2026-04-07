@@ -318,6 +318,7 @@ export default function ChatsMePage() {
                                         setMessageContextMenu(null);
                                     }}
                                 >
+                                    <span className="material-symbols-rounded" aria-hidden="true">edit</span>
                                     Edit Message
                                 </button>
                             </div>
