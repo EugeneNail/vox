@@ -162,7 +162,7 @@
 
 .chats-me-page__message
   display: grid
-  grid-template-columns: 44px minmax(0, 1fr) 42px
+  grid-template-columns: 44px minmax(0, 1fr) 64px
   column-gap: 24px
   width: 100%
   padding: 2px 10px 2px 0
@@ -177,6 +177,10 @@
 
 .chats-me-page__message--editing:hover
   background: rgba(240, 197, 169, 0.14)
+
+.chats-me-page__message--pending .chats-me-page__message-text,
+.chats-me-page__message--pending .chats-me-page__message-time
+  color: rgba(246, 239, 228, 0.36)
 
 .chats-me-page__message--thread-start
   margin-top: 28px
@@ -214,13 +218,23 @@
   text-overflow: ellipsis
   white-space: nowrap
 
+.chats-me-page__message-status
+  display: flex
+  align-items: flex-start
+  justify-content: flex-end
+  gap: 3px
+  padding-top: 1px
+
 .chats-me-page__message-time
   color: rgba(246, 239, 228, 0.44)
   font-size: 11px
-  justify-self: end
-  padding-top: 1px
 
-.chats-me-page__message:not(.chats-me-page__message--thread-start) .chats-me-page__message-time
+.chats-me-page__message-delivery-icon
+  color: rgba(240, 197, 169, 0.92)
+  font-size: 14px
+  line-height: 1
+
+.chats-me-page__message:not(.chats-me-page__message--thread-start) .chats-me-page__message-status
   padding-top: 4px
 
 .chats-me-page__message-text

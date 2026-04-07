@@ -19,6 +19,8 @@ type ChatMessage = {
     text: string;
     createdAt: string;
     updatedAt: string;
+    isPending?: boolean;
+    pendingServerUuid?: string;
 };
 
 type MessageContextMenu = {
@@ -150,13 +152,35 @@ export default function ChatsMePage() {
             }
 
             setMessages((currentMessages) => {
-                if (currentMessages.some((message) => message.uuid === event.messageUuid)) {
+                if (currentMessages.some((message) => message.uuid === event.messageUuid && !message.isPending)) {
                     return currentMessages;
                 }
 
+                const confirmedMessage = addMessageEventToChatMessage(event);
+                const pendingMessageIndex = currentMessages.findIndex((message) => (
+                    message.isPending &&
+                    (
+                        message.pendingServerUuid === event.messageUuid ||
+                        (
+                            message.chatUuid === event.chatUuid &&
+                            message.userUuid === event.userUuid &&
+                            message.text === event.text
+                        )
+                    )
+                ));
+
+                if (pendingMessageIndex !== -1) {
+                    return currentMessages.map((message, index) => (
+                        index === pendingMessageIndex
+                            ? confirmedMessage
+                            : message
+                    ));
+                }
+
+                // TODO: Sort confirmed messages by server createdAt while keeping pending messages stable.
                 return [
                     ...currentMessages,
-                    addMessageEventToChatMessage(event),
+                    confirmedMessage,
                 ];
             });
         })
@@ -208,13 +232,46 @@ export default function ChatsMePage() {
     }
 
     async function sendMessage(text: string) {
-        if (!selectedChat) {
+        if (!selectedChat || !authenticatedUserUuid) {
             return;
         }
 
-        await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
-            text,
-        });
+        const pendingMessageUuid = `pending-${crypto.randomUUID()}`;
+        const createdAt = new Date().toISOString();
+
+        setMessages((currentMessages) => [
+            ...currentMessages,
+            {
+                uuid: pendingMessageUuid,
+                chatUuid: selectedChat.uuid,
+                userUuid: authenticatedUserUuid,
+                text,
+                createdAt,
+                updatedAt: createdAt,
+                isPending: true,
+            },
+        ]);
+
+        try {
+            const { data: messageUuid } = await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
+                text,
+            });
+
+            setMessages((currentMessages) => {
+                if (currentMessages.some((message) => message.uuid === messageUuid && !message.isPending)) {
+                    return currentMessages.filter((message) => message.uuid !== pendingMessageUuid);
+                }
+
+                return currentMessages.map((message) => (
+                    message.uuid === pendingMessageUuid
+                        ? { ...message, uuid: messageUuid, pendingServerUuid: messageUuid }
+                        : message
+                ));
+            });
+        } catch (error) {
+            setMessages((currentMessages) => currentMessages.filter((message) => message.uuid !== pendingMessageUuid));
+            throw error;
+        }
     }
 
     async function editMessage(message: ChatMessage, text: string) {
@@ -228,7 +285,7 @@ export default function ChatsMePage() {
     function handleMessageContextMenu(event: MouseEvent<HTMLElement>, message: ChatMessage) {
         event.preventDefault();
 
-        if (message.userUuid !== authenticatedUserUuid) {
+        if (message.isPending || message.userUuid !== authenticatedUserUuid) {
             return;
         }
 
@@ -295,6 +352,7 @@ export default function ChatsMePage() {
                                             [
                                                 "chats-me-page__message",
                                                 isThreadStart ? "chats-me-page__message--thread-start" : "",
+                                                message.isPending ? "chats-me-page__message--pending" : "",
                                                 editingMessage?.uuid === message.uuid ? "chats-me-page__message--editing" : "",
                                             ].filter(Boolean).join(" ")
                                         }
@@ -317,12 +375,17 @@ export default function ChatsMePage() {
                                                 )}
                                             </p>
                                         </div>
-                                        <time
-                                            className="chats-me-page__message-time"
-                                            dateTime={message.createdAt}
-                                        >
-                                            {formatMessageTime(message.createdAt)}
-                                        </time>
+                                        <div className="chats-me-page__message-status">
+                                            {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
+                                                <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+                                            )}
+                                            <time
+                                                className="chats-me-page__message-time"
+                                                dateTime={message.createdAt}
+                                            >
+                                                {formatMessageTime(message.createdAt)}
+                                            </time>
+                                        </div>
                                     </article>
                                 );
                             })}
@@ -403,6 +466,10 @@ function isMessageThreadStart(message: ChatMessage, previousMessage?: ChatMessag
 
 function isMessageEdited(message: ChatMessage) {
     return new Date(message.createdAt).getTime() !== new Date(message.updatedAt).getTime();
+}
+
+function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUuid: string | null) {
+    return !message.isPending && message.userUuid === authenticatedUserUuid;
 }
 
 function renderMessageText(text: string) {
