@@ -1,5 +1,6 @@
 export const loginTokenStorageKey = "vox.loginToken";
 export const refreshTokenStorageKey = "vox.refreshToken";
+export const authTokensChangedEventName = "vox:auth-tokens-changed";
 
 type AuthTokens = {
     loginToken: string;
@@ -9,10 +10,12 @@ type AuthTokens = {
 export function storeAuthTokens(tokens: AuthTokens) {
     localStorage.setItem(loginTokenStorageKey, tokens.loginToken);
     localStorage.setItem(refreshTokenStorageKey, tokens.refreshToken);
+    notifyAuthTokensChanged();
 }
 
 export function storeLoginToken(loginToken: string) {
     localStorage.setItem(loginTokenStorageKey, loginToken);
+    notifyAuthTokensChanged();
 }
 
 export function getLoginToken() {
@@ -51,4 +54,9 @@ export function getAuthenticatedUserUuid() {
 export function clearAuthTokens() {
     localStorage.removeItem(loginTokenStorageKey);
     localStorage.removeItem(refreshTokenStorageKey);
+    notifyAuthTokensChanged();
+}
+
+function notifyAuthTokensChanged() {
+    window.dispatchEvent(new Event(authTokensChangedEventName));
 }
