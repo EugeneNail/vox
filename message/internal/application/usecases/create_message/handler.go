@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -22,11 +23,6 @@ type Handler struct {
 	messageRepository       domain.MessageRepository
 	directChatRepository    domain.DirectChatRepository
 	messageCreatedPublisher domain.MessageCreatedPublisher
-	logger                  logger
-}
-
-type logger interface {
-	Printf(format string, values ...any)
 }
 
 // Command contains the input required to create a message.
@@ -37,12 +33,11 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageCreatedPublisher domain.MessageCreatedPublisher, logger logger) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageCreatedPublisher domain.MessageCreatedPublisher) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
 		directChatRepository:    directChatRepository,
 		messageCreatedPublisher: messageCreatedPublisher,
-		logger:                  logger,
 	}
 }
 
@@ -104,9 +99,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		CreatedAt:   message.CreatedAt,
 		UpdatedAt:   message.UpdatedAt,
 	}); err != nil {
-		if handler.logger != nil {
-			handler.logger.Printf("publishing message created event for message %q: %v", message.Uuid, err)
-		}
+		log.Printf("publishing message created event for message %q: %v", message.Uuid, err)
 	}
 
 	return message.Uuid, nil

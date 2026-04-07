@@ -59,7 +59,7 @@ func main() {
 	// --- Section: Application use-cases ---
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher, log.Default())
+	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
@@ -77,7 +77,6 @@ func main() {
 	}()
 
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("GET /api/v1/message/ping", middleware.WriteJsonResponse(httpHandler.Ping))
 	webServer.HandleFunc("POST /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat))))
 	webServer.HandleFunc("GET /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListDirectChats)))
 	webServer.HandleFunc("POST /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage))))
