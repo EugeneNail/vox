@@ -198,13 +198,16 @@ export default function ChatsMePage() {
                                                 {isThreadStart && (
                                                     <div className="chats-me-page__message-header">
                                                         <p className="chats-me-page__message-author">{message.userUuid}</p>
-                                                        <time className="chats-me-page__message-time" dateTime={message.createdAt}>
-                                                            {formatMessageTime(message.createdAt)}
-                                                        </time>
                                                     </div>
                                                 )}
                                                 <p className="chats-me-page__message-text">{renderMessageText(message.text)}</p>
                                             </div>
+                                            <time
+                                                className="chats-me-page__message-time"
+                                                dateTime={message.createdAt}
+                                            >
+                                                {formatMessageTime(message.createdAt)}
+                                            </time>
                                         </article>
                                     );
                                 })}
@@ -237,6 +240,8 @@ function getDirectChatTitle(chat: DirectChat, authenticatedUserUuid: string | nu
 function formatMessageTime(date: string) {
     return new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
+        hour12: false,
+        hourCycle: "h23",
         minute: "2-digit",
     }).format(new Date(date));
 }
