@@ -77,6 +77,21 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
 
         const activeLoginToken = loginToken;
         let shouldReconnect = true;
+        // Defer the side effect so React StrictMode can cancel the probe mount
+        // before it creates and immediately closes a CONNECTING WebSocket.
+        let openTimeoutId: number | null = window.setTimeout(() => {
+            if (!shouldReconnect) {
+                return;
+            }
+
+            const webSocket = openMessageWebSocket(activeLoginToken, {
+                handleOpen,
+                handleClose,
+                handleMessage,
+            });
+            setIsConnected(webSocket.readyState === WebSocket.OPEN);
+            openTimeoutId = null;
+        }, 0);
 
         function handleOpen() {
             messageWebSocketReconnectAttempt = 0;
@@ -116,15 +131,11 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             console.log("message websocket:", event.data);
         }
 
-        const webSocket = openMessageWebSocket(activeLoginToken, {
-            handleOpen,
-            handleClose,
-            handleMessage,
-        });
-        setIsConnected(webSocket.readyState === WebSocket.OPEN);
-
         return () => {
             shouldReconnect = false;
+            if (openTimeoutId !== null) {
+                window.clearTimeout(openTimeoutId);
+            }
             closeMessageWebSocket();
         };
     }, [loginToken]);
