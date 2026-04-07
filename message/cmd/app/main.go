@@ -61,6 +61,10 @@ func main() {
 		"GET /api/v1/message/direct-chats/{directChatUuid}/messages",
 		message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)),
 	)
+	webServer.HandleFunc(
+		"GET /api/v1/message/ws",
+		httpHandler.UpdatesWebSocket,
+	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
 

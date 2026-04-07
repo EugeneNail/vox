@@ -27,37 +27,7 @@ func RequireAuthenticatedUser(next http.Handler) http.HandlerFunc {
 		}
 
 		tokenString := strings.TrimSpace(strings.TrimPrefix(authorizationHeader, "Bearer "))
-		if tokenString == "" {
-			writeUnauthorized(writer)
-			return
-		}
-
-		claims := jwt.MapClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-			if token.Method != jwt.SigningMethodHS256 {
-				return nil, jwt.ErrTokenSignatureInvalid
-			}
-
-			return []byte(tokenSalt), nil
-		})
-		if err != nil || !token.Valid {
-			writeUnauthorized(writer)
-			return
-		}
-
-		tokenType, ok := claims["type"].(string)
-		if !ok || tokenType != loginTokenType {
-			writeUnauthorized(writer)
-			return
-		}
-
-		userUuidString, ok := claims["sub"].(string)
-		if !ok || userUuidString == "" {
-			writeUnauthorized(writer)
-			return
-		}
-
-		userUuid, err := uuid.Parse(userUuidString)
+		userUuid, err := UserUuidFromLoginToken(tokenString)
 		if err != nil {
 			writeUnauthorized(writer)
 			return
@@ -72,6 +42,42 @@ func RequireAuthenticatedUser(next http.Handler) http.HandlerFunc {
 func UserUuidFromContext(ctx context.Context) (uuid.UUID, bool) {
 	userUuid, ok := ctx.Value(userUuidContextKey).(uuid.UUID)
 	return userUuid, ok
+}
+
+// UserUuidFromLoginToken validates a login token and returns the authenticated user UUID.
+func UserUuidFromLoginToken(tokenString string) (uuid.UUID, error) {
+	if tokenString == "" {
+		return uuid.Nil, jwt.ErrTokenMalformed
+	}
+
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, jwt.ErrTokenSignatureInvalid
+		}
+
+		return []byte(tokenSalt), nil
+	})
+	if err != nil || !token.Valid {
+		return uuid.Nil, jwt.ErrTokenInvalidClaims
+	}
+
+	tokenType, ok := claims["type"].(string)
+	if !ok || tokenType != loginTokenType {
+		return uuid.Nil, jwt.ErrTokenInvalidClaims
+	}
+
+	userUuidString, ok := claims["sub"].(string)
+	if !ok || userUuidString == "" {
+		return uuid.Nil, jwt.ErrTokenInvalidClaims
+	}
+
+	userUuid, err := uuid.Parse(userUuidString)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return userUuid, nil
 }
 
 func writeUnauthorized(writer http.ResponseWriter) {
