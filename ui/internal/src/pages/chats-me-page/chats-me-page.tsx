@@ -20,6 +20,10 @@ type ChatMessage = {
     updatedAt: string;
 };
 
+const linkPattern = /(https?:\/\/[^\s]+)/g;
+const fullLinkPattern = /^https?:\/\/[^\s]+$/;
+const messageThreadGapMs = 10 * 60 * 1000;
+
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const { directChatUuid } = useParams();
@@ -174,19 +178,36 @@ export default function ChatsMePage() {
                                 {!isMessagesLoading && !messagesError && messages.length === 0 && (
                                     <p className="chats-me-page__state">No messages yet.</p>
                                 )}
-                                {messages.map((message) => (
-                                    <article
-                                        className={
-                                            message.userUuid === authenticatedUserUuid
-                                                ? "chats-me-page__message chats-me-page__message--own"
-                                                : "chats-me-page__message"
-                                        }
-                                        key={message.uuid}
-                                    >
-                                        <p className="chats-me-page__message-author">{message.userUuid}</p>
-                                        <p className="chats-me-page__message-text">{message.text}</p>
-                                    </article>
-                                ))}
+                                {messages.map((message, index) => {
+                                    const isThreadStart = isMessageThreadStart(message, messages[index - 1]);
+
+                                    return (
+                                        <article
+                                            className={
+                                                [
+                                                    "chats-me-page__message",
+                                                    isThreadStart ? "chats-me-page__message--thread-start" : "",
+                                                ].filter(Boolean).join(" ")
+                                            }
+                                            key={message.uuid}
+                                        >
+                                            <div className="chats-me-page__message-avatar-cell">
+                                                {isThreadStart && <span className="chats-me-page__message-avatar" aria-hidden="true" />}
+                                            </div>
+                                            <div className="chats-me-page__message-body">
+                                                {isThreadStart && (
+                                                    <div className="chats-me-page__message-header">
+                                                        <p className="chats-me-page__message-author">{message.userUuid}</p>
+                                                        <time className="chats-me-page__message-time" dateTime={message.createdAt}>
+                                                            {formatMessageTime(message.createdAt)}
+                                                        </time>
+                                                    </div>
+                                                )}
+                                                <p className="chats-me-page__message-text">{renderMessageText(message.text)}</p>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -211,4 +232,37 @@ function getDirectChatTitle(chat: DirectChat, authenticatedUserUuid: string | nu
     }
 
     return chat.firstMemberUuid;
+}
+
+function formatMessageTime(date: string) {
+    return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(new Date(date));
+}
+
+function isMessageThreadStart(message: ChatMessage, previousMessage?: ChatMessage) {
+    if (!previousMessage) {
+        return true;
+    }
+
+    if (previousMessage.userUuid !== message.userUuid) {
+        return true;
+    }
+
+    return new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime() >= messageThreadGapMs;
+}
+
+function renderMessageText(text: string) {
+    return text.split(linkPattern).map((part, index) => {
+        if (!fullLinkPattern.test(part)) {
+            return part;
+        }
+
+        return (
+            <a className="chats-me-page__message-link" href={part} key={`${part}-${index}`} target="_blank" rel="noreferrer">
+                {part}
+            </a>
+        );
+    });
 }
