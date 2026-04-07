@@ -289,8 +289,97 @@
 .chats-me-page__context-menu-button:hover
   background: rgba(255, 255, 255, 0.06)
 
+.chats-me-page__context-menu-danger
+  margin-top: 6px
+  padding-top: 6px
+  border-top: 1px solid rgba(255, 255, 255, 0.1)
+
+.chats-me-page__context-menu-button--danger
+  color: rgba(255, 129, 108, 0.94)
+
+.chats-me-page__context-menu-button--danger:hover
+  background: rgba(255, 92, 72, 0.12)
+  color: #ff8c78
+
 .chats-me-page__context-menu-button .material-symbols-rounded
   font-size: 18px
+
+.chats-me-page__modal-backdrop
+  position: fixed
+  z-index: 40
+  inset: 0
+  display: grid
+  place-items: center
+  padding: 24px
+  background: rgba(0, 0, 0, 0.58)
+
+.chats-me-page__delete-dialog
+  display: grid
+  gap: 18px
+  width: min(520px, 100%)
+  padding: 22px
+  border: 1px solid rgba(255, 255, 255, 0.1)
+  border-radius: 22px
+  background: rgba(9, 14, 21, 0.98)
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44)
+
+.chats-me-page__delete-dialog-header
+  display: grid
+  gap: 8px
+
+.chats-me-page__delete-dialog-title
+  margin: 0
+  font-size: 22px
+
+.chats-me-page__delete-dialog-text
+  margin: 0
+  color: rgba(246, 239, 228, 0.58)
+  font-size: 14px
+  line-height: 1.5
+
+.chats-me-page__delete-message-preview
+  display: grid
+  grid-template-columns: 44px minmax(0, 1fr) 64px
+  column-gap: 18px
+  padding: 14px 12px
+  border-radius: 14px
+  background: linear-gradient(90deg, rgba(240, 197, 169, 0.08), rgba(255, 255, 255, 0.025))
+
+.chats-me-page__delete-message-preview .chats-me-page__message-text
+  display: -webkit-box
+  overflow: hidden
+  -webkit-box-orient: vertical
+  -webkit-line-clamp: 2
+
+.chats-me-page__delete-dialog-actions
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 10px
+
+.chats-me-page__delete-dialog-button
+  width: 100%
+  padding: 10px 16px
+  border: 1px solid rgba(255, 255, 255, 0.12)
+  border-radius: 12px
+  background: rgba(255, 255, 255, 0.05)
+  color: rgba(246, 239, 228, 0.9)
+  cursor: pointer
+  font: inherit
+
+.chats-me-page__delete-dialog-button:hover
+  background: rgba(255, 255, 255, 0.08)
+
+.chats-me-page__delete-dialog-button:disabled
+  cursor: default
+  opacity: 0.6
+
+.chats-me-page__delete-dialog-button--danger
+  border-color: rgba(255, 129, 108, 0.38)
+  background: rgba(255, 92, 72, 0.14)
+  color: #ff8c78
+
+.chats-me-page__delete-dialog-button--danger:hover
+  background: rgba(255, 92, 72, 0.22)
 
 @media (max-width: 960px)
   .chats-me-page

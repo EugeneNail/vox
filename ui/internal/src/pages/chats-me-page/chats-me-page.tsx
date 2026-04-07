@@ -35,7 +35,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
-    const { addMessageListener, subscribeDirectChat, unsubscribeDirectChat, updateMessageListener } = useMessageWebSocket();
+    const { addMessageListener, removeMessageListener, subscribeDirectChat, unsubscribeDirectChat, updateMessageListener } = useMessageWebSocket();
     const { directChatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
@@ -46,6 +46,8 @@ export default function ChatsMePage() {
     const [messagesError, setMessagesError] = useState<string | null>(null);
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
     const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenu | null>(null);
+    const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
+    const [isDeletingMessage, setIsDeletingMessage] = useState(false);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = directChatUuid ?? null;
 
@@ -131,6 +133,7 @@ export default function ChatsMePage() {
     useEffect(() => {
         setEditingMessage(null);
         setMessageContextMenu(null);
+        setMessagePendingDeletion(null);
     }, [selectedChatUuid]);
 
     useEffect(() => {
@@ -200,6 +203,16 @@ export default function ChatsMePage() {
         })
     ), [selectedChatUuid, updateMessageListener]);
 
+    useEffect(() => (
+        removeMessageListener((event) => {
+            if (event.chatUuid !== selectedChatUuid) {
+                return;
+            }
+
+            setMessages((currentMessages) => currentMessages.filter((message) => message.uuid !== event.messageUuid));
+        })
+    ), [removeMessageListener, selectedChatUuid]);
+
     useEffect(() => {
         function handleWindowClick() {
             setMessageContextMenu(null);
@@ -208,6 +221,7 @@ export default function ChatsMePage() {
         function handleWindowKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 setMessageContextMenu(null);
+                setMessagePendingDeletion(null);
             }
         }
 
@@ -280,6 +294,19 @@ export default function ChatsMePage() {
         });
 
         setEditingMessage(null);
+    }
+
+    async function deleteMessage(message: ChatMessage) {
+        setIsDeletingMessage(true);
+        try {
+            await apiClient.delete<string>(`/api/v1/message/messages/${message.uuid}`);
+            setMessagePendingDeletion(null);
+            if (editingMessage?.uuid === message.uuid) {
+                setEditingMessage(null);
+            }
+        } finally {
+            setIsDeletingMessage(false);
+        }
     }
 
     function handleMessageContextMenu(event: MouseEvent<HTMLElement>, message: ChatMessage) {
@@ -412,17 +439,19 @@ export default function ChatsMePage() {
                                 onClick={(event) => event.stopPropagation()}
                             >
                                 {messageContextMenu.message.userUuid === authenticatedUserUuid && (
-                                    <button
-                                        className="chats-me-page__context-menu-button"
-                                        type="button"
-                                        onClick={() => {
-                                            setEditingMessage(messageContextMenu.message);
-                                            setMessageContextMenu(null);
-                                        }}
-                                    >
-                                        <span className="material-symbols-rounded" aria-hidden="true">edit</span>
-                                        Edit Message
-                                    </button>
+                                    <>
+                                        <button
+                                            className="chats-me-page__context-menu-button"
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingMessage(messageContextMenu.message);
+                                                setMessageContextMenu(null);
+                                            }}
+                                        >
+                                            <span className="material-symbols-rounded" aria-hidden="true">edit</span>
+                                            Edit Message
+                                        </button>
+                                    </>
                                 )}
                                 <button
                                     className="chats-me-page__context-menu-button"
@@ -432,6 +461,21 @@ export default function ChatsMePage() {
                                     <span className="material-symbols-rounded" aria-hidden="true">content_copy</span>
                                     Copy text
                                 </button>
+                                {messageContextMenu.message.userUuid === authenticatedUserUuid && (
+                                    <div className="chats-me-page__context-menu-danger">
+                                        <button
+                                            className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
+                                            type="button"
+                                            onClick={() => {
+                                                setMessagePendingDeletion(messageContextMenu.message);
+                                                setMessageContextMenu(null);
+                                            }}
+                                        >
+                                            <span className="material-symbols-rounded" aria-hidden="true">delete</span>
+                                            Delete Message
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -451,6 +495,51 @@ export default function ChatsMePage() {
             </section>
 
             <aside className="chats-me-page__details" aria-label="Chat details" />
+
+            {messagePendingDeletion && (
+                <div className="chats-me-page__modal-backdrop" role="presentation">
+                    <section className="chats-me-page__delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
+                        <div className="chats-me-page__delete-dialog-header">
+                            <h2 className="chats-me-page__delete-dialog-title" id="delete-message-title">Delete Message</h2>
+                            <p className="chats-me-page__delete-dialog-text">Are you sure you want to delete this message?</p>
+                        </div>
+
+                        <article className="chats-me-page__delete-message-preview">
+                            <div className="chats-me-page__message-avatar-cell">
+                                <span className="chats-me-page__message-avatar" aria-hidden="true" />
+                            </div>
+                            <div className="chats-me-page__message-body">
+                                <div className="chats-me-page__message-header">
+                                    <p className="chats-me-page__message-author">{messagePendingDeletion.userUuid}</p>
+                                </div>
+                                <p className="chats-me-page__message-text">
+                                    {renderMessageText(messagePendingDeletion.text)}
+                                    {isMessageEdited(messagePendingDeletion) && (
+                                        <span className="chats-me-page__message-edited"> (edited)</span>
+                                    )}
+                                </p>
+                            </div>
+                            <div className="chats-me-page__message-status">
+                                <time
+                                    className="chats-me-page__message-time"
+                                    dateTime={messagePendingDeletion.createdAt}
+                                >
+                                    {formatMessageTime(messagePendingDeletion.createdAt)}
+                                </time>
+                            </div>
+                        </article>
+
+                        <div className="chats-me-page__delete-dialog-actions">
+                            <button className="chats-me-page__delete-dialog-button" type="button" disabled={isDeletingMessage} onClick={() => setMessagePendingDeletion(null)}>
+                                Cancel
+                            </button>
+                            <button className="chats-me-page__delete-dialog-button chats-me-page__delete-dialog-button--danger" type="button" disabled={isDeletingMessage} onClick={() => void deleteMessage(messagePendingDeletion)}>
+                                Delete
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </section>
     );
 }

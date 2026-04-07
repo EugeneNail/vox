@@ -9,6 +9,7 @@ type MessageWebSocketContextValue = {
     unsubscribeDirectChat: (directChatUuid: string) => void;
     addMessageListener: (listener: AddMessageListener) => () => void;
     updateMessageListener: (listener: UpdateMessageListener) => () => void;
+    removeMessageListener: (listener: RemoveMessageListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
@@ -38,8 +39,15 @@ export type UpdateMessageEvent = {
     updatedAt: string;
 };
 
+export type RemoveMessageEvent = {
+    messageUuid: string;
+    chatUuid: string;
+    userUuid: string;
+};
+
 type AddMessageListener = (event: AddMessageEvent) => void;
 type UpdateMessageListener = (event: UpdateMessageEvent) => void;
+type RemoveMessageListener = (event: RemoveMessageEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
     handleClose: () => void;
@@ -52,6 +60,7 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     unsubscribeDirectChat,
     addMessageListener,
     updateMessageListener,
+    removeMessageListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
@@ -61,6 +70,7 @@ let messageWebSocketReconnectAttempt = 0;
 const directChatSubscriptions = new Set<string>();
 const addMessageListeners = new Set<AddMessageListener>();
 const updateMessageListeners = new Set<UpdateMessageListener>();
+const removeMessageListeners = new Set<RemoveMessageListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
 
@@ -145,6 +155,13 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                     });
                     return;
                 }
+
+                if (websocketEvent.type === "chat.remove_message") {
+                    removeMessageListeners.forEach((listener) => {
+                        listener(websocketEvent.data as RemoveMessageEvent);
+                    });
+                    return;
+                }
             } catch {
                 // Keep logging raw messages for temporary connection probes such as "pong".
             }
@@ -162,7 +179,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener, updateMessageListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener, updateMessageListener, removeMessageListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -286,5 +303,13 @@ function updateMessageListener(listener: UpdateMessageListener) {
 
     return () => {
         updateMessageListeners.delete(listener);
+    };
+}
+
+function removeMessageListener(listener: RemoveMessageListener) {
+    removeMessageListeners.add(listener);
+
+    return () => {
+        removeMessageListeners.delete(listener);
     };
 }
