@@ -285,7 +285,7 @@ export default function ChatsMePage() {
     function handleMessageContextMenu(event: MouseEvent<HTMLElement>, message: ChatMessage) {
         event.preventDefault();
 
-        if (message.isPending || message.userUuid !== authenticatedUserUuid) {
+        if (message.isPending) {
             return;
         }
 
@@ -294,6 +294,16 @@ export default function ChatsMePage() {
             x: event.clientX,
             y: event.clientY,
         });
+    }
+
+    async function copyMessageText(message: ChatMessage) {
+        try {
+            await navigator.clipboard.writeText(message.text);
+        } catch {
+            copyTextWithFallback(message.text);
+        } finally {
+            setMessageContextMenu(null);
+        }
     }
 
     return (
@@ -401,16 +411,26 @@ export default function ChatsMePage() {
                                 }}
                                 onClick={(event) => event.stopPropagation()}
                             >
+                                {messageContextMenu.message.userUuid === authenticatedUserUuid && (
+                                    <button
+                                        className="chats-me-page__context-menu-button"
+                                        type="button"
+                                        onClick={() => {
+                                            setEditingMessage(messageContextMenu.message);
+                                            setMessageContextMenu(null);
+                                        }}
+                                    >
+                                        <span className="material-symbols-rounded" aria-hidden="true">edit</span>
+                                        Edit Message
+                                    </button>
+                                )}
                                 <button
                                     className="chats-me-page__context-menu-button"
                                     type="button"
-                                    onClick={() => {
-                                        setEditingMessage(messageContextMenu.message);
-                                        setMessageContextMenu(null);
-                                    }}
+                                    onClick={() => void copyMessageText(messageContextMenu.message)}
                                 >
-                                    <span className="material-symbols-rounded" aria-hidden="true">edit</span>
-                                    Edit Message
+                                    <span className="material-symbols-rounded" aria-hidden="true">content_copy</span>
+                                    Copy text
                                 </button>
                             </div>
                         )}
@@ -484,6 +504,19 @@ function renderMessageText(text: string) {
             </a>
         );
     });
+}
+
+function copyTextWithFallback(text: string) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
 }
 
 function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
