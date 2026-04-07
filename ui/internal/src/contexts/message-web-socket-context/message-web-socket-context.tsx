@@ -28,6 +28,11 @@ export type MessageCreatedEvent = {
 };
 
 type MessageCreatedListener = (event: MessageCreatedEvent) => void;
+type MessageWebSocketListeners = {
+    handleOpen: () => void;
+    handleClose: () => void;
+    handleMessage: (event: MessageEvent<string>) => void;
+};
 
 const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
@@ -38,8 +43,12 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
 
 let messageWebSocket: WebSocket | null = null;
 let messageWebSocketToken: string | null = null;
+let messageWebSocketReconnectTimeoutId: number | null = null;
+let messageWebSocketReconnectAttempt = 0;
 const directChatSubscriptions = new Set<string>();
 const messageCreatedListeners = new Set<MessageCreatedListener>();
+const messageWebSocketReconnectBaseDelayMs = 500;
+const messageWebSocketReconnectMaxDelayMs = 5000;
 
 export function MessageWebSocketProvider({ children }: MessageWebSocketProviderProps) {
     const [loginToken, setLoginToken] = useState(() => getLoginToken());
@@ -66,10 +75,11 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             return;
         }
 
-        const webSocket = openMessageWebSocket(loginToken);
-        setIsConnected(webSocket.readyState === WebSocket.OPEN);
+        const activeLoginToken = loginToken;
+        let shouldReconnect = true;
 
         function handleOpen() {
+            messageWebSocketReconnectAttempt = 0;
             setIsConnected(true);
             directChatSubscriptions.forEach((directChatUuid) => {
                 sendMessageWebSocketCommand({
@@ -81,6 +91,13 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
 
         function handleClose() {
             setIsConnected(false);
+            if (shouldReconnect) {
+                scheduleMessageWebSocketReconnect(activeLoginToken, {
+                    handleOpen,
+                    handleClose,
+                    handleMessage,
+                });
+            }
         }
 
         function handleMessage(event: MessageEvent<string>) {
@@ -99,14 +116,16 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             console.log("message websocket:", event.data);
         }
 
-        webSocket.addEventListener("open", handleOpen);
-        webSocket.addEventListener("close", handleClose);
-        webSocket.addEventListener("message", handleMessage);
+        const webSocket = openMessageWebSocket(activeLoginToken, {
+            handleOpen,
+            handleClose,
+            handleMessage,
+        });
+        setIsConnected(webSocket.readyState === WebSocket.OPEN);
 
         return () => {
-            webSocket.removeEventListener("open", handleOpen);
-            webSocket.removeEventListener("close", handleClose);
-            webSocket.removeEventListener("message", handleMessage);
+            shouldReconnect = false;
+            closeMessageWebSocket();
         };
     }, [loginToken]);
 
@@ -121,7 +140,7 @@ export function useMessageWebSocket() {
     return useContext(MessageWebSocketContext);
 }
 
-function openMessageWebSocket(loginToken: string) {
+function openMessageWebSocket(loginToken: string, listeners: MessageWebSocketListeners) {
     if (
         messageWebSocket &&
         messageWebSocketToken === loginToken &&
@@ -131,6 +150,7 @@ function openMessageWebSocket(loginToken: string) {
     }
 
     closeMessageWebSocket();
+    clearMessageWebSocketReconnect();
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const url = new URL("/api/v1/message/ws", `${protocol}//${window.location.host}`);
@@ -138,6 +158,9 @@ function openMessageWebSocket(loginToken: string) {
 
     messageWebSocket = new WebSocket(url);
     messageWebSocketToken = loginToken;
+    messageWebSocket.addEventListener("open", listeners.handleOpen);
+    messageWebSocket.addEventListener("close", listeners.handleClose);
+    messageWebSocket.addEventListener("message", listeners.handleMessage);
     messageWebSocket.addEventListener("close", () => {
         messageWebSocket = null;
         messageWebSocketToken = null;
@@ -147,6 +170,8 @@ function openMessageWebSocket(loginToken: string) {
 }
 
 function closeMessageWebSocket() {
+    clearMessageWebSocketReconnect();
+
     if (!messageWebSocket) {
         return;
     }
@@ -154,6 +179,32 @@ function closeMessageWebSocket() {
     messageWebSocket.close();
     messageWebSocket = null;
     messageWebSocketToken = null;
+}
+
+function scheduleMessageWebSocketReconnect(loginToken: string, listeners: MessageWebSocketListeners) {
+    if (messageWebSocketReconnectTimeoutId !== null) {
+        return;
+    }
+
+    const delay = Math.min(
+        messageWebSocketReconnectBaseDelayMs * 2 ** messageWebSocketReconnectAttempt,
+        messageWebSocketReconnectMaxDelayMs,
+    );
+    messageWebSocketReconnectAttempt += 1;
+
+    messageWebSocketReconnectTimeoutId = window.setTimeout(() => {
+        messageWebSocketReconnectTimeoutId = null;
+        openMessageWebSocket(loginToken, listeners);
+    }, delay);
+}
+
+function clearMessageWebSocketReconnect() {
+    if (messageWebSocketReconnectTimeoutId === null) {
+        return;
+    }
+
+    window.clearTimeout(messageWebSocketReconnectTimeoutId);
+    messageWebSocketReconnectTimeoutId = null;
 }
 
 function subscribeDirectChat(directChatUuid: string) {
