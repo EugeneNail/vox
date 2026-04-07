@@ -53,14 +53,17 @@ func main() {
 
 	// --- Section: Event delivery ---
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
+	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient)
 	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	updateMessageWebSocketSender := websocket_infrastructure.NewUpdateMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, addMessageWebSocketSender.Send)
+	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, updateMessageWebSocketSender.Send)
 
 	// --- Section: Application use-cases ---
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher)
-	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository)
+	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
 
@@ -73,6 +76,12 @@ func main() {
 	go func() {
 		if err := messageCreatedRedisConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message created events: %v", err)
+		}
+	}()
+
+	go func() {
+		if err := messageEditedRedisConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("listening message edited events: %v", err)
 		}
 	}()
 

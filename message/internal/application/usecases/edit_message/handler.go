@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -20,8 +21,9 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 
 // Handler edits messages through the edit_message use-case.
 type Handler struct {
-	messageRepository    domain.MessageRepository
-	directChatRepository domain.DirectChatRepository
+	messageRepository      domain.MessageRepository
+	directChatRepository   domain.DirectChatRepository
+	messageEditedPublisher domain.MessageEditedPublisher
 }
 
 // Command contains the input required to edit a message.
@@ -32,10 +34,11 @@ type Command struct {
 }
 
 // NewHandler constructs an edit_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageEditedPublisher domain.MessageEditedPublisher) *Handler {
 	return &Handler{
-		messageRepository:    messageRepository,
-		directChatRepository: directChatRepository,
+		messageRepository:      messageRepository,
+		directChatRepository:   directChatRepository,
+		messageEditedPublisher: messageEditedPublisher,
 	}
 }
 
@@ -93,6 +96,17 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 
 	if err := handler.messageRepository.Update(ctx, *message); err != nil {
 		return fmt.Errorf("updating text for message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
+	}
+
+	if err := handler.messageEditedPublisher.Publish(ctx, domain.MessageEditedEvent{
+		MessageUuid: message.Uuid,
+		ChatUuid:    message.ChatUuid,
+		UserUuid:    message.UserUuid,
+		Text:        message.Text,
+		CreatedAt:   message.CreatedAt,
+		UpdatedAt:   message.UpdatedAt,
+	}); err != nil {
+		log.Printf("publishing message edited event for message %q: %v", message.Uuid, err)
 	}
 
 	return nil
