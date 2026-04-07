@@ -1,0 +1,41 @@
+package redis
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/EugeneNail/vox/message/internal/domain"
+	redisclient "github.com/redis/go-redis/v9"
+)
+
+const messageCreatedChannel = "message.created"
+
+// MessageCreatedPublisher publishes message-created events through Redis Pub/Sub.
+type MessageCreatedPublisher struct {
+	client *redisclient.Client
+}
+
+// NewMessageCreatedPublisher constructs a Redis-backed message-created publisher.
+func NewMessageCreatedPublisher(client *redisclient.Client) *MessageCreatedPublisher {
+	return &MessageCreatedPublisher{
+		client: client,
+	}
+}
+
+// Publish publishes a message-created event.
+func (publisher *MessageCreatedPublisher) Publish(ctx context.Context, event domain.MessageCreatedEvent) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("marshalling message created event for message %q: %w", event.MessageUuid, err)
+	}
+
+	if err := publisher.client.Publish(ctx, messageCreatedChannel, payload).Err(); err != nil {
+		return fmt.Errorf("publishing message created event for message %q: %w", event.MessageUuid, err)
+	}
+
+	return nil
+}
+
+// Ensure MessageCreatedPublisher implements the message-created publisher contract.
+var _ domain.MessageCreatedPublisher = (*MessageCreatedPublisher)(nil)

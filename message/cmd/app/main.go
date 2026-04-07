@@ -42,15 +42,15 @@ func main() {
 
 	messageRepository := postgres.NewMessageRepository(database)
 	directChatRepository := postgres.NewDirectChatRepository(database)
-	messageEventPublisher := redis_infrastructure.NewMessageEventPublisher(redisClient)
-	messageEventSubscriber := redis_infrastructure.NewMessageEventSubscriber(redisClient)
+	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
+	messageCreatedListener := redis_infrastructure.NewMessageCreatedListener(redisClient)
 	connectionHub := websocket_infrastructure.NewConnectionHub()
 	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
-	messageRealtimeDispatcher := websocket_infrastructure.NewMessageRealtimeDispatcher(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	messageCreatedWebSocketSender := websocket_infrastructure.NewMessageCreatedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageEventPublisher, log.Default())
+	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher, log.Default())
 	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
@@ -60,7 +60,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err := messageEventSubscriber.ListenMessageCreated(ctx, messageRealtimeDispatcher.DispatchMessageCreated); err != nil && !errors.Is(err, context.Canceled) {
+		if err := messageCreatedListener.Listen(ctx, messageCreatedWebSocketSender.Send); err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message created events: %v", err)
 		}
 	}()

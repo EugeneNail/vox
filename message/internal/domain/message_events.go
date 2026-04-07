@@ -17,12 +17,12 @@ type MessageCreatedEvent struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
-// MessageEventPublisher publishes message domain events.
-type MessageEventPublisher interface {
-	PublishMessageCreated(ctx context.Context, event MessageCreatedEvent) error
+// MessageCreatedPublisher publishes message-created events.
+type MessageCreatedPublisher interface {
+	Publish(ctx context.Context, event MessageCreatedEvent) error
 }
 
-// MessageEventSubscriber listens to message domain events.
-type MessageEventSubscriber interface {
-	ListenMessageCreated(ctx context.Context, handler func(context.Context, MessageCreatedEvent) error) error
+// MessageCreatedListener listens to message-created events.
+type MessageCreatedListener interface {
+	Listen(ctx context.Context, handler func(context.Context, MessageCreatedEvent) error) error
 }

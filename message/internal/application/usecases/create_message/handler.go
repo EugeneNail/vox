@@ -19,10 +19,10 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 
 // Handler creates messages through the create_message use-case.
 type Handler struct {
-	messageRepository     domain.MessageRepository
-	directChatRepository  domain.DirectChatRepository
-	messageEventPublisher domain.MessageEventPublisher
-	logger                logger
+	messageRepository       domain.MessageRepository
+	directChatRepository    domain.DirectChatRepository
+	messageCreatedPublisher domain.MessageCreatedPublisher
+	logger                  logger
 }
 
 type logger interface {
@@ -37,12 +37,12 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageEventPublisher domain.MessageEventPublisher, logger logger) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageCreatedPublisher domain.MessageCreatedPublisher, logger logger) *Handler {
 	return &Handler{
-		messageRepository:     messageRepository,
-		directChatRepository:  directChatRepository,
-		messageEventPublisher: messageEventPublisher,
-		logger:                logger,
+		messageRepository:       messageRepository,
+		directChatRepository:    directChatRepository,
+		messageCreatedPublisher: messageCreatedPublisher,
+		logger:                  logger,
 	}
 }
 
@@ -96,7 +96,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	if err := handler.messageEventPublisher.PublishMessageCreated(ctx, domain.MessageCreatedEvent{
+	if err := handler.messageCreatedPublisher.Publish(ctx, domain.MessageCreatedEvent{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,
