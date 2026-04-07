@@ -7,6 +7,7 @@ type MessageWebSocketContextValue = {
     subscribeDirectChat: (directChatUuid: string) => void;
     unsubscribeDirectChat: (directChatUuid: string) => void;
     addMessageListener: (listener: AddMessageListener) => () => void;
+    updateMessageListener: (listener: UpdateMessageListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
@@ -27,7 +28,17 @@ export type AddMessageEvent = {
     updatedAt: string;
 };
 
+export type UpdateMessageEvent = {
+    messageUuid: string;
+    chatUuid: string;
+    userUuid: string;
+    text: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
 type AddMessageListener = (event: AddMessageEvent) => void;
+type UpdateMessageListener = (event: UpdateMessageEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
     handleClose: () => void;
@@ -39,6 +50,7 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     subscribeDirectChat,
     unsubscribeDirectChat,
     addMessageListener,
+    updateMessageListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
@@ -47,6 +59,7 @@ let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
 const directChatSubscriptions = new Set<string>();
 const addMessageListeners = new Set<AddMessageListener>();
+const updateMessageListeners = new Set<UpdateMessageListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
 
@@ -124,6 +137,13 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                     });
                     return;
                 }
+
+                if (websocketEvent.type === "chat.update_message") {
+                    updateMessageListeners.forEach((listener) => {
+                        listener(websocketEvent.data as UpdateMessageEvent);
+                    });
+                    return;
+                }
             } catch {
                 // Keep logging raw messages for temporary connection probes such as "pong".
             }
@@ -141,7 +161,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener, updateMessageListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -247,5 +267,13 @@ function addMessageListener(listener: AddMessageListener) {
 
     return () => {
         addMessageListeners.delete(listener);
+    };
+}
+
+function updateMessageListener(listener: UpdateMessageListener) {
+    updateMessageListeners.add(listener);
+
+    return () => {
+        updateMessageListeners.delete(listener);
     };
 }

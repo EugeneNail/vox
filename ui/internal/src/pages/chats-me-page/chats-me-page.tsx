@@ -2,7 +2,7 @@ import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
-import { AddMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./chats-me-page.sass";
 
@@ -33,7 +33,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
-    const { addMessageListener, subscribeDirectChat, unsubscribeDirectChat } = useMessageWebSocket();
+    const { addMessageListener, subscribeDirectChat, unsubscribeDirectChat, updateMessageListener } = useMessageWebSocket();
     const { directChatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
@@ -162,6 +162,20 @@ export default function ChatsMePage() {
         })
     ), [addMessageListener, selectedChatUuid]);
 
+    useEffect(() => (
+        updateMessageListener((event) => {
+            if (event.chatUuid !== selectedChatUuid) {
+                return;
+            }
+
+            setMessages((currentMessages) => currentMessages.map((message) => (
+                message.uuid === event.messageUuid
+                    ? updateMessageEventToChatMessage(event)
+                    : message
+            )));
+        })
+    ), [selectedChatUuid, updateMessageListener]);
+
     useEffect(() => {
         function handleWindowClick() {
             setMessageContextMenu(null);
@@ -208,12 +222,6 @@ export default function ChatsMePage() {
             text,
         });
 
-        const updatedAt = new Date().toISOString();
-        setMessages((currentMessages) => currentMessages.map((currentMessage) => (
-            currentMessage.uuid === message.uuid
-                ? { ...currentMessage, text, updatedAt }
-                : currentMessage
-        )));
         setEditingMessage(null);
     }
 
@@ -412,6 +420,17 @@ function renderMessageText(text: string) {
 }
 
 function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
+    return {
+        uuid: event.messageUuid,
+        chatUuid: event.chatUuid,
+        userUuid: event.userUuid,
+        text: event.text,
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+    };
+}
+
+function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
