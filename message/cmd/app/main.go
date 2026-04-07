@@ -23,11 +23,13 @@ import (
 )
 
 func main() {
+	// --- Section: Runtime configuration ---
 	configuration, err := config.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// --- Section: External clients ---
 	database, err := postgres.NewDatabase(configuration.Postgres)
 	if err != nil {
 		log.Fatal(err)
@@ -40,20 +42,29 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	// --- Section: Repositories ---
 	messageRepository := postgres.NewMessageRepository(database)
 	directChatRepository := postgres.NewDirectChatRepository(database)
-	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
+
+	// --- Section: WebSocket runtime ---
 	connectionHub := websocket_infrastructure.NewConnectionHub()
 	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
+
+	// --- Section: Event delivery ---
+	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
 	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, addMessageWebSocketSender.Send)
+
+	// --- Section: Application use-cases ---
 	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageCreatedPublisher, log.Default())
 	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
+
+	// --- Section: HTTP transport ---
 	httpHandler := transport_http.NewHandler(authorizeDirectChatUpdatesHandler, createDirectChatHandler, createMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,40 +77,13 @@ func main() {
 	}()
 
 	webServer := http.NewServeMux()
-	webServer.HandleFunc(
-		"GET /api/v1/message/ping",
-		middleware.WriteJsonResponse(httpHandler.Ping),
-	)
-	webServer.HandleFunc(
-		"POST /api/v1/message/direct-chats",
-		message_middleware.RequireAuthenticatedUser(
-			middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat)),
-		),
-	)
-	webServer.HandleFunc(
-		"GET /api/v1/message/direct-chats",
-		message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListDirectChats)),
-	)
-	webServer.HandleFunc(
-		"POST /api/v1/message/chats/{chatUuid}/messages",
-		message_middleware.RequireAuthenticatedUser(
-			middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage)),
-		),
-	)
-	webServer.HandleFunc(
-		"GET /api/v1/message/direct-chats/{directChatUuid}/messages",
-		message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)),
-	)
-	webServer.HandleFunc(
-		"PUT /api/v1/message/messages/{messageUuid}",
-		message_middleware.RequireAuthenticatedUser(
-			middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.EditMessage)),
-		),
-	)
-	webServer.HandleFunc(
-		"GET /api/v1/message/ws",
-		httpHandler.OpenWebSocket,
-	)
+	webServer.HandleFunc("GET /api/v1/message/ping", middleware.WriteJsonResponse(httpHandler.Ping))
+	webServer.HandleFunc("POST /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat))))
+	webServer.HandleFunc("GET /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListDirectChats)))
+	webServer.HandleFunc("POST /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage))))
+	webServer.HandleFunc("GET /api/v1/message/direct-chats/{directChatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)))
+	webServer.HandleFunc("PUT /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.EditMessage))))
+	webServer.HandleFunc("GET /api/v1/message/ws", httpHandler.OpenWebSocket)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
 
