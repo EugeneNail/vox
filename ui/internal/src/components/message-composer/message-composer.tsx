@@ -65,6 +65,12 @@ export default function MessageComposer({ disabled = false, editingText = null, 
     }
 
     function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+        if (event.key === "Escape" && isEditing) {
+            event.preventDefault();
+            handleCancelEdit();
+            return;
+        }
+
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
             void handleSubmit();
