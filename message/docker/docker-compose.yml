@@ -11,6 +11,7 @@ services:
       - vox-message-local-network
     depends_on:
       - postgres
+      - redis
 
   postgres:
     container_name: ${POSTGRES_HOST}
@@ -21,6 +22,12 @@ services:
       - "10002:${POSTGRES_PORT}"
     volumes:
       - vox-message-postgres-data:/var/lib/postgresql/data
+    networks:
+      - vox-message-local-network
+
+  redis:
+    container_name: ${REDIS_HOST}
+    image: redis:8-alpine
     networks:
       - vox-message-local-network
 
