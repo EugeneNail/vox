@@ -282,7 +282,12 @@ export default function ChatsMePage() {
                                                     <p className="chats-me-page__message-author">{message.userUuid}</p>
                                                 </div>
                                             )}
-                                            <p className="chats-me-page__message-text">{renderMessageText(message.text)}</p>
+                                            <p className="chats-me-page__message-text">
+                                                {renderMessageText(message.text)}
+                                                {isMessageEdited(message) && (
+                                                    <span className="chats-me-page__message-edited"> (edited)</span>
+                                                )}
+                                            </p>
                                         </div>
                                         <time
                                             className="chats-me-page__message-time"
@@ -365,6 +370,10 @@ function isMessageThreadStart(message: ChatMessage, previousMessage?: ChatMessag
     }
 
     return new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime() >= messageThreadGapMs;
+}
+
+function isMessageEdited(message: ChatMessage) {
+    return new Date(message.createdAt).getTime() !== new Date(message.updatedAt).getTime();
 }
 
 function renderMessageText(text: string) {
