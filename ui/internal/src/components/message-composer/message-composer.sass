@@ -1,0 +1,81 @@
+.message-composer
+  display: grid
+  grid-template-columns: 44px minmax(0, 1fr) 44px
+  align-items: end
+  gap: 12px
+  width: 100%
+  padding: 10px
+  border: 1px solid rgba(255, 255, 255, 0.1)
+  border-radius: 26px
+  background: rgba(5, 9, 14, 0.58)
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24)
+
+.message-composer__attach-button,
+.message-composer__send-button
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 44px
+  height: 44px
+  border: 0
+  border-radius: 50%
+  color: #f6efe4
+  cursor: pointer
+
+.message-composer__attach-button
+  background: rgba(255, 255, 255, 0.08)
+
+.message-composer__send-button
+  background: #f0c5a9
+  color: #101722
+
+.message-composer__attach-button:disabled,
+.message-composer__send-button:disabled
+  cursor: not-allowed
+  opacity: 0.52
+
+.message-composer__field
+  display: grid
+  gap: 4px
+  min-width: 0
+
+.message-composer__textarea-shell
+  position: relative
+  min-width: 0
+
+.message-composer__textarea
+  width: 100%
+  max-height: 220px
+  min-height: 44px
+  padding: 11px 4px
+  border: 0
+  background: transparent
+  color: #f6efe4
+  font: inherit
+  line-height: 1.45
+  resize: none
+  outline: none
+  overflow-y: auto
+
+.message-composer__textarea
+  scrollbar-width: none
+
+.message-composer__textarea::-webkit-scrollbar
+  display: none
+
+.message-composer__textarea::placeholder
+  color: rgba(246, 239, 228, 0.42)
+
+.message-composer__character-counter
+  justify-self: end
+  color: rgba(246, 239, 228, 0.58)
+  font-size: 11px
+  line-height: 1.4
+
+.message-composer__character-counter--danger
+  color: #ff9e89
+
+.message-composer__error
+  color: #ff9e89
+  font-size: 12px
+  line-height: 1.4

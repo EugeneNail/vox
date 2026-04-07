@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
+import MessageComposer from "../../components/message-composer/message-composer";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./chats-me-page.sass";
 
@@ -51,6 +52,16 @@ export default function ChatsMePage() {
 
     const selectedChat = directChats.find((chat) => chat.uuid === selectedChatUuid);
 
+    async function sendMessage(text: string) {
+        if (!selectedChat) {
+            return;
+        }
+
+        await apiClient.post(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
+            text,
+        });
+    }
+
     return (
         <section className="chats-me-page">
             <aside className="chats-me-page__sidebar" aria-label="Direct chats">
@@ -85,12 +96,16 @@ export default function ChatsMePage() {
 
             <section className="chats-me-page__chat" aria-label="Chat">
                 {selectedChat ? (
-                    <div className="chats-me-page__chat-placeholder">
-                        <p className="chats-me-page__eyebrow">Selected chat</p>
-                        <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
-                        <p className="chats-me-page__chat-text">
-                            Message history and composer will appear here.
-                        </p>
+                    <div className="chats-me-page__chat-shell">
+                        <div className="chats-me-page__chat-placeholder">
+                            <p className="chats-me-page__eyebrow">Selected chat</p>
+                            <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                            <p className="chats-me-page__chat-text">
+                                Message history will appear here.
+                            </p>
+                        </div>
+
+                        <MessageComposer onSubmit={sendMessage} />
                     </div>
                 ) : (
                     <div className="chats-me-page__chat-placeholder">
