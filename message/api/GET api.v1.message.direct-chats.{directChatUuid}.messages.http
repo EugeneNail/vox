@@ -1,0 +1,2 @@
+GET http://127.0.0.1:10000/api/v1/message/direct-chats/019d64e2-c602-7b74-bdf4-9e298a1c9906/messages?length=250
+Authorization: Bearer <login-token>

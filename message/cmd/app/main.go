@@ -8,6 +8,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_direct_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_direct_chats"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
 	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
@@ -31,8 +32,9 @@ func main() {
 	directChatRepository := postgres.NewDirectChatRepository(database)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository)
+	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
-	httpHandler := transport_http.NewHandler(createDirectChatHandler, createMessageHandler, listDirectChatsHandler)
+	httpHandler := transport_http.NewHandler(createDirectChatHandler, createMessageHandler, listChatMessagesHandler, listDirectChatsHandler)
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc(
@@ -54,6 +56,10 @@ func main() {
 		message_middleware.RequireAuthenticatedUser(
 			middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(httpHandler.CreateMessage)),
 		),
+	)
+	webServer.HandleFunc(
+		"GET /api/v1/message/direct-chats/{directChatUuid}/messages",
+		message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(httpHandler.ListChatMessages)),
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)

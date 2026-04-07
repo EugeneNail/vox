@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_direct_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_direct_chats"
 )
 
@@ -10,14 +11,16 @@ import (
 type Handler struct {
 	createDirectChatHandler *create_direct_chat.Handler
 	createMessageHandler    *create_message.Handler
+	listChatMessagesHandler *list_chat_messages.Handler
 	listDirectChatsHandler  *list_direct_chats.Handler
 }
 
 // NewHandler constructs a shared HTTP handler for message routes.
-func NewHandler(createDirectChatHandler *create_direct_chat.Handler, createMessageHandler *create_message.Handler, listDirectChatsHandler *list_direct_chats.Handler) *Handler {
+func NewHandler(createDirectChatHandler *create_direct_chat.Handler, createMessageHandler *create_message.Handler, listChatMessagesHandler *list_chat_messages.Handler, listDirectChatsHandler *list_direct_chats.Handler) *Handler {
 	return &Handler{
 		createDirectChatHandler: createDirectChatHandler,
 		createMessageHandler:    createMessageHandler,
+		listChatMessagesHandler: listChatMessagesHandler,
 		listDirectChatsHandler:  listDirectChatsHandler,
 	}
 }
