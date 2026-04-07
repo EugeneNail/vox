@@ -20,10 +20,11 @@ type Handler struct {
 	listDirectChatsHandler            *list_direct_chats.Handler
 	connectionHub                     *websocket_infrastructure.ConnectionHub
 	subscriptionRegistry              *websocket_infrastructure.ChatSubscriptionRegistry
+	connectionDropper                 *websocket_infrastructure.ConnectionDropper
 }
 
 // NewHandler constructs a shared HTTP handler for message routes.
-func NewHandler(authorizeDirectChatUpdatesHandler *authorize_direct_chat_updates.Handler, createDirectChatHandler *create_direct_chat.Handler, createMessageHandler *create_message.Handler, editMessageHandler *edit_message.Handler, listChatMessagesHandler *list_chat_messages.Handler, listDirectChatsHandler *list_direct_chats.Handler, connectionHub *websocket_infrastructure.ConnectionHub, subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry) *Handler {
+func NewHandler(authorizeDirectChatUpdatesHandler *authorize_direct_chat_updates.Handler, createDirectChatHandler *create_direct_chat.Handler, createMessageHandler *create_message.Handler, editMessageHandler *edit_message.Handler, listChatMessagesHandler *list_chat_messages.Handler, listDirectChatsHandler *list_direct_chats.Handler, connectionHub *websocket_infrastructure.ConnectionHub, subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry, connectionDropper *websocket_infrastructure.ConnectionDropper) *Handler {
 	return &Handler{
 		authorizeDirectChatUpdatesHandler: authorizeDirectChatUpdatesHandler,
 		createDirectChatHandler:           createDirectChatHandler,
@@ -33,5 +34,6 @@ func NewHandler(authorizeDirectChatUpdatesHandler *authorize_direct_chat_updates
 		listDirectChatsHandler:            listDirectChatsHandler,
 		connectionHub:                     connectionHub,
 		subscriptionRegistry:              subscriptionRegistry,
+		connectionDropper:                 connectionDropper,
 	}
 }

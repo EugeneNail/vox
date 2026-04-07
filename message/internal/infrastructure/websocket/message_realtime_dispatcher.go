@@ -12,13 +12,15 @@ import (
 type MessageRealtimeDispatcher struct {
 	connectionHub        *ConnectionHub
 	subscriptionRegistry *ChatSubscriptionRegistry
+	connectionDropper    *ConnectionDropper
 }
 
 // NewMessageRealtimeDispatcher constructs a message realtime dispatcher.
-func NewMessageRealtimeDispatcher(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry) *MessageRealtimeDispatcher {
+func NewMessageRealtimeDispatcher(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageRealtimeDispatcher {
 	return &MessageRealtimeDispatcher{
 		connectionHub:        connectionHub,
 		subscriptionRegistry: subscriptionRegistry,
+		connectionDropper:    connectionDropper,
 	}
 }
 
@@ -42,14 +44,12 @@ func (dispatcher *MessageRealtimeDispatcher) DispatchMessageCreated(ctx context.
 	for _, connectionUuid := range connectionUuids {
 		connection := dispatcher.connectionHub.FindByUuid(connectionUuid)
 		if connection == nil {
-			dispatcher.subscriptionRegistry.Unsubscribe(connectionUuid)
+			dispatcher.connectionDropper.Drop(connectionUuid)
 			continue
 		}
 
 		if err := connection.WriteText(payload); err != nil {
-			dispatcher.connectionHub.Unregister(connectionUuid)
-			dispatcher.subscriptionRegistry.Unsubscribe(connectionUuid)
-			_ = connection.Close()
+			dispatcher.connectionDropper.Drop(connection.Uuid())
 			continue
 		}
 	}

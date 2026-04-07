@@ -35,25 +35,23 @@ func (handler *Handler) UpdatesWebSocket(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	connection, err := updatesWebSocketUpgrader.Upgrade(writer, request, nil)
+	socket, err := updatesWebSocketUpgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		log.Printf("upgrading message websocket for user '%s': %v", userUuid, err)
 		return
 	}
-	defer connection.Close()
 
-	hubConnection := handler.connectionHub.Register(connection, userUuid)
-	defer handler.connectionHub.Unregister(hubConnection.Uuid())
-	defer handler.subscriptionRegistry.Unsubscribe(hubConnection.Uuid())
+	connection := handler.connectionHub.Register(socket, userUuid)
+	defer handler.connectionDropper.Drop(connection.Uuid())
 
 	for {
-		_, payload, err := hubConnection.ReadMessage()
+		_, payload, err := connection.ReadMessage()
 		if err != nil {
 			log.Printf("reading message websocket for user '%s': %v", userUuid, err)
 			return
 		}
 
-		if err := handler.handleUpdatesWebSocketCommand(request, hubConnection, payload); err != nil {
+		if err := handler.handleUpdatesWebSocketCommand(request, connection, payload); err != nil {
 			log.Printf("handling message websocket command for user '%s': %v", userUuid, err)
 		}
 	}
