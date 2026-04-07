@@ -15,19 +15,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type updatesWebSocketCommand struct {
+type openWebSocketCommand struct {
 	Type     string `json:"type"`
 	ChatUuid string `json:"chatUuid"`
 }
 
-var updatesWebSocketUpgrader = websocket.Upgrader{
+var openWebSocketUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     isAllowedWebSocketOrigin,
 }
 
-// UpdatesWebSocket streams realtime message updates to the current browser tab.
-func (handler *Handler) UpdatesWebSocket(writer http.ResponseWriter, request *http.Request) {
+// OpenWebSocket streams realtime message updates to the current browser tab.
+func (handler *Handler) OpenWebSocket(writer http.ResponseWriter, request *http.Request) {
 	token := request.URL.Query().Get("token")
 	userUuid, err := message_middleware.UserUuidFromLoginToken(token)
 	if err != nil {
@@ -35,7 +35,7 @@ func (handler *Handler) UpdatesWebSocket(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	socket, err := updatesWebSocketUpgrader.Upgrade(writer, request, nil)
+	socket, err := openWebSocketUpgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		log.Printf("upgrading message websocket for user '%s': %v", userUuid, err)
 		return
@@ -51,14 +51,14 @@ func (handler *Handler) UpdatesWebSocket(writer http.ResponseWriter, request *ht
 			return
 		}
 
-		if err := handler.handleUpdatesWebSocketCommand(request, connection, payload); err != nil {
+		if err := handler.handleOpenWebSocketCommand(request, connection, payload); err != nil {
 			log.Printf("handling message websocket command for user '%s': %v", userUuid, err)
 		}
 	}
 }
 
-func (handler *Handler) handleUpdatesWebSocketCommand(request *http.Request, connection *websocket_infrastructure.Connection, payload []byte) error {
-	var command updatesWebSocketCommand
+func (handler *Handler) handleOpenWebSocketCommand(request *http.Request, connection *websocket_infrastructure.Connection, payload []byte) error {
+	var command openWebSocketCommand
 	if err := json.Unmarshal(payload, &command); err != nil {
 		return err
 	}

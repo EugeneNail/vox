@@ -98,7 +98,7 @@ func main() {
 	)
 	webServer.HandleFunc(
 		"GET /api/v1/message/ws",
-		httpHandler.UpdatesWebSocket,
+		httpHandler.OpenWebSocket,
 	)
 
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
