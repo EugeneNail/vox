@@ -15,3 +15,7 @@ type Message struct {
 	ChatUuid uuid.UUID
 	UserUuid uuid.UUID
 }
+
+// MessageTextPattern allows national alphabets, combining marks, numbers,
+// punctuation including all quote types, symbols, spaces, tabs, and line breaks.
+const MessageTextPattern = `^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}\t\r\n]*$`
