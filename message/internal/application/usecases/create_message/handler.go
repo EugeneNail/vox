@@ -17,6 +17,10 @@ import (
 var ErrChatNotFound = errors.New("chat not found")
 var ErrChatAccessDenied = errors.New("chat access denied")
 
+// textPattern allows national alphabets, combining marks, numbers, punctuation
+// including all quote types, symbols, spaces, tabs, and line breaks.
+const textPattern = `^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}\t\r\n]*$`
+
 // Handler creates messages through the create_message use-case.
 type Handler struct {
 	messageRepository    domain.MessageRepository
@@ -49,7 +53,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}, map[string][]rules.Rule{
 		"chatUuid": {rules.Required()},
 		"userUuid": {rules.Required()},
-		"text":     {rules.Required(), rules.Max(2000)},
+		"text":     {rules.Required(), rules.Regex(textPattern), rules.Min(1), rules.Max(2000)},
 	})
 
 	if err := validator.Validate(); err != nil {
