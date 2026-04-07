@@ -1,28 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-import {
-    clearAuthTokens,
-    getLoginToken,
-    getRefreshToken,
-    storeLoginToken,
-} from "../auth/auth-tokens";
-
-type RefreshResponse = {
-    loginToken: string;
-};
+import { getLoginToken } from "../auth/auth-tokens";
+import { redirectToLogin, refreshLoginToken } from "../auth/refresh-login-token";
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean;
 };
 
 const apiClient = axios.create({
-    baseURL: "/",
-    headers: {
-        "Content-Type": "application/json",
-    },
-});
-
-const refreshClient = axios.create({
     baseURL: "/",
     headers: {
         "Content-Type": "application/json",
@@ -57,19 +42,9 @@ apiClient.interceptors.response.use(
 
         originalRequest._retry = true;
 
-        const refreshToken = getRefreshToken();
-        if (!refreshToken) {
-            redirectToLogin();
-            return Promise.reject(error);
-        }
-
         try {
-            const { data } = await refreshClient.post<RefreshResponse>("/api/v1/auth/refresh", {
-                refreshToken,
-            });
-
-            storeLoginToken(data.loginToken);
-            originalRequest.headers.Authorization = `Bearer ${data.loginToken}`;
+            const loginToken = await refreshLoginToken();
+            originalRequest.headers.Authorization = `Bearer ${loginToken}`;
 
             return apiClient(originalRequest);
         } catch (refreshError) {
@@ -89,11 +64,6 @@ function isPublicRequest(config: Pick<InternalAxiosRequestConfig, "url">) {
 
     const url = new URL(config.url, window.location.origin);
     return publicRoutes.has(url.pathname);
-}
-
-function redirectToLogin() {
-    clearAuthTokens();
-    window.location.assign("/login");
 }
 
 export default apiClient;

@@ -1,6 +1,7 @@
 export const loginTokenStorageKey = "vox.loginToken";
 export const refreshTokenStorageKey = "vox.refreshToken";
 export const authTokensChangedEventName = "vox:auth-tokens-changed";
+const loginTokenExpirationSkewMs = 30_000;
 
 type AuthTokens = {
     loginToken: string;
@@ -24,6 +25,12 @@ export function getLoginToken() {
 
 export function getRefreshToken() {
     return localStorage.getItem(refreshTokenStorageKey);
+}
+
+export function hasLoginTokenExpired(loginToken: string) {
+    const expiresAt = getTokenExpiresAt(loginToken);
+
+    return expiresAt === null || expiresAt - loginTokenExpirationSkewMs <= Date.now();
 }
 
 export function getAuthenticatedUserUuid() {
@@ -59,4 +66,27 @@ export function clearAuthTokens() {
 
 function notifyAuthTokensChanged() {
     window.dispatchEvent(new Event(authTokensChangedEventName));
+}
+
+function getTokenExpiresAt(loginToken: string) {
+    const payload = loginToken.split(".")[1];
+    if (!payload) {
+        return null;
+    }
+
+    try {
+        const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const paddedPayload = normalizedPayload.padEnd(
+            normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+            "=",
+        );
+        const decodedPayload = JSON.parse(atob(paddedPayload)) as { exp?: number };
+        if (!decodedPayload.exp) {
+            return null;
+        }
+
+        return decodedPayload.exp * 1000;
+    } catch {
+        return null;
+    }
 }

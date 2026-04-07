@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 import { authTokensChangedEventName, getLoginToken } from "../../auth/auth-tokens";
+import { getValidLoginToken } from "../../auth/refresh-login-token";
 
 type MessageWebSocketContextValue = {
     isConnected: boolean;
@@ -88,7 +89,6 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             return;
         }
 
-        const activeLoginToken = loginToken;
         let shouldReconnect = true;
         // Defer the side effect so React StrictMode can cancel the probe mount
         // before it creates and immediately closes a CONNECTING WebSocket.
@@ -97,12 +97,13 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                 return;
             }
 
-            const webSocket = openMessageWebSocket(activeLoginToken, {
+            void openMessageWebSocketWithFreshToken(() => shouldReconnect, {
                 handleOpen,
                 handleClose,
                 handleMessage,
+            }, (webSocket) => {
+                setIsConnected(webSocket.readyState === WebSocket.OPEN);
             });
-            setIsConnected(webSocket.readyState === WebSocket.OPEN);
             openTimeoutId = null;
         }, 0);
 
@@ -120,7 +121,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         function handleClose() {
             setIsConnected(false);
             if (shouldReconnect) {
-                scheduleMessageWebSocketReconnect(activeLoginToken, {
+                scheduleMessageWebSocketReconnect(() => shouldReconnect, {
                     handleOpen,
                     handleClose,
                     handleMessage,
@@ -212,7 +213,17 @@ function closeMessageWebSocket() {
     messageWebSocketToken = null;
 }
 
-function scheduleMessageWebSocketReconnect(loginToken: string, listeners: MessageWebSocketListeners) {
+async function openMessageWebSocketWithFreshToken(shouldOpen: () => boolean, listeners: MessageWebSocketListeners, handleOpened?: (webSocket: WebSocket) => void) {
+    const loginToken = await getValidLoginToken();
+    if (!shouldOpen()) {
+        return;
+    }
+
+    const webSocket = openMessageWebSocket(loginToken, listeners);
+    handleOpened?.(webSocket);
+}
+
+function scheduleMessageWebSocketReconnect(shouldOpen: () => boolean, listeners: MessageWebSocketListeners) {
     if (messageWebSocketReconnectTimeoutId !== null) {
         return;
     }
@@ -225,7 +236,7 @@ function scheduleMessageWebSocketReconnect(loginToken: string, listeners: Messag
 
     messageWebSocketReconnectTimeoutId = window.setTimeout(() => {
         messageWebSocketReconnectTimeoutId = null;
-        openMessageWebSocket(loginToken, listeners);
+        void openMessageWebSocketWithFreshToken(shouldOpen, listeners);
     }, delay);
 }
 
