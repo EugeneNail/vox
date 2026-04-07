@@ -17,8 +17,18 @@ type createUserPayload struct {
 	PasswordConfirmation string `json:"passwordConfirmation"`
 }
 
+type CreateUserHandler struct {
+	usecase *create_user.Handler
+}
+
+func NewCreateUserHandler(usecase *create_user.Handler) *CreateUserHandler {
+	return &CreateUserHandler{
+		usecase: usecase,
+	}
+}
+
 // CreateUser decodes the request, applies transport validation, and calls the use-case.
-func (handler *Handler) CreateUser(request *http.Request) (int, any) {
+func (handler *CreateUserHandler) Handle(request *http.Request) (int, any) {
 	var payload createUserPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
@@ -43,7 +53,7 @@ func (handler *Handler) CreateUser(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("validating create user payload: %w", err)
 	}
 
-	userUuid, err := handler.createUserHandler.Handle(request.Context(), create_user.Command{
+	userUuid, err := handler.usecase.Handle(request.Context(), create_user.Command{
 		Email:                payload.Email,
 		Password:             payload.Password,
 		PasswordConfirmation: payload.PasswordConfirmation,

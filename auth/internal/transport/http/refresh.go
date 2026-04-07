@@ -15,8 +15,18 @@ type refreshPayload struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
+type RefreshHandler struct {
+	usecase *refresh.Handler
+}
+
+func NewRefreshHandler(usecase *refresh.Handler) *RefreshHandler {
+	return &RefreshHandler{
+		usecase: usecase,
+	}
+}
+
 // Refresh decodes the request, applies transport validation, and calls the use-case.
-func (handler *Handler) Refresh(request *http.Request) (int, any) {
+func (handler *RefreshHandler) Handle(request *http.Request) (int, any) {
 	var payload refreshPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
@@ -37,7 +47,7 @@ func (handler *Handler) Refresh(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("validating refresh payload: %w", err)
 	}
 
-	loginToken, err := handler.refreshHandler.Handle(request.Context(), refresh.Query{
+	loginToken, err := handler.usecase.Handle(request.Context(), refresh.Query{
 		RefreshToken: payload.RefreshToken,
 	})
 	if err != nil {

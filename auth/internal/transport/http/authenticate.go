@@ -16,8 +16,18 @@ type authenticatePayload struct {
 	Password string `json:"password"`
 }
 
+type AuthenticateHandler struct {
+	usecase *authenticate.Handler
+}
+
+func NewAuthenticateHandler(usecase *authenticate.Handler) *AuthenticateHandler {
+	return &AuthenticateHandler{
+		usecase: usecase,
+	}
+}
+
 // Authenticate decodes the request, applies transport validation, and calls the use-case.
-func (handler *Handler) Authenticate(request *http.Request) (int, any) {
+func (handler *AuthenticateHandler) Handle(request *http.Request) (int, any) {
 	var payload authenticatePayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
@@ -40,7 +50,7 @@ func (handler *Handler) Authenticate(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("validating authenticate payload: %w", err)
 	}
 
-	loginToken, refreshToken, err := handler.authenticateHandler.Handle(request.Context(), authenticate.Query{
+	loginToken, refreshToken, err := handler.usecase.Handle(request.Context(), authenticate.Query{
 		Email:    payload.Email,
 		Password: payload.Password,
 	})
