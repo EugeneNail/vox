@@ -168,50 +168,48 @@ export default function ChatsMePage() {
             <section className="chats-me-page__chat" aria-label="Chat">
                 {selectedChat ? (
                     <div className="chats-me-page__chat-shell">
-                        <div className="chats-me-page__messages-panel">
-                            <p className="chats-me-page__eyebrow">Selected chat</p>
-                            <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                        <p className="chats-me-page__eyebrow">Selected chat</p>
+                        <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
 
-                            <div className="chats-me-page__messages" aria-live="polite">
-                                {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
-                                {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
-                                {!isMessagesLoading && !messagesError && messages.length === 0 && (
-                                    <p className="chats-me-page__state">No messages yet.</p>
-                                )}
-                                {messages.map((message, index) => {
-                                    const isThreadStart = isMessageThreadStart(message, messages[index - 1]);
+                        <div className="chats-me-page__messages" aria-live="polite">
+                            {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
+                            {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
+                            {!isMessagesLoading && !messagesError && messages.length === 0 && (
+                                <p className="chats-me-page__state">No messages yet.</p>
+                            )}
+                            {messages.map((message, index) => {
+                                const isThreadStart = isMessageThreadStart(message, messages[index - 1]);
 
-                                    return (
-                                        <article
-                                            className={
-                                                [
-                                                    "chats-me-page__message",
-                                                    isThreadStart ? "chats-me-page__message--thread-start" : "",
-                                                ].filter(Boolean).join(" ")
-                                            }
-                                            key={message.uuid}
+                                return (
+                                    <article
+                                        className={
+                                            [
+                                                "chats-me-page__message",
+                                                isThreadStart ? "chats-me-page__message--thread-start" : "",
+                                            ].filter(Boolean).join(" ")
+                                        }
+                                        key={message.uuid}
+                                    >
+                                        <div className="chats-me-page__message-avatar-cell">
+                                            {isThreadStart && <span className="chats-me-page__message-avatar" aria-hidden="true" />}
+                                        </div>
+                                        <div className="chats-me-page__message-body">
+                                            {isThreadStart && (
+                                                <div className="chats-me-page__message-header">
+                                                    <p className="chats-me-page__message-author">{message.userUuid}</p>
+                                                </div>
+                                            )}
+                                            <p className="chats-me-page__message-text">{renderMessageText(message.text)}</p>
+                                        </div>
+                                        <time
+                                            className="chats-me-page__message-time"
+                                            dateTime={message.createdAt}
                                         >
-                                            <div className="chats-me-page__message-avatar-cell">
-                                                {isThreadStart && <span className="chats-me-page__message-avatar" aria-hidden="true" />}
-                                            </div>
-                                            <div className="chats-me-page__message-body">
-                                                {isThreadStart && (
-                                                    <div className="chats-me-page__message-header">
-                                                        <p className="chats-me-page__message-author">{message.userUuid}</p>
-                                                    </div>
-                                                )}
-                                                <p className="chats-me-page__message-text">{renderMessageText(message.text)}</p>
-                                            </div>
-                                            <time
-                                                className="chats-me-page__message-time"
-                                                dateTime={message.createdAt}
-                                            >
-                                                {formatMessageTime(message.createdAt)}
-                                            </time>
-                                        </article>
-                                    );
-                                })}
-                            </div>
+                                            {formatMessageTime(message.createdAt)}
+                                        </time>
+                                    </article>
+                                );
+                            })}
                         </div>
 
                         <MessageComposer disabled={!authenticatedUserUuid} onSubmit={sendMessage} />
