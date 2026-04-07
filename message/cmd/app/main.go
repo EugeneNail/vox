@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_direct_chat_updates"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_direct_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/edit_message"
@@ -14,6 +17,8 @@ import (
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
 	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
+	redis_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/redis"
+	websocket_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/websocket"
 	transport_http "github.com/EugeneNail/vox/message/internal/transport/http"
 )
 
@@ -29,14 +34,35 @@ func main() {
 	}
 	defer database.Close()
 
+	redisClient, err := redis_infrastructure.NewClient(configuration.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redisClient.Close()
+
 	messageRepository := postgres.NewMessageRepository(database)
 	directChatRepository := postgres.NewDirectChatRepository(database)
+	messageEventPublisher := redis_infrastructure.NewMessageEventPublisher(redisClient)
+	messageEventSubscriber := redis_infrastructure.NewMessageEventSubscriber(redisClient)
+	connectionHub := websocket_infrastructure.NewConnectionHub()
+	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
+	messageRealtimeDispatcher := websocket_infrastructure.NewMessageRealtimeDispatcher(connectionHub, chatSubscriptionRegistry)
+	authorizeDirectChatUpdatesHandler := authorize_direct_chat_updates.NewHandler(directChatRepository)
 	createDirectChatHandler := create_direct_chat.NewHandler(directChatRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository)
+	createMessageHandler := create_message.NewHandler(messageRepository, directChatRepository, messageEventPublisher, log.Default())
 	editMessageHandler := edit_message.NewHandler(messageRepository, directChatRepository)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, directChatRepository)
 	listDirectChatsHandler := list_direct_chats.NewHandler(directChatRepository)
-	httpHandler := transport_http.NewHandler(createDirectChatHandler, createMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler)
+	httpHandler := transport_http.NewHandler(authorizeDirectChatUpdatesHandler, createDirectChatHandler, createMessageHandler, editMessageHandler, listChatMessagesHandler, listDirectChatsHandler, connectionHub, chatSubscriptionRegistry)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := messageEventSubscriber.ListenMessageCreated(ctx, messageRealtimeDispatcher.DispatchMessageCreated); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("listening message created events: %v", err)
+		}
+	}()
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc(

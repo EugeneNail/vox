@@ -1,15 +1,24 @@
 package http
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
-	"time"
 
+	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_direct_chat_updates"
 	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
+	websocket_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/websocket"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
+
+type updatesWebSocketCommand struct {
+	Type     string `json:"type"`
+	ChatUuid string `json:"chatUuid"`
+}
 
 var updatesWebSocketUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -33,20 +42,51 @@ func (handler *Handler) UpdatesWebSocket(writer http.ResponseWriter, request *ht
 	}
 	defer connection.Close()
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	hubConnection := handler.connectionHub.Register(connection, userUuid)
+	defer handler.connectionHub.Unregister(hubConnection.Uuid())
+	defer handler.subscriptionRegistry.Unsubscribe(hubConnection.Uuid())
 
 	for {
-		select {
-		case <-request.Context().Done():
+		_, payload, err := hubConnection.ReadMessage()
+		if err != nil {
+			log.Printf("reading message websocket for user '%s': %v", userUuid, err)
 			return
-		case <-ticker.C:
-			if err := connection.WriteMessage(websocket.TextMessage, []byte("pong")); err != nil {
-				log.Printf("writing message websocket pong for user '%s': %v", userUuid, err)
-				return
-			}
+		}
+
+		if err := handler.handleUpdatesWebSocketCommand(request, hubConnection, payload); err != nil {
+			log.Printf("handling message websocket command for user '%s': %v", userUuid, err)
 		}
 	}
+}
+
+func (handler *Handler) handleUpdatesWebSocketCommand(request *http.Request, connection *websocket_infrastructure.Connection, payload []byte) error {
+	var command updatesWebSocketCommand
+	if err := json.Unmarshal(payload, &command); err != nil {
+		return err
+	}
+
+	chatUuid, err := uuid.Parse(command.ChatUuid)
+	if err != nil {
+		return err
+	}
+
+	switch command.Type {
+	case "chat.subscribe":
+		if err := handler.authorizeDirectChatUpdatesHandler.Handle(request.Context(), authorize_direct_chat_updates.Query{
+			DirectChatUuid: chatUuid,
+			UserUuid:       connection.UserUuid(),
+		}); err != nil {
+			return fmt.Errorf("authorizing direct chat %q updates for user %q: %w", chatUuid, connection.UserUuid(), err)
+		}
+
+		handler.subscriptionRegistry.Subscribe(connection.Uuid(), chatUuid)
+	case "chat.unsubscribe":
+		handler.subscriptionRegistry.Unsubscribe(connection.Uuid())
+	default:
+		return nil
+	}
+
+	return nil
 }
 
 func isAllowedWebSocketOrigin(request *http.Request) bool {

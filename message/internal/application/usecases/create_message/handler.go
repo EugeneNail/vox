@@ -19,8 +19,14 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 
 // Handler creates messages through the create_message use-case.
 type Handler struct {
-	messageRepository    domain.MessageRepository
-	directChatRepository domain.DirectChatRepository
+	messageRepository     domain.MessageRepository
+	directChatRepository  domain.DirectChatRepository
+	messageEventPublisher domain.MessageEventPublisher
+	logger                logger
+}
+
+type logger interface {
+	Printf(format string, values ...any)
 }
 
 // Command contains the input required to create a message.
@@ -31,10 +37,12 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageEventPublisher domain.MessageEventPublisher, logger logger) *Handler {
 	return &Handler{
-		messageRepository:    messageRepository,
-		directChatRepository: directChatRepository,
+		messageRepository:     messageRepository,
+		directChatRepository:  directChatRepository,
+		messageEventPublisher: messageEventPublisher,
+		logger:                logger,
 	}
 }
 
@@ -86,6 +94,19 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 
 	if err := handler.messageRepository.Create(ctx, message); err != nil {
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
+	}
+
+	if err := handler.messageEventPublisher.PublishMessageCreated(ctx, domain.MessageCreatedEvent{
+		MessageUuid: message.Uuid,
+		ChatUuid:    message.ChatUuid,
+		UserUuid:    message.UserUuid,
+		Text:        message.Text,
+		CreatedAt:   message.CreatedAt,
+		UpdatedAt:   message.UpdatedAt,
+	}); err != nil {
+		if handler.logger != nil {
+			handler.logger.Printf("publishing message created event for message %q: %v", message.Uuid, err)
+		}
 	}
 
 	return message.Uuid, nil
