@@ -235,6 +235,30 @@
   text-decoration-thickness: 1px
   text-underline-offset: 3px
 
+.chats-me-page__context-menu
+  position: fixed
+  z-index: 20
+  min-width: 160px
+  padding: 6px
+  border: 1px solid rgba(255, 255, 255, 0.1)
+  border-radius: 14px
+  background: rgba(5, 9, 14, 0.94)
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28)
+
+.chats-me-page__context-menu-button
+  width: 100%
+  padding: 9px 10px
+  border: 0
+  border-radius: 10px
+  background: transparent
+  color: rgba(246, 239, 228, 0.9)
+  cursor: pointer
+  font: inherit
+  text-align: left
+
+.chats-me-page__context-menu-button:hover
+  background: rgba(255, 255, 255, 0.06)
+
 @media (max-width: 960px)
   .chats-me-page
     grid-template-columns: minmax(180px, 32vw) minmax(0, 1fr)

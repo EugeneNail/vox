@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
@@ -20,6 +20,12 @@ type ChatMessage = {
     updatedAt: string;
 };
 
+type MessageContextMenu = {
+    message: ChatMessage;
+    x: number;
+    y: number;
+};
+
 const linkPattern = /(https?:\/\/[^\s]+)/g;
 const fullLinkPattern = /^https?:\/\/[^\s]+$/;
 const messageThreadGapMs = 10 * 60 * 1000;
@@ -33,6 +39,8 @@ export default function ChatsMePage() {
     const [isMessagesLoading, setIsMessagesLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [messagesError, setMessagesError] = useState<string | null>(null);
+    const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+    const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenu | null>(null);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = directChatUuid ?? null;
 
@@ -107,7 +115,41 @@ export default function ChatsMePage() {
         };
     }, [apiClient, selectedChatUuid]);
 
+    useEffect(() => {
+        setEditingMessage(null);
+        setMessageContextMenu(null);
+    }, [selectedChatUuid]);
+
+    useEffect(() => {
+        function handleWindowClick() {
+            setMessageContextMenu(null);
+        }
+
+        function handleWindowKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setMessageContextMenu(null);
+            }
+        }
+
+        window.addEventListener("click", handleWindowClick);
+        window.addEventListener("keydown", handleWindowKeyDown);
+
+        return () => {
+            window.removeEventListener("click", handleWindowClick);
+            window.removeEventListener("keydown", handleWindowKeyDown);
+        };
+    }, []);
+
     const selectedChat = directChats.find((chat) => chat.uuid === selectedChatUuid);
+
+    async function submitMessage(text: string) {
+        if (editingMessage) {
+            await editMessage(editingMessage, text);
+            return;
+        }
+
+        await sendMessage(text);
+    }
 
     async function sendMessage(text: string) {
         if (!selectedChat || !authenticatedUserUuid) {
@@ -130,6 +172,34 @@ export default function ChatsMePage() {
                 updatedAt: createdAt,
             },
         ]);
+    }
+
+    async function editMessage(message: ChatMessage, text: string) {
+        await apiClient.put<string>(`/api/v1/message/messages/${message.uuid}`, {
+            text,
+        });
+
+        const updatedAt = new Date().toISOString();
+        setMessages((currentMessages) => currentMessages.map((currentMessage) => (
+            currentMessage.uuid === message.uuid
+                ? { ...currentMessage, text, updatedAt }
+                : currentMessage
+        )));
+        setEditingMessage(null);
+    }
+
+    function handleMessageContextMenu(event: MouseEvent<HTMLElement>, message: ChatMessage) {
+        event.preventDefault();
+
+        if (message.userUuid !== authenticatedUserUuid) {
+            return;
+        }
+
+        setMessageContextMenu({
+            message,
+            x: event.clientX,
+            y: event.clientY,
+        });
     }
 
     return (
@@ -173,7 +243,7 @@ export default function ChatsMePage() {
                             <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
                         </header>
 
-                        <div className="chats-me-page__messages" aria-live="polite">
+                        <div className="chats-me-page__messages" aria-live="polite" onContextMenu={(event) => event.preventDefault()}>
                             {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
                             {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
                             {!isMessagesLoading && !messagesError && messages.length === 0 && (
@@ -191,6 +261,7 @@ export default function ChatsMePage() {
                                             ].filter(Boolean).join(" ")
                                         }
                                         key={message.uuid}
+                                        onContextMenu={(event) => handleMessageContextMenu(event, message)}
                                     >
                                         <div className="chats-me-page__message-avatar-cell">
                                             {isThreadStart && <span className="chats-me-page__message-avatar" aria-hidden="true" />}
@@ -214,7 +285,34 @@ export default function ChatsMePage() {
                             })}
                         </div>
 
-                        <MessageComposer disabled={!authenticatedUserUuid} onSubmit={sendMessage} />
+                        {messageContextMenu && (
+                            <div
+                                className="chats-me-page__context-menu"
+                                style={{
+                                    left: messageContextMenu.x,
+                                    top: messageContextMenu.y,
+                                }}
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                <button
+                                    className="chats-me-page__context-menu-button"
+                                    type="button"
+                                    onClick={() => {
+                                        setEditingMessage(messageContextMenu.message);
+                                        setMessageContextMenu(null);
+                                    }}
+                                >
+                                    Edit Message
+                                </button>
+                            </div>
+                        )}
+
+                        <MessageComposer
+                            disabled={!authenticatedUserUuid}
+                            editingText={editingMessage?.text ?? null}
+                            onCancelEdit={() => setEditingMessage(null)}
+                            onSubmit={submitMessage}
+                        />
                     </div>
                 ) : (
                     <div className="chats-me-page__chat-placeholder">
