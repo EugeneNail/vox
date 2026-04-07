@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/EugeneNail/vox/message/internal/domain"
@@ -25,8 +26,16 @@ func NewMessageEditedConsumer(client *redisclient.Client, handlers ...MessageEdi
 	}
 }
 
-// Start consumes message-edited events until the context is canceled.
-func (consumer *MessageEditedConsumer) Start(ctx context.Context) error {
+// ListenAndConsume starts message-edited consumption in a goroutine and logs unexpected errors.
+func (consumer *MessageEditedConsumer) ListenAndConsume(ctx context.Context) {
+	go func() {
+		if err := consumer.listenAndConsume(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("listening message edited events: %v", err)
+		}
+	}()
+}
+
+func (consumer *MessageEditedConsumer) listenAndConsume(ctx context.Context) error {
 	pubsub := consumer.client.Subscribe(ctx, messageEditedChannel)
 	defer pubsub.Close()
 

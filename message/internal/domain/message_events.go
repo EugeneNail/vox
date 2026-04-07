@@ -24,7 +24,7 @@ type MessageCreatedPublisher interface {
 
 // MessageCreatedConsumer consumes message-created events.
 type MessageCreatedConsumer interface {
-	Start(ctx context.Context) error
+	ListenAndConsume(ctx context.Context)
 }
 
 // MessageEditedEvent describes a message that was edited and can be delivered to realtime subscribers.
@@ -44,5 +44,5 @@ type MessageEditedPublisher interface {
 
 // MessageEditedConsumer consumes message-edited events.
 type MessageEditedConsumer interface {
-	Start(ctx context.Context) error
+	ListenAndConsume(ctx context.Context)
 }

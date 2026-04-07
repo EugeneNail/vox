@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -73,17 +72,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		if err := messageCreatedRedisConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("listening message created events: %v", err)
-		}
-	}()
-
-	go func() {
-		if err := messageEditedRedisConsumer.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("listening message edited events: %v", err)
-		}
-	}()
+	messageCreatedRedisConsumer.ListenAndConsume(ctx)
+	messageEditedRedisConsumer.ListenAndConsume(ctx)
 
 	webServer := http.NewServeMux()
 	webServer.HandleFunc("POST /api/v1/message/direct-chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(httpHandler.CreateDirectChat))))
