@@ -1,0 +1,16 @@
+package domain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Profile struct {
+	UserUuid  uuid.UUID
+	Avatar    *string
+	Name      string
+	Nickname  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
