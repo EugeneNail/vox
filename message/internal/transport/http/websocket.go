@@ -65,13 +65,13 @@ func (handler *Handler) handleUpdatesWebSocketCommand(request *http.Request, con
 		return err
 	}
 
-	chatUuid, err := uuid.Parse(command.ChatUuid)
-	if err != nil {
-		return err
-	}
-
 	switch command.Type {
 	case "chat.subscribe":
+		chatUuid, err := uuid.Parse(command.ChatUuid)
+		if err != nil {
+			return err
+		}
+
 		if err := handler.authorizeDirectChatUpdatesHandler.Handle(request.Context(), authorize_direct_chat_updates.Query{
 			DirectChatUuid: chatUuid,
 			UserUuid:       connection.UserUuid(),
