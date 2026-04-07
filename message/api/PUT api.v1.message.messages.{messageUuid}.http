@@ -1,0 +1,7 @@
+PUT http://127.0.0.1:10000/api/v1/message/messages/019d6778-5f15-7b80-b69f-4ed86cb5ba99
+Content-Type: application/json
+Authorization: Bearer <login-token>
+
+{
+    "text": "Edited message text"
+}
