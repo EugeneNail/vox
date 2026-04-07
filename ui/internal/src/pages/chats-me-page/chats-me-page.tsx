@@ -2,6 +2,7 @@ import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { NavLink, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
+import { MessageCreatedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./chats-me-page.sass";
 
@@ -32,6 +33,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
+    const { addMessageCreatedListener, subscribeDirectChat, unsubscribeDirectChat } = useMessageWebSocket();
     const { directChatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [directChats, setDirectChats] = useState<DirectChat[]>([]);
@@ -130,6 +132,37 @@ export default function ChatsMePage() {
     }, [selectedChatUuid]);
 
     useEffect(() => {
+        if (!selectedChatUuid) {
+            return;
+        }
+
+        subscribeDirectChat(selectedChatUuid);
+
+        return () => {
+            unsubscribeDirectChat(selectedChatUuid);
+        };
+    }, [selectedChatUuid, subscribeDirectChat, unsubscribeDirectChat]);
+
+    useEffect(() => (
+        addMessageCreatedListener((event) => {
+            if (event.chatUuid !== selectedChatUuid) {
+                return;
+            }
+
+            setMessages((currentMessages) => {
+                if (currentMessages.some((message) => message.uuid === event.messageUuid)) {
+                    return currentMessages;
+                }
+
+                return [
+                    ...currentMessages,
+                    messageCreatedEventToChatMessage(event),
+                ];
+            });
+        })
+    ), [addMessageCreatedListener, selectedChatUuid]);
+
+    useEffect(() => {
         function handleWindowClick() {
             setMessageContextMenu(null);
         }
@@ -161,26 +194,13 @@ export default function ChatsMePage() {
     }
 
     async function sendMessage(text: string) {
-        if (!selectedChat || !authenticatedUserUuid) {
+        if (!selectedChat) {
             return;
         }
 
-        const { data: messageUuid } = await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
+        await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
             text,
         });
-
-        const createdAt = new Date().toISOString();
-        setMessages((currentMessages) => [
-            ...currentMessages,
-            {
-                uuid: messageUuid,
-                chatUuid: selectedChat.uuid,
-                userUuid: authenticatedUserUuid,
-                text,
-                createdAt,
-                updatedAt: createdAt,
-            },
-        ]);
     }
 
     async function editMessage(message: ChatMessage, text: string) {
@@ -389,4 +409,15 @@ function renderMessageText(text: string) {
             </a>
         );
     });
+}
+
+function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessage {
+    return {
+        uuid: event.messageUuid,
+        chatUuid: event.chatUuid,
+        userUuid: event.userUuid,
+        text: event.text,
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+    };
 }

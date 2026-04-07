@@ -1,21 +1,45 @@
-import { createContext, ReactNode, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 import { authTokensChangedEventName, getLoginToken } from "../../auth/auth-tokens";
 
 type MessageWebSocketContextValue = {
     isConnected: boolean;
+    subscribeDirectChat: (directChatUuid: string) => void;
+    unsubscribeDirectChat: (directChatUuid: string) => void;
+    addMessageCreatedListener: (listener: MessageCreatedListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
     children: ReactNode;
 };
 
+type MessageWebSocketEvent = {
+    type?: string;
+    data?: unknown;
+};
+
+export type MessageCreatedEvent = {
+    messageUuid: string;
+    chatUuid: string;
+    userUuid: string;
+    text: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
+type MessageCreatedListener = (event: MessageCreatedEvent) => void;
+
 const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
+    subscribeDirectChat,
+    unsubscribeDirectChat,
+    addMessageCreatedListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
 let messageWebSocketToken: string | null = null;
+const directChatSubscriptions = new Set<string>();
+const messageCreatedListeners = new Set<MessageCreatedListener>();
 
 export function MessageWebSocketProvider({ children }: MessageWebSocketProviderProps) {
     const [loginToken, setLoginToken] = useState(() => getLoginToken());
@@ -47,6 +71,12 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
 
         function handleOpen() {
             setIsConnected(true);
+            directChatSubscriptions.forEach((directChatUuid) => {
+                sendMessageWebSocketCommand({
+                    type: "chat.subscribe",
+                    chatUuid: directChatUuid,
+                });
+            });
         }
 
         function handleClose() {
@@ -54,6 +84,18 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         }
 
         function handleMessage(event: MessageEvent<string>) {
+            try {
+                const websocketEvent = JSON.parse(event.data) as MessageWebSocketEvent;
+                if (websocketEvent.type === "message.created") {
+                    messageCreatedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as MessageCreatedEvent);
+                    });
+                    return;
+                }
+            } catch {
+                // Keep logging raw messages for temporary connection probes such as "pong".
+            }
+
             console.log("message websocket:", event.data);
         }
 
@@ -69,10 +111,14 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageCreatedListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
+}
+
+export function useMessageWebSocket() {
+    return useContext(MessageWebSocketContext);
 }
 
 function openMessageWebSocket(loginToken: string) {
@@ -108,4 +154,36 @@ function closeMessageWebSocket() {
     messageWebSocket.close();
     messageWebSocket = null;
     messageWebSocketToken = null;
+}
+
+function subscribeDirectChat(directChatUuid: string) {
+    directChatSubscriptions.add(directChatUuid);
+    sendMessageWebSocketCommand({
+        type: "chat.subscribe",
+        chatUuid: directChatUuid,
+    });
+}
+
+function unsubscribeDirectChat(directChatUuid: string) {
+    directChatSubscriptions.delete(directChatUuid);
+    sendMessageWebSocketCommand({
+        type: "chat.unsubscribe",
+        chatUuid: directChatUuid,
+    });
+}
+
+function sendMessageWebSocketCommand(command: { type: string; chatUuid: string }) {
+    if (!messageWebSocket || messageWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+    }
+
+    messageWebSocket.send(JSON.stringify(command));
+}
+
+function addMessageCreatedListener(listener: MessageCreatedListener) {
+    messageCreatedListeners.add(listener);
+
+    return () => {
+        messageCreatedListeners.delete(listener);
+    };
 }
