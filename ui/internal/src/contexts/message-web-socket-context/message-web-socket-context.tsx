@@ -5,8 +5,8 @@ import { getValidLoginToken } from "../../auth/refresh-login-token";
 
 type MessageWebSocketContextValue = {
     isConnected: boolean;
-    subscribeDirectChat: (directChatUuid: string) => void;
-    unsubscribeDirectChat: (directChatUuid: string) => void;
+    subscribeChat: (chatUuid: string) => void;
+    unsubscribeChat: (chatUuid: string) => void;
     addMessageListener: (listener: AddMessageListener) => () => void;
     updateMessageListener: (listener: UpdateMessageListener) => () => void;
     removeMessageListener: (listener: RemoveMessageListener) => () => void;
@@ -56,8 +56,8 @@ type MessageWebSocketListeners = {
 
 const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
-    subscribeDirectChat,
-    unsubscribeDirectChat,
+    subscribeChat,
+    unsubscribeChat,
     addMessageListener,
     updateMessageListener,
     removeMessageListener,
@@ -67,7 +67,7 @@ let messageWebSocket: WebSocket | null = null;
 let messageWebSocketToken: string | null = null;
 let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
-const directChatSubscriptions = new Set<string>();
+const chatSubscriptions = new Set<string>();
 const addMessageListeners = new Set<AddMessageListener>();
 const updateMessageListeners = new Set<UpdateMessageListener>();
 const removeMessageListeners = new Set<RemoveMessageListener>();
@@ -120,10 +120,10 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         function handleOpen() {
             messageWebSocketReconnectAttempt = 0;
             setIsConnected(true);
-            directChatSubscriptions.forEach((directChatUuid) => {
+            chatSubscriptions.forEach((chatUuid) => {
                 sendMessageWebSocketCommand({
                     type: "chat.subscribe",
-                    chatUuid: directChatUuid,
+                    chatUuid,
                 });
             });
         }
@@ -179,7 +179,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeDirectChat, unsubscribeDirectChat, addMessageListener, updateMessageListener, removeMessageListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, addMessageListener, updateMessageListener, removeMessageListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -266,19 +266,19 @@ function clearMessageWebSocketReconnect() {
     messageWebSocketReconnectTimeoutId = null;
 }
 
-function subscribeDirectChat(directChatUuid: string) {
-    directChatSubscriptions.add(directChatUuid);
+function subscribeChat(chatUuid: string) {
+    chatSubscriptions.add(chatUuid);
     sendMessageWebSocketCommand({
         type: "chat.subscribe",
-        chatUuid: directChatUuid,
+        chatUuid,
     });
 }
 
-function unsubscribeDirectChat(directChatUuid: string) {
-    directChatSubscriptions.delete(directChatUuid);
+function unsubscribeChat(chatUuid: string) {
+    chatSubscriptions.delete(chatUuid);
     sendMessageWebSocketCommand({
         type: "chat.unsubscribe",
-        chatUuid: directChatUuid,
+        chatUuid,
     });
 }
 

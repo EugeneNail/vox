@@ -6,10 +6,14 @@ import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../
 import { useApiClient } from "../../hooks/use-api-client";
 import "./chats-me-page.sass";
 
-type DirectChat = {
+type Chat = {
     uuid: string;
-    firstMemberUuid: string;
-    secondMemberUuid: string;
+    name: string | null;
+    avatar: string | null;
+    createdByUserUuid: string;
+    memberUuids: string[];
+    createdAt: string;
+    updatedAt: string;
 };
 
 type ChatMessage = {
@@ -35,10 +39,10 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
-    const { addMessageListener, removeMessageListener, subscribeDirectChat, unsubscribeDirectChat, updateMessageListener } = useMessageWebSocket();
-    const { directChatUuid } = useParams();
+    const { addMessageListener, removeMessageListener, subscribeChat, unsubscribeChat, updateMessageListener } = useMessageWebSocket();
+    const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const [directChats, setDirectChats] = useState<DirectChat[]>([]);
+    const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isMessagesLoading, setIsMessagesLoading] = useState(false);
@@ -49,25 +53,25 @@ export default function ChatsMePage() {
     const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
     const [isDeletingMessage, setIsDeletingMessage] = useState(false);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
-    const selectedChatUuid = directChatUuid ?? null;
+    const selectedChatUuid = chatUuid ?? null;
 
     useEffect(() => {
         let isMounted = true;
 
-        async function loadDirectChats() {
+        async function loadChats() {
             try {
-                const { data } = await apiClient.get<DirectChat[]>("/api/v1/message/direct-chats");
+                const { data } = await apiClient.get<Chat[]>("/api/v1/message/chats");
                 if (!isMounted) {
                     return;
                 }
 
-                setDirectChats(data);
+                setChats(data);
             } catch {
                 if (!isMounted) {
                     return;
                 }
 
-                setError("Could not load direct chats.");
+                setError("Could not load chats.");
             } finally {
                 if (isMounted) {
                     setIsLoading(false);
@@ -75,7 +79,7 @@ export default function ChatsMePage() {
             }
         }
 
-        loadDirectChats();
+        loadChats();
 
         return () => {
             isMounted = false;
@@ -95,7 +99,7 @@ export default function ChatsMePage() {
             setMessagesError(null);
 
             try {
-                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/direct-chats/${selectedChatUuid}/messages?length=250`);
+                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/chats/${selectedChatUuid}/messages?length=250`);
                 if (!isMounted) {
                     return;
                 }
@@ -141,12 +145,12 @@ export default function ChatsMePage() {
             return;
         }
 
-        subscribeDirectChat(selectedChatUuid);
+        subscribeChat(selectedChatUuid);
 
         return () => {
-            unsubscribeDirectChat(selectedChatUuid);
+            unsubscribeChat(selectedChatUuid);
         };
-    }, [selectedChatUuid, subscribeDirectChat, unsubscribeDirectChat]);
+    }, [selectedChatUuid, subscribeChat, unsubscribeChat]);
 
     useEffect(() => (
         addMessageListener((event) => {
@@ -234,7 +238,7 @@ export default function ChatsMePage() {
         };
     }, []);
 
-    const selectedChat = directChats.find((chat) => chat.uuid === selectedChatUuid);
+    const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
 
     async function submitMessage(text: string) {
         if (editingMessage) {
@@ -335,19 +339,19 @@ export default function ChatsMePage() {
 
     return (
         <section className="chats-me-page">
-            <aside className="chats-me-page__sidebar" aria-label="Direct chats">
+            <aside className="chats-me-page__sidebar" aria-label="Chats">
                 <div className="chats-me-page__sidebar-header">
-                    <p className="chats-me-page__eyebrow">Direct messages</p>
+                    <p className="chats-me-page__eyebrow">Messages</p>
                     <h1 className="chats-me-page__title">Chats</h1>
                 </div>
 
                 <div className="chats-me-page__list">
                     {isLoading && <p className="chats-me-page__state">Loading chats...</p>}
                     {error && <p className="chats-me-page__state chats-me-page__state--error">{error}</p>}
-                    {!isLoading && !error && directChats.length === 0 && (
-                        <p className="chats-me-page__state">No direct chats yet.</p>
+                    {!isLoading && !error && chats.length === 0 && (
+                        <p className="chats-me-page__state">No chats yet.</p>
                     )}
-                    {directChats.map((chat) => (
+                    {chats.map((chat) => (
                         <NavLink
                             className={
                                 ({ isActive }) => (
@@ -360,7 +364,7 @@ export default function ChatsMePage() {
                             to={`/chats/@me/${chat.uuid}`}
                         >
                             <span className="chats-me-page__avatar" aria-hidden="true" />
-                            <span className="chats-me-page__chat-name">{getDirectChatTitle(chat, authenticatedUserUuid)}</span>
+                            <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid)}</span>
                         </NavLink>
                     ))}
                 </div>
@@ -371,7 +375,7 @@ export default function ChatsMePage() {
                     <div className="chats-me-page__chat-shell">
                         <header className="chats-me-page__chat-header">
                             <p className="chats-me-page__eyebrow">Selected chat</p>
-                            <h2 className="chats-me-page__chat-title">{getDirectChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                            <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid)}</h2>
                         </header>
 
                         <div className="chats-me-page__messages" aria-live="polite" onContextMenu={(event) => event.preventDefault()}>
@@ -489,7 +493,7 @@ export default function ChatsMePage() {
                 ) : (
                     <div className="chats-me-page__chat-placeholder">
                         <p className="chats-me-page__eyebrow">No chat selected</p>
-                        <h2 className="chats-me-page__chat-title">Choose a direct chat</h2>
+                        <h2 className="chats-me-page__chat-title">Choose a chat</h2>
                     </div>
                 )}
             </section>
@@ -544,12 +548,13 @@ export default function ChatsMePage() {
     );
 }
 
-function getDirectChatTitle(chat: DirectChat, authenticatedUserUuid: string | null) {
-    if (chat.firstMemberUuid === authenticatedUserUuid) {
-        return chat.secondMemberUuid;
+function getChatTitle(chat: Chat, authenticatedUserUuid: string | null) {
+    if (chat.name) {
+        return chat.name;
     }
 
-    return chat.firstMemberUuid;
+    const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+    return companionUuid ?? chat.uuid;
 }
 
 function formatMessageTime(date: string) {
