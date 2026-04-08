@@ -29,10 +29,10 @@ func NewListChatMessagesHandler(usecase *list_chat_messages.Handler) *ListChatMe
 
 // ListChatMessages validates transport input and calls the use-case.
 func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any) {
-	chatUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("directChatUuid")))
+	chatUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("chatUuid")))
 	if err != nil {
 		validationError := validation.NewError()
-		validationError.AddViolation("directChatUuid", "Must be a valid UUID")
+		validationError.AddViolation("chatUuid", "Must be a valid UUID")
 		return http.StatusBadRequest, validationError.Violations()
 	}
 

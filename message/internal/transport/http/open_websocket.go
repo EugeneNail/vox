@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_direct_chat_updates"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
 	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	websocket_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/websocket"
 	"github.com/google/uuid"
@@ -21,13 +21,13 @@ type openWebSocketCommand struct {
 }
 
 type OpenWebSocketHandler struct {
-	usecase              *authorize_direct_chat_updates.Handler
+	usecase              *authorize_chat_updates.Handler
 	connectionHub        *websocket_infrastructure.ConnectionHub
 	subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry
 	connectionDropper    *websocket_infrastructure.ConnectionDropper
 }
 
-func NewOpenWebSocketHandler(usecase *authorize_direct_chat_updates.Handler, connectionHub *websocket_infrastructure.ConnectionHub, subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry, connectionDropper *websocket_infrastructure.ConnectionDropper) *OpenWebSocketHandler {
+func NewOpenWebSocketHandler(usecase *authorize_chat_updates.Handler, connectionHub *websocket_infrastructure.ConnectionHub, subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry, connectionDropper *websocket_infrastructure.ConnectionDropper) *OpenWebSocketHandler {
 	return &OpenWebSocketHandler{
 		usecase:              usecase,
 		connectionHub:        connectionHub,
@@ -86,11 +86,11 @@ func (handler *OpenWebSocketHandler) handleOpenWebSocketCommand(request *http.Re
 			return err
 		}
 
-		if err := handler.usecase.Handle(request.Context(), authorize_direct_chat_updates.Query{
-			DirectChatUuid: chatUuid,
-			UserUuid:       connection.UserUuid(),
+		if err := handler.usecase.Handle(request.Context(), authorize_chat_updates.Query{
+			ChatUuid: chatUuid,
+			UserUuid: connection.UserUuid(),
 		}); err != nil {
-			return fmt.Errorf("authorizing direct chat %q updates for user %q: %w", chatUuid, connection.UserUuid(), err)
+			return fmt.Errorf("authorizing chat %q updates for user %q: %w", chatUuid, connection.UserUuid(), err)
 		}
 
 		handler.subscriptionRegistry.Subscribe(connection.Uuid(), chatUuid)
