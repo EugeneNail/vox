@@ -1,7 +1,0 @@
-POST http://127.0.0.1:10000/api/v1/message/direct-chats
-Content-Type: application/json
-Authorization: Bearer <login-token>
-
-{
-    "companionUuid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-}
