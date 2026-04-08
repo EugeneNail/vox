@@ -21,7 +21,8 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 // Handler creates messages through the create_message use-case.
 type Handler struct {
 	messageRepository       domain.MessageRepository
-	directChatRepository    domain.DirectChatRepository
+	chatRepository          domain.ChatRepository
+	chatMemberRepository    domain.ChatMemberRepository
 	messageCreatedPublisher domain.MessageCreatedPublisher
 }
 
@@ -33,10 +34,11 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageCreatedPublisher domain.MessageCreatedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageCreatedPublisher domain.MessageCreatedPublisher) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
-		directChatRepository:    directChatRepository,
+		chatRepository:          chatRepository,
+		chatMemberRepository:    chatMemberRepository,
 		messageCreatedPublisher: messageCreatedPublisher,
 	}
 }
@@ -64,16 +66,21 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("validating create message command: %w", err)
 	}
 
-	directChat, err := handler.directChatRepository.FindByUuid(ctx, command.ChatUuid)
+	chat, err := handler.chatRepository.FindByUuid(ctx, command.ChatUuid)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("finding direct chat by uuid %q: %w", command.ChatUuid, err)
+		return uuid.Nil, fmt.Errorf("finding chat by uuid %q: %w", command.ChatUuid, err)
 	}
 
-	if directChat == nil {
+	if chat == nil {
 		return uuid.Nil, ErrChatNotFound
 	}
 
-	if directChat.FirstMemberUuid != command.UserUuid && directChat.SecondMemberUuid != command.UserUuid {
+	member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, command.ChatUuid, command.UserUuid)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("finding member %q in chat %q: %w", command.UserUuid, command.ChatUuid, err)
+	}
+
+	if member == nil {
 		return uuid.Nil, ErrChatAccessDenied
 	}
 

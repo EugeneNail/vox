@@ -15,7 +15,8 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 // Handler lists chat messages through the list_chat_messages use-case.
 type Handler struct {
 	messageRepository    domain.MessageRepository
-	directChatRepository domain.DirectChatRepository
+	chatRepository       domain.ChatRepository
+	chatMemberRepository domain.ChatMemberRepository
 }
 
 // Query contains the input required to list chat messages.
@@ -26,25 +27,31 @@ type Query struct {
 }
 
 // NewHandler constructs a list_chat_messages handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository) *Handler {
 	return &Handler{
 		messageRepository:    messageRepository,
-		directChatRepository: directChatRepository,
+		chatRepository:       chatRepository,
+		chatMemberRepository: chatMemberRepository,
 	}
 }
 
 // Handle returns latest messages from a chat available to the user.
 func (handler *Handler) Handle(ctx context.Context, query Query) ([]domain.Message, error) {
-	directChat, err := handler.directChatRepository.FindByUuid(ctx, query.ChatUuid)
+	chat, err := handler.chatRepository.FindByUuid(ctx, query.ChatUuid)
 	if err != nil {
-		return nil, fmt.Errorf("finding direct chat by uuid %q: %w", query.ChatUuid, err)
+		return nil, fmt.Errorf("finding chat by uuid %q: %w", query.ChatUuid, err)
 	}
 
-	if directChat == nil {
+	if chat == nil {
 		return nil, ErrChatNotFound
 	}
 
-	if directChat.FirstMemberUuid != query.UserUuid && directChat.SecondMemberUuid != query.UserUuid {
+	member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, query.ChatUuid, query.UserUuid)
+	if err != nil {
+		return nil, fmt.Errorf("finding member %q in chat %q: %w", query.UserUuid, query.ChatUuid, err)
+	}
+
+	if member == nil {
 		return nil, ErrChatAccessDenied
 	}
 

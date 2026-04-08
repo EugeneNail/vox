@@ -20,7 +20,8 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 // Handler deletes messages through the delete_message use-case.
 type Handler struct {
 	messageRepository       domain.MessageRepository
-	directChatRepository    domain.DirectChatRepository
+	chatRepository          domain.ChatRepository
+	chatMemberRepository    domain.ChatMemberRepository
 	messageDeletedPublisher domain.MessageDeletedPublisher
 }
 
@@ -31,10 +32,11 @@ type Command struct {
 }
 
 // NewHandler constructs a delete_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, directChatRepository domain.DirectChatRepository, messageDeletedPublisher domain.MessageDeletedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageDeletedPublisher domain.MessageDeletedPublisher) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
-		directChatRepository:    directChatRepository,
+		chatRepository:          chatRepository,
+		chatMemberRepository:    chatMemberRepository,
 		messageDeletedPublisher: messageDeletedPublisher,
 	}
 }
@@ -67,16 +69,21 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return ErrMessageNotFound
 	}
 
-	directChat, err := handler.directChatRepository.FindByUuid(ctx, message.ChatUuid)
+	chat, err := handler.chatRepository.FindByUuid(ctx, message.ChatUuid)
 	if err != nil {
-		return fmt.Errorf("finding direct chat by uuid %q: %w", message.ChatUuid, err)
+		return fmt.Errorf("finding chat by uuid %q: %w", message.ChatUuid, err)
 	}
 
-	if directChat == nil {
+	if chat == nil {
 		return ErrChatNotFound
 	}
 
-	if directChat.FirstMemberUuid != command.UserUuid && directChat.SecondMemberUuid != command.UserUuid {
+	member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, message.ChatUuid, command.UserUuid)
+	if err != nil {
+		return fmt.Errorf("finding member %q in chat %q: %w", command.UserUuid, message.ChatUuid, err)
+	}
+
+	if member == nil {
 		return ErrChatAccessDenied
 	}
 
