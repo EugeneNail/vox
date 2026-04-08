@@ -70,7 +70,7 @@ func main() {
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
-	listChatsHandler := list_chats.NewHandler(chatRepository)
+	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
 
 	// --- Section: HTTP transport ---
 	createChatHttpHandler := transport_http.NewCreateChatHandler(createChatHandler)

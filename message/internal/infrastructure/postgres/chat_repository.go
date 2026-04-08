@@ -45,12 +45,6 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 		return nil, fmt.Errorf("finding chat by uuid %q: %w", chatUuid, err)
 	}
 
-	memberUuids, err := repository.findMemberUuidsByChatUuid(ctx, chatUuid)
-	if err != nil {
-		return nil, err
-	}
-	chat.MemberUuids = memberUuids
-
 	return &chat, nil
 }
 
@@ -83,12 +77,6 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 		); err != nil {
 			return nil, fmt.Errorf("scanning chat for member uuid %q: %w", memberUuid, err)
 		}
-
-		memberUuids, err := repository.findMemberUuidsByChatUuid(ctx, chat.Uuid)
-		if err != nil {
-			return nil, err
-		}
-		chat.MemberUuids = memberUuids
 
 		chats = append(chats, chat)
 	}
@@ -139,35 +127,4 @@ func (repository *ChatRepository) Create(ctx context.Context, chat domain.Chat, 
 	}
 
 	return nil
-}
-
-func (repository *ChatRepository) findMemberUuidsByChatUuid(ctx context.Context, chatUuid uuid.UUID) ([]uuid.UUID, error) {
-	const query = `
-		SELECT user_uuid
-		FROM chat_members
-		WHERE chat_uuid = $1
-		ORDER BY joined_at ASC
-	`
-
-	rows, err := repository.database.QueryContext(ctx, query, chatUuid)
-	if err != nil {
-		return nil, fmt.Errorf("finding member uuids by chat uuid %q: %w", chatUuid, err)
-	}
-	defer rows.Close()
-
-	memberUuids := make([]uuid.UUID, 0)
-	for rows.Next() {
-		var memberUuid uuid.UUID
-		if err := rows.Scan(&memberUuid); err != nil {
-			return nil, fmt.Errorf("scanning member uuid for chat %q: %w", chatUuid, err)
-		}
-
-		memberUuids = append(memberUuids, memberUuid)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("reading member uuids by chat uuid %q: %w", chatUuid, err)
-	}
-
-	return memberUuids, nil
 }

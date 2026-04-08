@@ -26,19 +26,20 @@ func (handler *ListChatsHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	chats, err := handler.usecase.Handle(request.Context(), list_chats.Query{UserUuid: userUuid})
+	results, err := handler.usecase.Handle(request.Context(), list_chats.Query{UserUuid: userUuid})
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("handling the ListChats usecase: %w", err)
 	}
 
-	resources := make([]resource.Chat, 0, len(chats))
-	for _, chat := range chats {
+	resources := make([]resource.Chat, 0, len(results))
+	for _, result := range results {
+		chat := result.Chat
 		resources = append(resources, resource.Chat{
 			Uuid:              chat.Uuid,
 			Name:              chat.Name,
 			Avatar:            chat.Avatar,
 			CreatedByUserUuid: chat.CreatedByUserUuid,
-			MemberUuids:       chat.MemberUuids,
+			MemberUuids:       result.MemberUuids,
 			CreatedAt:         chat.CreatedAt,
 			UpdatedAt:         chat.UpdatedAt,
 		})

@@ -12,7 +12,6 @@ type Chat struct {
 	Name              *string
 	Avatar            *string
 	CreatedByUserUuid uuid.UUID
-	MemberUuids       []uuid.UUID
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

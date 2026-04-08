@@ -52,7 +52,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		Name:              command.Name,
 		Avatar:            command.Avatar,
 		CreatedByUserUuid: command.CreatorUuid,
-		MemberUuids:       memberUuids,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
