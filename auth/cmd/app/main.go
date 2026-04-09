@@ -11,6 +11,7 @@ import (
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/auth/internal/infrastructure/postgres"
+	redis_infrastructure "github.com/EugeneNail/vox/auth/internal/infrastructure/redis"
 	transport_http "github.com/EugeneNail/vox/auth/internal/transport/http"
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
 )
@@ -29,14 +30,23 @@ func main() {
 	}
 	defer database.Close()
 
+	redisClient, err := redis_infrastructure.NewClient(configuration.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redisClient.Close()
+
 	// --- Section: Repositories ---
 	userRepository := postgres.NewUserRepository(database)
+
+	// --- Section: Event delivery ---
+	userCreatedPublisher := redis_infrastructure.NewUserCreatedPublisher(redisClient)
 
 	// --- Section: Application services ---
 	tokenSigner := services.NewTokenSigner()
 
 	// --- Section: Application use-cases ---
-	createUserHandler := create_user.NewHandler(userRepository)
+	createUserHandler := create_user.NewHandler(userRepository, userCreatedPublisher)
 	authenticateHandler := authenticate.NewHandler(userRepository, tokenSigner)
 	refreshHandler := refresh.NewHandler(userRepository, tokenSigner)
 

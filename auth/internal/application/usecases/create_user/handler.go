@@ -19,7 +19,8 @@ var ErrEmailAlreadyExists = errors.New("user with this email already exists")
 
 // Handler creates users through the create_user use-case.
 type Handler struct {
-	repository domain.UserRepository
+	repository           domain.UserRepository
+	userCreatedPublisher domain.UserCreatedPublisher
 }
 
 // Command contains the input required to create a user.
@@ -30,9 +31,10 @@ type Command struct {
 }
 
 // NewHandler constructs a create_user handler with its dependencies.
-func NewHandler(repository domain.UserRepository) *Handler {
+func NewHandler(repository domain.UserRepository, userCreatedPublisher domain.UserCreatedPublisher) *Handler {
 	return &Handler{
-		repository: repository,
+		repository:           repository,
+		userCreatedPublisher: userCreatedPublisher,
 	}
 }
 
@@ -84,6 +86,13 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 
 	if err := handler.repository.Create(ctx, user); err != nil {
 		return uuid.Nil, fmt.Errorf("creating user with email %q: %w", user.Email, err)
+	}
+
+	if err := handler.userCreatedPublisher.Publish(ctx, domain.UserCreatedEvent{
+		UserUuid:  user.Uuid,
+		CreatedAt: user.CreatedAt,
+	}); err != nil {
+		return uuid.Nil, fmt.Errorf("publishing user created event for user %q: %w", user.Uuid, err)
 	}
 
 	return user.Uuid, nil
