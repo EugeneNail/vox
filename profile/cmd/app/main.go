@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/create_profile"
-	"github.com/EugeneNail/vox/profile/internal/domain"
+	"github.com/EugeneNail/vox/profile/internal/domain/events"
 	"github.com/EugeneNail/vox/profile/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/profile/internal/infrastructure/postgres"
 	redis_infrastructure "github.com/EugeneNail/vox/profile/internal/infrastructure/redis"
@@ -41,7 +41,7 @@ func main() {
 	createProfileHandler := create_profile.NewHandler(profileRepository)
 
 	// --- Section: Event consumers ---
-	userCreatedConsumer := redis_infrastructure.NewUserCreatedConsumer(redisClient, func(ctx context.Context, event domain.UserCreatedEvent) error {
+	userCreatedConsumer := redis_infrastructure.NewUserCreatedConsumer(redisClient, func(ctx context.Context, event events.UserCreated) error {
 		return createProfileHandler.Handle(ctx, create_profile.Command{
 			UserUuid: event.UserUuid,
 		})

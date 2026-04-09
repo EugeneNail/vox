@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EugeneNail/vox/profile/internal/domain"
+	"github.com/EugeneNail/vox/profile/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -18,7 +18,7 @@ const (
 	userEventsConsumerGroup = "profile-service"
 )
 
-type UserCreatedHandler func(context.Context, domain.UserCreatedEvent) error
+type UserCreatedHandler func(context.Context, events.UserCreated) error
 
 // UserCreatedConsumer consumes user-created events through Redis Streams.
 type UserCreatedConsumer struct {
@@ -99,7 +99,7 @@ func (consumer *UserCreatedConsumer) handleMessage(ctx context.Context, message 
 		return true
 	}
 
-	var event domain.UserCreatedEvent
+	var event events.UserCreated
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		log.Printf("unmarshalling user created event: %v", err)
 		return true
@@ -136,4 +136,4 @@ func buildConsumerName() string {
 	return hostName
 }
 
-var _ domain.UserCreatedConsumer = (*UserCreatedConsumer)(nil)
+var _ events.UserCreatedConsumer = (*UserCreatedConsumer)(nil)
