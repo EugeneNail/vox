@@ -44,6 +44,8 @@ func main() {
 	userCreatedConsumer := redis_infrastructure.NewUserCreatedConsumer(redisClient, func(ctx context.Context, event events.UserCreated) error {
 		return createProfileHandler.Handle(ctx, create_profile.Command{
 			UserUuid: event.UserUuid,
+			Name:     event.Name,
+			Nickname: event.Nickname,
 		})
 	})
 	userCreatedConsumer.ListenAndConsume(context.Background())

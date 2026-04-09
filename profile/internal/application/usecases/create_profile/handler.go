@@ -3,7 +3,6 @@ package create_profile
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/EugeneNail/vox/profile/internal/domain"
@@ -18,6 +17,8 @@ type Handler struct {
 // Command contains the input required to create a profile.
 type Command struct {
 	UserUuid uuid.UUID
+	Name     string
+	Nickname string
 }
 
 // NewHandler constructs a create_profile handler with its dependencies.
@@ -42,8 +43,8 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	profile := domain.Profile{
 		UserUuid:  command.UserUuid,
 		Avatar:    nil,
-		Name:      "New User",
-		Nickname:  buildDefaultNickname(command.UserUuid),
+		Name:      command.Name,
+		Nickname:  command.Nickname,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -53,8 +54,4 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	return nil
-}
-
-func buildDefaultNickname(userUuid uuid.UUID) string {
-	return fmt.Sprintf("user-%s", strings.ToLower(userUuid.String()[:8]))
 }
