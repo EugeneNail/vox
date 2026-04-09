@@ -11,6 +11,7 @@ type Chat struct {
 	Uuid              uuid.UUID   `json:"uuid"`
 	Name              *string     `json:"name"`
 	Avatar            *string     `json:"avatar"`
+	IsPrivate         bool        `json:"isPrivate"`
 	CreatedByUserUuid uuid.UUID   `json:"createdByUserUuid"`
 	MemberUuids       []uuid.UUID `json:"memberUuids"`
 	CreatedAt         time.Time   `json:"createdAt"`

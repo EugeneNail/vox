@@ -24,7 +24,7 @@ func NewChatRepository(database *sql.DB) *ChatRepository {
 // FindByUuid returns a chat by UUID or nil when the chat does not exist.
 func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.UUID) (*domain.Chat, error) {
 	const query = `
-		SELECT uuid, name, avatar, created_by_user_uuid, created_at, updated_at
+		SELECT uuid, name, avatar, is_private, created_by_user_uuid, created_at, updated_at
 		FROM chats
 		WHERE uuid = $1
 	`
@@ -34,6 +34,7 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 		&chat.Uuid,
 		&chat.Name,
 		&chat.Avatar,
+		&chat.IsPrivate,
 		&chat.CreatedByUserUuid,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
@@ -51,7 +52,7 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 // FindAllByMemberUuid returns chats that include the given member.
 func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, memberUuid uuid.UUID) ([]domain.Chat, error) {
 	const query = `
-		SELECT c.uuid, c.name, c.avatar, c.created_by_user_uuid, c.created_at, c.updated_at
+		SELECT c.uuid, c.name, c.avatar, c.is_private, c.created_by_user_uuid, c.created_at, c.updated_at
 		FROM chats c
 		INNER JOIN chat_members cm ON cm.chat_uuid = c.uuid
 		WHERE cm.user_uuid = $1
@@ -71,6 +72,7 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 			&chat.Uuid,
 			&chat.Name,
 			&chat.Avatar,
+			&chat.IsPrivate,
 			&chat.CreatedByUserUuid,
 			&chat.CreatedAt,
 			&chat.UpdatedAt,
@@ -88,8 +90,8 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 	return chats, nil
 }
 
-// Create persists a new chat and its members in PostgreSQL.
-func (repository *ChatRepository) Create(ctx context.Context, chat domain.Chat, members []domain.ChatMember) error {
+// CreateWithMembers persists a new chat and its initial members in PostgreSQL.
+func (repository *ChatRepository) CreateWithMembers(ctx context.Context, chat domain.Chat, members []domain.ChatMember) error {
 	transaction, err := repository.database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning create chat transaction for chat %q: %w", chat.Uuid, err)
@@ -98,10 +100,11 @@ func (repository *ChatRepository) Create(ctx context.Context, chat domain.Chat, 
 
 	if _, err := transaction.ExecContext(
 		ctx,
-		`INSERT INTO chats (uuid, name, avatar, created_by_user_uuid, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO chats (uuid, name, avatar, is_private, created_by_user_uuid, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		chat.Uuid,
 		chat.Name,
 		chat.Avatar,
+		chat.IsPrivate,
 		chat.CreatedByUserUuid,
 		chat.CreatedAt,
 		chat.UpdatedAt,

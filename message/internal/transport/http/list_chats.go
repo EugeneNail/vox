@@ -38,6 +38,7 @@ func (handler *ListChatsHandler) Handle(request *http.Request) (int, any) {
 			Uuid:              chat.Uuid,
 			Name:              chat.Name,
 			Avatar:            chat.Avatar,
+			IsPrivate:         chat.IsPrivate,
 			CreatedByUserUuid: chat.CreatedByUserUuid,
 			MemberUuids:       result.MemberUuids,
 			CreatedAt:         chat.CreatedAt,

@@ -11,6 +11,7 @@ type Chat struct {
 	Uuid              uuid.UUID
 	Name              *string
 	Avatar            *string
+	IsPrivate         bool
 	CreatedByUserUuid uuid.UUID
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
