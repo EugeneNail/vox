@@ -5,3 +5,4 @@ auth/docker/.env.development
 proxy/docker/.env.development
 message/docker/.env.development
 broker/docker/.env.development
+profile/docker/.env.development
