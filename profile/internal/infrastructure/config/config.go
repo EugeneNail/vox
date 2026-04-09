@@ -9,6 +9,7 @@ import (
 type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
+	Redis    RedisConfig
 }
 
 // AppConfig contains application runtime settings.
@@ -24,6 +25,12 @@ type PostgresConfig struct {
 	User     string
 	Password string
 	SSLMode  string
+}
+
+// RedisConfig contains Redis connection settings.
+type RedisConfig struct {
+	Host string
+	Port int
 }
 
 // NewConfig reads application configuration from environment variables.
@@ -63,6 +70,16 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	redisHost, err := readRequiredEnv("REDIS_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	redisPort, err := readIntEnv("REDIS_PORT")
+	if err != nil {
+		return nil, err
+	}
+
 	configuration := &Config{
 		App: AppConfig{
 			Port: appPort,
@@ -74,6 +91,10 @@ func NewConfig() (*Config, error) {
 			User:     postgresUser,
 			Password: postgresPassword,
 			SSLMode:  postgresSSLMode,
+		},
+		Redis: RedisConfig{
+			Host: redisHost,
+			Port: redisPort,
 		},
 	}
 
