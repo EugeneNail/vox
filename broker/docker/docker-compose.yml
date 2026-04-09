@@ -1,0 +1,13 @@
+services:
+  broker:
+    container_name: ${REDIS_HOST}
+    image: redis:8-alpine
+    networks:
+      - vox-shared-network
+      - vox-broker-local-network
+
+networks:
+  vox-shared-network:
+    external: true
+  vox-broker-local-network:
+    name: vox-broker-local-network
