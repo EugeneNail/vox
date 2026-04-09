@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -26,7 +26,7 @@ func NewMessageDeletedPublisher(client *redisclient.Client, maxLen int64) *Messa
 }
 
 // Publish publishes a message-deleted event.
-func (publisher *MessageDeletedPublisher) Publish(ctx context.Context, event domain.MessageDeletedEvent) error {
+func (publisher *MessageDeletedPublisher) Publish(ctx context.Context, event events.MessageDeleted) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshalling message deleted event for message %q: %w", event.MessageUuid, err)
@@ -47,4 +47,4 @@ func (publisher *MessageDeletedPublisher) Publish(ctx context.Context, event dom
 }
 
 // Ensure MessageDeletedPublisher implements the message-deleted publisher contract.
-var _ domain.MessageDeletedPublisher = (*MessageDeletedPublisher)(nil)
+var _ events.MessageDeletedPublisher = (*MessageDeletedPublisher)(nil)

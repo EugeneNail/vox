@@ -11,6 +11,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	"github.com/google/uuid"
 )
 
@@ -24,7 +25,7 @@ type Handler struct {
 	messageRepository      domain.MessageRepository
 	chatRepository         domain.ChatRepository
 	chatMemberRepository   domain.ChatMemberRepository
-	messageEditedPublisher domain.MessageEditedPublisher
+	messageEditedPublisher events.MessageEditedPublisher
 }
 
 // Command contains the input required to edit a message.
@@ -35,7 +36,7 @@ type Command struct {
 }
 
 // NewHandler constructs an edit_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageEditedPublisher domain.MessageEditedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageEditedPublisher events.MessageEditedPublisher) *Handler {
 	return &Handler{
 		messageRepository:      messageRepository,
 		chatRepository:         chatRepository,
@@ -105,7 +106,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return fmt.Errorf("updating text for message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	if err := handler.messageEditedPublisher.Publish(ctx, domain.MessageEditedEvent{
+	if err := handler.messageEditedPublisher.Publish(ctx, events.MessageEdited{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,

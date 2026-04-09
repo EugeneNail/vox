@@ -6,11 +6,11 @@ import (
 	"errors"
 	"log"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-type MessageDeletedHandler func(context.Context, domain.MessageDeletedEvent) error
+type MessageDeletedHandler func(context.Context, events.MessageDeleted) error
 
 // MessageDeletedConsumer consumes message-deleted events through Redis Streams.
 type MessageDeletedConsumer struct {
@@ -39,7 +39,7 @@ func (consumer *MessageDeletedConsumer) ListenAndConsume(ctx context.Context) {
 }
 
 func (consumer *MessageDeletedConsumer) handlePayload(ctx context.Context, payload string) bool {
-	var event domain.MessageDeletedEvent
+	var event events.MessageDeleted
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		log.Printf("unmarshalling message deleted event: %v", err)
 		return true
@@ -56,4 +56,4 @@ func (consumer *MessageDeletedConsumer) handlePayload(ctx context.Context, paylo
 }
 
 // Ensure MessageDeletedConsumer implements the message-deleted consumer contract.
-var _ domain.MessageDeletedConsumer = (*MessageDeletedConsumer)(nil)
+var _ events.MessageDeletedConsumer = (*MessageDeletedConsumer)(nil)

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 )
 
 // RemoveMessageWebSocketSender sends remove-message commands to websocket connections selected by subscriptions.
@@ -25,7 +25,7 @@ func NewRemoveMessageWebSocketSender(connectionHub *ConnectionHub, subscriptionR
 }
 
 // Send sends a remove-message command to connections subscribed to the message chat.
-func (sender *RemoveMessageWebSocketSender) Send(ctx context.Context, event domain.MessageDeletedEvent) error {
+func (sender *RemoveMessageWebSocketSender) Send(ctx context.Context, event events.MessageDeleted) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

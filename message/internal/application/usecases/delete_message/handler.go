@@ -9,6 +9,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	"github.com/google/uuid"
 )
 
@@ -22,7 +23,7 @@ type Handler struct {
 	messageRepository       domain.MessageRepository
 	chatRepository          domain.ChatRepository
 	chatMemberRepository    domain.ChatMemberRepository
-	messageDeletedPublisher domain.MessageDeletedPublisher
+	messageDeletedPublisher events.MessageDeletedPublisher
 }
 
 // Command contains the input required to delete a message.
@@ -32,7 +33,7 @@ type Command struct {
 }
 
 // NewHandler constructs a delete_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageDeletedPublisher domain.MessageDeletedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageDeletedPublisher events.MessageDeletedPublisher) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
 		chatRepository:          chatRepository,
@@ -95,7 +96,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return fmt.Errorf("deleting message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	if err := handler.messageDeletedPublisher.Publish(ctx, domain.MessageDeletedEvent{
+	if err := handler.messageDeletedPublisher.Publish(ctx, events.MessageDeleted{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,

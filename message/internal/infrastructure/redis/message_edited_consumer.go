@@ -6,11 +6,11 @@ import (
 	"errors"
 	"log"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-type MessageEditedHandler func(context.Context, domain.MessageEditedEvent) error
+type MessageEditedHandler func(context.Context, events.MessageEdited) error
 
 // MessageEditedConsumer consumes message-edited events through Redis Streams.
 type MessageEditedConsumer struct {
@@ -39,7 +39,7 @@ func (consumer *MessageEditedConsumer) ListenAndConsume(ctx context.Context) {
 }
 
 func (consumer *MessageEditedConsumer) handlePayload(ctx context.Context, payload string) bool {
-	var event domain.MessageEditedEvent
+	var event events.MessageEdited
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		log.Printf("unmarshalling message edited event: %v", err)
 		return true
@@ -56,4 +56,4 @@ func (consumer *MessageEditedConsumer) handlePayload(ctx context.Context, payloa
 }
 
 // Ensure MessageEditedConsumer implements the message-edited consumer contract.
-var _ domain.MessageEditedConsumer = (*MessageEditedConsumer)(nil)
+var _ events.MessageEditedConsumer = (*MessageEditedConsumer)(nil)

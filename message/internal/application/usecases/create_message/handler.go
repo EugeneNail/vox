@@ -11,6 +11,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	"github.com/google/uuid"
 	"github.com/samborkent/uuidv7"
 )
@@ -23,7 +24,7 @@ type Handler struct {
 	messageRepository       domain.MessageRepository
 	chatRepository          domain.ChatRepository
 	chatMemberRepository    domain.ChatMemberRepository
-	messageCreatedPublisher domain.MessageCreatedPublisher
+	messageCreatedPublisher events.MessageCreatedPublisher
 }
 
 // Command contains the input required to create a message.
@@ -34,7 +35,7 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageCreatedPublisher domain.MessageCreatedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageCreatedPublisher events.MessageCreatedPublisher) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
 		chatRepository:          chatRepository,
@@ -98,7 +99,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	if err := handler.messageCreatedPublisher.Publish(ctx, domain.MessageCreatedEvent{
+	if err := handler.messageCreatedPublisher.Publish(ctx, events.MessageCreated{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,

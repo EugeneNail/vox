@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 )
 
 // AddMessageWebSocketSender sends add-message commands to websocket connections selected by subscriptions.
@@ -25,7 +25,7 @@ func NewAddMessageWebSocketSender(connectionHub *ConnectionHub, subscriptionRegi
 }
 
 // Send sends an add-message command to connections subscribed to the message chat.
-func (sender *AddMessageWebSocketSender) Send(ctx context.Context, event domain.MessageCreatedEvent) error {
+func (sender *AddMessageWebSocketSender) Send(ctx context.Context, event events.MessageCreated) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

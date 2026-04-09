@@ -6,11 +6,11 @@ import (
 	"errors"
 	"log"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-type MessageCreatedHandler func(context.Context, domain.MessageCreatedEvent) error
+type MessageCreatedHandler func(context.Context, events.MessageCreated) error
 
 // MessageCreatedConsumer consumes message-created events through Redis Streams.
 type MessageCreatedConsumer struct {
@@ -39,7 +39,7 @@ func (consumer *MessageCreatedConsumer) ListenAndConsume(ctx context.Context) {
 }
 
 func (consumer *MessageCreatedConsumer) handlePayload(ctx context.Context, payload string) bool {
-	var event domain.MessageCreatedEvent
+	var event events.MessageCreated
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		log.Printf("unmarshalling message created event: %v", err)
 		return true
@@ -56,4 +56,4 @@ func (consumer *MessageCreatedConsumer) handlePayload(ctx context.Context, paylo
 }
 
 // Ensure MessageCreatedConsumer implements the message-created consumer contract.
-var _ domain.MessageCreatedConsumer = (*MessageCreatedConsumer)(nil)
+var _ events.MessageCreatedConsumer = (*MessageCreatedConsumer)(nil)

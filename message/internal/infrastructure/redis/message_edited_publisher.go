@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain"
+	"github.com/EugeneNail/vox/message/internal/domain/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -26,7 +26,7 @@ func NewMessageEditedPublisher(client *redisclient.Client, maxLen int64) *Messag
 }
 
 // Publish publishes a message-edited event.
-func (publisher *MessageEditedPublisher) Publish(ctx context.Context, event domain.MessageEditedEvent) error {
+func (publisher *MessageEditedPublisher) Publish(ctx context.Context, event events.MessageEdited) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshalling message edited event for message %q: %w", event.MessageUuid, err)
@@ -47,4 +47,4 @@ func (publisher *MessageEditedPublisher) Publish(ctx context.Context, event doma
 }
 
 // Ensure MessageEditedPublisher implements the message-edited publisher contract.
-var _ domain.MessageEditedPublisher = (*MessageEditedPublisher)(nil)
+var _ events.MessageEditedPublisher = (*MessageEditedPublisher)(nil)
