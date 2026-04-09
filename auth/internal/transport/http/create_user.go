@@ -12,6 +12,8 @@ import (
 )
 
 type createUserPayload struct {
+	Name                 string `json:"name"`
+	Nickname             string `json:"nickname"`
 	Email                string `json:"email"`
 	Password             string `json:"password"`
 	PasswordConfirmation string `json:"passwordConfirmation"`
@@ -35,10 +37,14 @@ func (handler *CreateUserHandler) Handle(request *http.Request) (int, any) {
 	}
 
 	validator := validation.NewValidator(map[string]any{
+		"name":                 payload.Name,
+		"nickname":             payload.Nickname,
 		"email":                payload.Email,
 		"password":             payload.Password,
 		"passwordConfirmation": payload.PasswordConfirmation,
 	}, map[string][]rules.Rule{
+		"name":                 {rules.Required(), rules.Max(64)},
+		"nickname":             {rules.Required(), rules.Max(32)},
 		"email":                {rules.Required(), rules.Max(256)},
 		"password":             {rules.Required(), rules.Max(256)},
 		"passwordConfirmation": {rules.Required(), rules.Max(256)},
@@ -54,6 +60,8 @@ func (handler *CreateUserHandler) Handle(request *http.Request) (int, any) {
 	}
 
 	userUuid, err := handler.usecase.Handle(request.Context(), create_user.Command{
+		Name:                 payload.Name,
+		Nickname:             payload.Nickname,
 		Email:                payload.Email,
 		Password:             payload.Password,
 		PasswordConfirmation: payload.PasswordConfirmation,

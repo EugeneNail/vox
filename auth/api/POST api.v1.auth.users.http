@@ -2,6 +2,8 @@ POST http://127.0.0.1:10000/api/v1/auth/users
 Content-Type: application/json
 
 {
+  "name": "Test User",
+  "nickname": "test.user",
   "email": "test@example.com",
   "password": "Strong123!",
   "passwordConfirmation": "Strong123!"
