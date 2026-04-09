@@ -22,11 +22,6 @@ type MessageCreatedPublisher interface {
 	Publish(ctx context.Context, event MessageCreated) error
 }
 
-// MessageCreatedConsumer consumes message-created events.
-type MessageCreatedConsumer interface {
-	ListenAndConsume(ctx context.Context)
-}
-
 // MessageEdited describes a message that was edited and can be delivered to realtime subscribers.
 type MessageEdited struct {
 	MessageUuid uuid.UUID `json:"messageUuid"`
@@ -42,11 +37,6 @@ type MessageEditedPublisher interface {
 	Publish(ctx context.Context, event MessageEdited) error
 }
 
-// MessageEditedConsumer consumes message-edited events.
-type MessageEditedConsumer interface {
-	ListenAndConsume(ctx context.Context)
-}
-
 // MessageDeleted describes a message that was deleted and can be delivered to realtime subscribers.
 type MessageDeleted struct {
 	MessageUuid uuid.UUID `json:"messageUuid"`
@@ -57,9 +47,4 @@ type MessageDeleted struct {
 // MessageDeletedPublisher publishes message-deleted events.
 type MessageDeletedPublisher interface {
 	Publish(ctx context.Context, event MessageDeleted) error
-}
-
-// MessageDeletedConsumer consumes message-deleted events.
-type MessageDeletedConsumer interface {
-	ListenAndConsume(ctx context.Context)
 }

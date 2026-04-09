@@ -54,6 +54,3 @@ func (consumer *MessageDeletedConsumer) handlePayload(ctx context.Context, paylo
 
 	return true
 }
-
-// Ensure MessageDeletedConsumer implements the message-deleted consumer contract.
-var _ events.MessageDeletedConsumer = (*MessageDeletedConsumer)(nil)

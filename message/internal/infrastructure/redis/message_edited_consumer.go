@@ -54,6 +54,3 @@ func (consumer *MessageEditedConsumer) handlePayload(ctx context.Context, payloa
 
 	return true
 }
-
-// Ensure MessageEditedConsumer implements the message-edited consumer contract.
-var _ events.MessageEditedConsumer = (*MessageEditedConsumer)(nil)

@@ -54,6 +54,3 @@ func (consumer *MessageCreatedConsumer) handlePayload(ctx context.Context, paylo
 
 	return true
 }
-
-// Ensure MessageCreatedConsumer implements the message-created consumer contract.
-var _ events.MessageCreatedConsumer = (*MessageCreatedConsumer)(nil)
