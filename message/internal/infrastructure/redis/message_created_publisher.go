@@ -9,17 +9,19 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-const messageCreatedChannel = "message.created"
+const messageCreatedStream = "message.created"
 
-// MessageCreatedPublisher publishes message-created events through Redis Pub/Sub.
+// MessageCreatedPublisher publishes message-created events through Redis Streams.
 type MessageCreatedPublisher struct {
 	client *redisclient.Client
+	maxLen int64
 }
 
 // NewMessageCreatedPublisher constructs a Redis-backed message-created publisher.
-func NewMessageCreatedPublisher(client *redisclient.Client) *MessageCreatedPublisher {
+func NewMessageCreatedPublisher(client *redisclient.Client, maxLen int64) *MessageCreatedPublisher {
 	return &MessageCreatedPublisher{
 		client: client,
+		maxLen: maxLen,
 	}
 }
 
@@ -30,7 +32,14 @@ func (publisher *MessageCreatedPublisher) Publish(ctx context.Context, event dom
 		return fmt.Errorf("marshalling message created event for message %q: %w", event.MessageUuid, err)
 	}
 
-	if err := publisher.client.Publish(ctx, messageCreatedChannel, payload).Err(); err != nil {
+	if err := publisher.client.XAdd(ctx, &redisclient.XAddArgs{
+		Stream: messageCreatedStream,
+		MaxLen: publisher.maxLen,
+		Approx: true,
+		Values: map[string]any{
+			"payload": string(payload),
+		},
+	}).Err(); err != nil {
 		return fmt.Errorf("publishing message created event for message %q: %w", event.MessageUuid, err)
 	}
 

@@ -12,57 +12,47 @@ import (
 
 type MessageCreatedHandler func(context.Context, domain.MessageCreatedEvent) error
 
-// MessageCreatedConsumer consumes message-created events through Redis Pub/Sub.
+// MessageCreatedConsumer consumes message-created events through Redis Streams.
 type MessageCreatedConsumer struct {
-	client   *redisclient.Client
-	handlers []MessageCreatedHandler
+	client       *redisclient.Client
+	consumerName string
+	handlers     []MessageCreatedHandler
 }
 
 // NewMessageCreatedConsumer constructs a Redis-backed message-created consumer.
 func NewMessageCreatedConsumer(client *redisclient.Client, handlers ...MessageCreatedHandler) *MessageCreatedConsumer {
 	return &MessageCreatedConsumer{
-		client:   client,
-		handlers: handlers,
+		client:       client,
+		consumerName: buildConsumerName(),
+		handlers:     handlers,
 	}
 }
 
 // ListenAndConsume starts message-created consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageCreatedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		if err := consumer.listenAndConsume(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		err := listenAndConsumeStream(ctx, consumer.client, messageCreatedStream, consumer.consumerName, consumer.handlePayload)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message created events: %v", err)
 		}
 	}()
 }
 
-func (consumer *MessageCreatedConsumer) listenAndConsume(ctx context.Context) error {
-	pubsub := consumer.client.Subscribe(ctx, messageCreatedChannel)
-	defer pubsub.Close()
+func (consumer *MessageCreatedConsumer) handlePayload(ctx context.Context, payload string) bool {
+	var event domain.MessageCreatedEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		log.Printf("unmarshalling message created event: %v", err)
+		return true
+	}
 
-	channel := pubsub.Channel()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case message, ok := <-channel:
-			if !ok {
-				return nil
-			}
-
-			var event domain.MessageCreatedEvent
-			if err := json.Unmarshal([]byte(message.Payload), &event); err != nil {
-				log.Printf("unmarshalling message created event: %v", err)
-				continue
-			}
-
-			for _, handler := range consumer.handlers {
-				if err := handler(ctx, event); err != nil {
-					log.Printf("handling message created event %q: %v", event.MessageUuid, err)
-					continue
-				}
-			}
+	for _, handler := range consumer.handlers {
+		if err := handler(ctx, event); err != nil {
+			log.Printf("handling message created event %q: %v", event.MessageUuid, err)
+			return true
 		}
 	}
+
+	return true
 }
 
 // Ensure MessageCreatedConsumer implements the message-created consumer contract.

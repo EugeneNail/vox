@@ -53,9 +53,9 @@ func main() {
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
 
 	// --- Section: Event delivery ---
-	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient)
-	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient)
-	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient)
+	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient, configuration.Streams.MessageCreatedMaxLen)
+	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient, configuration.Streams.MessageEditedMaxLen)
+	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient, configuration.Streams.MessageDeletedMaxLen)
 	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	updateMessageWebSocketSender := websocket_infrastructure.NewUpdateMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	removeMessageWebSocketSender := websocket_infrastructure.NewRemoveMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)

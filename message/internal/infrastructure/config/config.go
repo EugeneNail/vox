@@ -10,6 +10,7 @@ type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
 	Redis    RedisConfig
+	Streams  StreamsConfig
 }
 
 // AppConfig contains application runtime settings.
@@ -31,6 +32,13 @@ type PostgresConfig struct {
 type RedisConfig struct {
 	Host string
 	Port int
+}
+
+// StreamsConfig contains Redis Streams retention settings.
+type StreamsConfig struct {
+	MessageCreatedMaxLen int64
+	MessageEditedMaxLen  int64
+	MessageDeletedMaxLen int64
 }
 
 // NewConfig reads application configuration from environment variables.
@@ -80,6 +88,21 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	messageCreatedMaxLen, err := readInt64Env("MESSAGE_CREATED_STREAM_MAX_LEN")
+	if err != nil {
+		return nil, err
+	}
+
+	messageEditedMaxLen, err := readInt64Env("MESSAGE_EDITED_STREAM_MAX_LEN")
+	if err != nil {
+		return nil, err
+	}
+
+	messageDeletedMaxLen, err := readInt64Env("MESSAGE_DELETED_STREAM_MAX_LEN")
+	if err != nil {
+		return nil, err
+	}
+
 	configuration := &Config{
 		App: AppConfig{
 			Port: appPort,
@@ -95,6 +118,11 @@ func NewConfig() (*Config, error) {
 		Redis: RedisConfig{
 			Host: redisHost,
 			Port: redisPort,
+		},
+		Streams: StreamsConfig{
+			MessageCreatedMaxLen: messageCreatedMaxLen,
+			MessageEditedMaxLen:  messageEditedMaxLen,
+			MessageDeletedMaxLen: messageDeletedMaxLen,
 		},
 	}
 
@@ -121,6 +149,21 @@ func readIntEnv(key string) (int, error) {
 	parsedValue, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, fmt.Errorf("parsing environment variable %q as int: %w", key, err)
+	}
+
+	return parsedValue, nil
+}
+
+// readInt64Env reads and parses a required int64 environment variable.
+func readInt64Env(key string) (int64, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return 0, fmt.Errorf("environment variable %q is required", key)
+	}
+
+	parsedValue, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parsing environment variable %q as int64: %w", key, err)
 	}
 
 	return parsedValue, nil

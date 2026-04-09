@@ -12,57 +12,47 @@ import (
 
 type MessageEditedHandler func(context.Context, domain.MessageEditedEvent) error
 
-// MessageEditedConsumer consumes message-edited events through Redis Pub/Sub.
+// MessageEditedConsumer consumes message-edited events through Redis Streams.
 type MessageEditedConsumer struct {
-	client   *redisclient.Client
-	handlers []MessageEditedHandler
+	client       *redisclient.Client
+	consumerName string
+	handlers     []MessageEditedHandler
 }
 
 // NewMessageEditedConsumer constructs a Redis-backed message-edited consumer.
 func NewMessageEditedConsumer(client *redisclient.Client, handlers ...MessageEditedHandler) *MessageEditedConsumer {
 	return &MessageEditedConsumer{
-		client:   client,
-		handlers: handlers,
+		client:       client,
+		consumerName: buildConsumerName(),
+		handlers:     handlers,
 	}
 }
 
 // ListenAndConsume starts message-edited consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageEditedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		if err := consumer.listenAndConsume(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		err := listenAndConsumeStream(ctx, consumer.client, messageEditedStream, consumer.consumerName, consumer.handlePayload)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message edited events: %v", err)
 		}
 	}()
 }
 
-func (consumer *MessageEditedConsumer) listenAndConsume(ctx context.Context) error {
-	pubsub := consumer.client.Subscribe(ctx, messageEditedChannel)
-	defer pubsub.Close()
+func (consumer *MessageEditedConsumer) handlePayload(ctx context.Context, payload string) bool {
+	var event domain.MessageEditedEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		log.Printf("unmarshalling message edited event: %v", err)
+		return true
+	}
 
-	channel := pubsub.Channel()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case message, ok := <-channel:
-			if !ok {
-				return nil
-			}
-
-			var event domain.MessageEditedEvent
-			if err := json.Unmarshal([]byte(message.Payload), &event); err != nil {
-				log.Printf("unmarshalling message edited event: %v", err)
-				continue
-			}
-
-			for _, handler := range consumer.handlers {
-				if err := handler(ctx, event); err != nil {
-					log.Printf("handling message edited event %q: %v", event.MessageUuid, err)
-					continue
-				}
-			}
+	for _, handler := range consumer.handlers {
+		if err := handler(ctx, event); err != nil {
+			log.Printf("handling message edited event %q: %v", event.MessageUuid, err)
+			return true
 		}
 	}
+
+	return true
 }
 
 // Ensure MessageEditedConsumer implements the message-edited consumer contract.
