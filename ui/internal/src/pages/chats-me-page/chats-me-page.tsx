@@ -337,6 +337,18 @@ export default function ChatsMePage() {
         }
     }
 
+    async function copyMessageLink(message: ChatMessage) {
+        const messageLink = `${window.location.origin}/chats/@me/${message.chatUuid}/${message.uuid}`;
+
+        try {
+            await navigator.clipboard.writeText(messageLink);
+        } catch {
+            copyTextWithFallback(messageLink);
+        } finally {
+            setMessageContextMenu(null);
+        }
+    }
+
     return (
         <section className="chats-me-page">
             <aside className="chats-me-page__sidebar" aria-label="Chats">
@@ -464,6 +476,14 @@ export default function ChatsMePage() {
                                 >
                                     <span className="material-symbols-rounded" aria-hidden="true">content_copy</span>
                                     Copy text
+                                </button>
+                                <button
+                                    className="chats-me-page__context-menu-button"
+                                    type="button"
+                                    onClick={() => void copyMessageLink(messageContextMenu.message)}
+                                >
+                                    <span className="material-symbols-rounded" aria-hidden="true">link</span>
+                                    Copy Message Link
                                 </button>
                                 {messageContextMenu.message.userUuid === authenticatedUserUuid && (
                                     <div className="chats-me-page__context-menu-danger">
