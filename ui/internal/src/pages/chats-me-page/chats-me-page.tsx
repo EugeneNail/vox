@@ -10,6 +10,7 @@ type Chat = {
     uuid: string;
     name: string | null;
     avatar: string | null;
+    isPrivate: boolean;
     createdByUserUuid: string;
     memberUuids: string[];
     createdAt: string;
