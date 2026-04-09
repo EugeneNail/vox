@@ -135,5 +135,3 @@ func buildConsumerName() string {
 
 	return hostName
 }
-
-var _ events.UserCreatedConsumer = (*UserCreatedConsumer)(nil)
