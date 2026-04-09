@@ -5,5 +5,8 @@ Authorization: Bearer <login-token>
 {
     "memberUuids": [
         "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-    ]
+    ],
+    "name": "Private chat",
+    "avatar": "https://cdn.example.com/chat-avatar.png",
+    "isPrivate": true
 }
