@@ -10,6 +10,8 @@ import { useApiClient } from "../../hooks/use-api-client";
 import "./signup-page.sass";
 
 type SignupForm = {
+    name: string;
+    nickname: string;
     email: string;
     password: string;
     passwordConfirmation: string;
@@ -23,6 +25,8 @@ type AuthenticateResponse = {
 };
 
 const initialForm: SignupForm = {
+    name: "",
+    nickname: "",
     email: "",
     password: "",
     passwordConfirmation: "",
@@ -102,6 +106,26 @@ export default function SignupPage() {
                 text="Join once and step straight into your next server."
             >
                 <form className="signup-page__form" onSubmit={handleSubmit}>
+                    <FormTextField
+                        label="Name"
+                        name="name"
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Your display name"
+                        value={form.name}
+                        error={violations.name}
+                        onChange={handleInputChange}
+                    />
+                    <FormTextField
+                        label="Nickname"
+                        name="nickname"
+                        type="text"
+                        autoComplete="nickname"
+                        placeholder="your.nickname"
+                        value={form.nickname}
+                        error={violations.nickname}
+                        onChange={handleInputChange}
+                    />
                     <FormTextField
                         label="Email"
                         name="email"
