@@ -1,8 +1,2 @@
-
 /.idea
-auth/docker/.env.development
-/.idea
-proxy/docker/.env.development
-message/docker/.env.development
-broker/docker/.env.development
-profile/docker/.env.development
+*/docker/.env.development
