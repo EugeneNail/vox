@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EugeneNail/vox/auth/internal/domain"
+	"github.com/EugeneNail/vox/auth/internal/domain/events"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/google/uuid"
@@ -20,7 +21,7 @@ var ErrEmailAlreadyExists = errors.New("user with this email already exists")
 // Handler creates users through the create_user use-case.
 type Handler struct {
 	repository           domain.UserRepository
-	userCreatedPublisher domain.UserCreatedPublisher
+	userCreatedPublisher events.UserCreatedPublisher
 }
 
 // Command contains the input required to create a user.
@@ -31,7 +32,7 @@ type Command struct {
 }
 
 // NewHandler constructs a create_user handler with its dependencies.
-func NewHandler(repository domain.UserRepository, userCreatedPublisher domain.UserCreatedPublisher) *Handler {
+func NewHandler(repository domain.UserRepository, userCreatedPublisher events.UserCreatedPublisher) *Handler {
 	return &Handler{
 		repository:           repository,
 		userCreatedPublisher: userCreatedPublisher,
@@ -88,7 +89,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating user with email %q: %w", user.Email, err)
 	}
 
-	if err := handler.userCreatedPublisher.Publish(ctx, domain.UserCreatedEvent{
+	if err := handler.userCreatedPublisher.Publish(ctx, events.UserCreated{
 		UserUuid:  user.Uuid,
 		CreatedAt: user.CreatedAt,
 	}); err != nil {

@@ -1,4 +1,4 @@
-package domain
+package events
 
 import (
 	"context"
@@ -7,13 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserCreatedEvent is emitted after auth successfully creates a user.
-type UserCreatedEvent struct {
+// UserCreated is emitted after auth successfully creates a user.
+type UserCreated struct {
 	UserUuid  uuid.UUID `json:"userUuid"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
 // UserCreatedPublisher publishes user-created events.
 type UserCreatedPublisher interface {
-	Publish(ctx context.Context, event UserCreatedEvent) error
+	Publish(ctx context.Context, event UserCreated) error
 }
