@@ -1,0 +1,25 @@
+services:
+  attachments:
+    container_name: vox-attachments-app
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+    env_file:
+      - .env.development
+    ports:
+      - "10010:${APP_PORT}"
+    volumes:
+      - vox-attachments-images-data:${IMAGES_DIR}
+    networks:
+      - vox-shared-network
+      - vox-attachments-local-network
+
+volumes:
+  vox-attachments-images-data:
+    name: vox-attachments-images-data
+
+networks:
+  vox-shared-network:
+    external: true
+  vox-attachments-local-network:
+    name: vox-attachments-local-network
