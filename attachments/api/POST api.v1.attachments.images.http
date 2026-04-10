@@ -1,0 +1,9 @@
+POST http://127.0.0.1:10010/api/v1/attachments/images
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="example.png"
+Content-Type: image/png
+
+< ./example.png
+--boundary--
