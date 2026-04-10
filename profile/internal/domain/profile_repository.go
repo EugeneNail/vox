@@ -9,6 +9,7 @@ import (
 // ProfileRepository describes profile persistence required by the domain and application.
 type ProfileRepository interface {
 	FindByUserUuid(ctx context.Context, userUuid uuid.UUID) (*Profile, error)
+	FindAllByUserUuids(ctx context.Context, userUuids []uuid.UUID) ([]Profile, error)
 	Search(ctx context.Context, query string, limit int) ([]Profile, error)
 	Create(ctx context.Context, profile Profile) error
 	Update(ctx context.Context, profile Profile) error

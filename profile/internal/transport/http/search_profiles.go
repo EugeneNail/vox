@@ -10,6 +10,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/search_profiles"
+	"github.com/EugeneNail/vox/profile/internal/transport/http/resource"
 )
 
 type SearchProfilesHandler struct {
@@ -68,5 +69,15 @@ func (handler *SearchProfilesHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("handling the SearchProfiles usecase: %w", err)
 	}
 
-	return http.StatusOK, results
+	resources := make([]resource.Profile, 0, len(results))
+	for _, result := range results {
+		resources = append(resources, resource.Profile{
+			UserUuid: result.UserUuid,
+			Avatar:   result.Avatar,
+			Name:     result.Name,
+			Nickname: result.Nickname,
+		})
+	}
+
+	return http.StatusOK, resources
 }

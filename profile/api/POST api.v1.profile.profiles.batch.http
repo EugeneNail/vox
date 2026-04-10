@@ -1,0 +1,9 @@
+POST http://127.0.0.1:10000/api/v1/profile/profiles/batch
+Content-Type: application/json
+
+{
+    "userUuids": [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002"
+    ]
+}

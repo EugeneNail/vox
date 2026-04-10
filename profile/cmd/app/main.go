@@ -8,6 +8,7 @@ import (
 
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/create_profile"
+	"github.com/EugeneNail/vox/profile/internal/application/usecases/get_profiles"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/search_profiles"
 	"github.com/EugeneNail/vox/profile/internal/domain/events"
 	"github.com/EugeneNail/vox/profile/internal/infrastructure/config"
@@ -41,6 +42,7 @@ func main() {
 
 	// --- Section: Application use-cases ---
 	createProfileHandler := create_profile.NewHandler(profileRepository)
+	getProfilesHandler := get_profiles.NewHandler(profileRepository)
 	searchProfilesHandler := search_profiles.NewHandler(profileRepository)
 
 	// --- Section: Event consumers ---
@@ -54,10 +56,12 @@ func main() {
 	userCreatedConsumer.ListenAndConsume(context.Background())
 
 	// --- Section: HTTP transport ---
+	getProfilesHttpHandler := transport_http.NewGetProfilesHandler(getProfilesHandler)
 	searchProfilesHttpHandler := transport_http.NewSearchProfilesHandler(searchProfilesHandler)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
+	webServer.HandleFunc("POST   /api/v1/profile/profiles/batch", middleware.WriteJsonResponse(getProfilesHttpHandler.Handle))
 	webServer.HandleFunc("GET    /api/v1/profile/search", middleware.WriteJsonResponse(searchProfilesHttpHandler.Handle))
 
 	// --- Section: HTTP server ---
