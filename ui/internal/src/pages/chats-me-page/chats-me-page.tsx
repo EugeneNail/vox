@@ -45,6 +45,7 @@ export default function ChatsMePage() {
     const { addMessageListener, removeMessageListener, subscribeChat, unsubscribeChat, updateMessageListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const searchInputRef = useRef<HTMLInputElement | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -521,6 +522,7 @@ export default function ChatsMePage() {
     }
 
     function clearSearch() {
+        searchInputRef.current?.blur();
         setSearchQuery("");
         setSearchProfiles([]);
         setSearchProfilesError(null);
@@ -541,12 +543,23 @@ export default function ChatsMePage() {
                             type="text"
                             name="search"
                             placeholder="Search users"
+                            ref={searchInputRef}
                             value={searchQuery}
                             onChange={(event) => setSearchQuery(event.target.value)}
                             onFocus={() => setIsSearchFocused(true)}
+                            onBlur={() => setIsSearchFocused(false)}
                         />
                         {isSearchActive && (
-                            <button className="chats-me-page__search-clear" type="button" onClick={clearSearch}>
+                            <button
+                                className="chats-me-page__search-clear"
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    clearSearch();
+                                }}
+                            >
                                 <span className="material-symbols-rounded" aria-hidden="true">close</span>
                             </button>
                         )}
