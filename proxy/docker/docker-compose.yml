@@ -4,8 +4,11 @@ services:
     image: nginx:1.29-alpine
     ports:
       - "${PROXY_PORT}:80"
+      - "${PROXY_STATIC_PORT}:81"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./vox-api-locations.conf:/etc/nginx/includes/vox-api-locations.conf:ro
+      - ./vox-proxy-headers.conf:/etc/nginx/includes/vox-proxy-headers.conf:ro
     networks:
       - vox-shared-network
 
