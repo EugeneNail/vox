@@ -4,6 +4,7 @@ services:
     build:
       context: ..
       dockerfile: docker/app.Dockerfile
+      target: dev
     env_file:
       - .env.development
     volumes:
@@ -11,6 +12,20 @@ services:
       - vox-ui-node-modules:/app/internal/node_modules
     working_dir: /app/internal
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    networks:
+      - vox-shared-network
+
+  ui-static:
+    container_name: vox-ui-static-app
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+      target: prod
+    env_file:
+      - .env.development
+    environment:
+      UI_PORT: "5174"
+    command: ["/usr/local/bin/ui-service"]
     networks:
       - vox-shared-network
 
