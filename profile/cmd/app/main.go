@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/EugeneNail/vox/lib-common/http/middleware"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/create_profile"
+	"github.com/EugeneNail/vox/profile/internal/application/usecases/search_profiles"
 	"github.com/EugeneNail/vox/profile/internal/domain/events"
 	"github.com/EugeneNail/vox/profile/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/profile/internal/infrastructure/postgres"
@@ -39,6 +41,7 @@ func main() {
 
 	// --- Section: Application use-cases ---
 	createProfileHandler := create_profile.NewHandler(profileRepository)
+	searchProfilesHandler := search_profiles.NewHandler(profileRepository)
 
 	// --- Section: Event consumers ---
 	userCreatedConsumer := redis_infrastructure.NewUserCreatedConsumer(redisClient, func(ctx context.Context, event events.UserCreated) error {
@@ -51,11 +54,11 @@ func main() {
 	userCreatedConsumer.ListenAndConsume(context.Background())
 
 	// --- Section: HTTP transport ---
-	httpHandler := transport_http.NewHandler(profileRepository)
-	_ = httpHandler
+	searchProfilesHttpHandler := transport_http.NewSearchProfilesHandler(searchProfilesHandler)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
+	webServer.HandleFunc("GET    /api/v1/profile/search", middleware.WriteJsonResponse(searchProfilesHttpHandler.Handle))
 
 	// --- Section: HTTP server ---
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
