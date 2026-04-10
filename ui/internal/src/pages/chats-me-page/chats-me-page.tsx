@@ -4,6 +4,7 @@ import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
 import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
+import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
 import "./chats-me-page.sass";
 
 type Chat = {
@@ -26,13 +27,6 @@ type ChatMessage = {
     updatedAt: string;
     isPending?: boolean;
     pendingServerUuid?: string;
-};
-
-type SearchProfile = {
-    userUuid: string;
-    avatar: string | null;
-    name: string;
-    nickname: string;
 };
 
 type MessageContextMenu = {
@@ -62,14 +56,49 @@ export default function ChatsMePage() {
     const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
     const [isDeletingMessage, setIsDeletingMessage] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [searchProfiles, setSearchProfiles] = useState<SearchProfile[]>([]);
+    const [searchProfiles, setSearchProfiles] = useState<PublicProfile[]>([]);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [isSearchingProfiles, setIsSearchingProfiles] = useState(false);
     const [searchProfilesError, setSearchProfilesError] = useState<string | null>(null);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
+
+    useEffect(() => {
+        const staleCachedUserUuids = getStaleCachedUserUuids();
+        if (staleCachedUserUuids.length === 0) {
+            return;
+        }
+
+        let isMounted = true;
+
+        async function refreshStaleProfiles() {
+            try {
+                const { data } = await apiClient.post<PublicProfile[]>("/api/v1/profile/profiles/batch", {
+                    userUuids: staleCachedUserUuids,
+                });
+                if (!isMounted || data.length === 0) {
+                    return;
+                }
+
+                upsertProfiles(data);
+                setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                    ...currentProfilesByUserUuid,
+                    ...profilesByUserUuidFromProfiles(data),
+                }));
+            } catch {
+                // Keep stale cache entries until a later refresh succeeds.
+            }
+        }
+
+        void refreshStaleProfiles();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [apiClient]);
 
     useEffect(() => {
         let isMounted = true;
@@ -103,6 +132,53 @@ export default function ChatsMePage() {
     }, [apiClient]);
 
     useEffect(() => {
+        const referencedUserUuids = collectReferencedUserUuids(chats, messages, searchProfiles);
+        if (referencedUserUuids.length === 0) {
+            return;
+        }
+
+        const cachedProfiles = getCachedProfilesByUserUuids(referencedUserUuids);
+        if (Object.keys(cachedProfiles).length > 0) {
+            setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                ...currentProfilesByUserUuid,
+                ...cachedProfiles,
+            }));
+        }
+
+        const missingOrStaleUserUuids = getMissingOrStaleUserUuids(referencedUserUuids);
+        if (missingOrStaleUserUuids.length === 0) {
+            return;
+        }
+
+        let isMounted = true;
+
+        async function loadProfiles() {
+            try {
+                const { data } = await apiClient.post<PublicProfile[]>("/api/v1/profile/profiles/batch", {
+                    userUuids: missingOrStaleUserUuids,
+                });
+                if (!isMounted || data.length === 0) {
+                    return;
+                }
+
+                upsertProfiles(data);
+                setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                    ...currentProfilesByUserUuid,
+                    ...profilesByUserUuidFromProfiles(data),
+                }));
+            } catch {
+                // Keep rendering cached or fallback values if profile loading fails.
+            }
+        }
+
+        void loadProfiles();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [apiClient, chats, messages, searchProfiles]);
+
+    useEffect(() => {
         if (!isSearchActive) {
             setSearchProfiles([]);
             setSearchProfilesError(null);
@@ -124,12 +200,18 @@ export default function ChatsMePage() {
             setSearchProfilesError(null);
 
             try {
-                const { data } = await apiClient.get<SearchProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(trimmedQuery)}&limit=10`);
+                const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(trimmedQuery)}&limit=10`);
                 if (!isMounted) {
                     return;
                 }
 
-                setSearchProfiles(data.filter((profile) => profile.userUuid !== authenticatedUserUuid));
+                const nextProfiles = data.filter((profile) => profile.userUuid !== authenticatedUserUuid);
+                upsertProfiles(nextProfiles);
+                setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                    ...currentProfilesByUserUuid,
+                    ...profilesByUserUuidFromProfiles(nextProfiles),
+                }));
+                setSearchProfiles(nextProfiles);
             } catch {
                 if (!isMounted) {
                     return;
@@ -413,9 +495,15 @@ export default function ChatsMePage() {
         }
     }
 
-    async function createPrivateChat(profile: SearchProfile) {
+    async function createPrivateChat(profile: PublicProfile) {
         setIsCreatingChat(true);
         try {
+            upsertProfiles([profile]);
+            setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                ...currentProfilesByUserUuid,
+                [profile.userUuid]: profile,
+            }));
+
             const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats", {
                 memberUuids: [profile.userUuid],
                 name: null,
@@ -512,7 +600,7 @@ export default function ChatsMePage() {
                                     to={`/chats/@me/${chat.uuid}`}
                                 >
                                     <span className="chats-me-page__avatar" aria-hidden="true" />
-                                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid)}</span>
+                                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
                                 </NavLink>
                             ))}
                         </>
@@ -525,7 +613,7 @@ export default function ChatsMePage() {
                     <div className="chats-me-page__chat-shell">
                         <header className="chats-me-page__chat-header">
                             <p className="chats-me-page__eyebrow">Selected chat</p>
-                            <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid)}</h2>
+                            <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
                         </header>
 
                         <div className="chats-me-page__messages" aria-live="polite" onContextMenu={(event) => event.preventDefault()}>
@@ -556,7 +644,7 @@ export default function ChatsMePage() {
                                         <div className="chats-me-page__message-body">
                                             {isThreadStart && (
                                                 <div className="chats-me-page__message-header">
-                                                    <p className="chats-me-page__message-author">{message.userUuid}</p>
+                                                    <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
                                                 </div>
                                             )}
                                             <p className="chats-me-page__message-text">
@@ -672,7 +760,7 @@ export default function ChatsMePage() {
                             </div>
                             <div className="chats-me-page__message-body">
                                 <div className="chats-me-page__message-header">
-                                    <p className="chats-me-page__message-author">{messagePendingDeletion.userUuid}</p>
+                                    <p className="chats-me-page__message-author">{getMessageAuthorName(messagePendingDeletion, profilesByUserUuid)}</p>
                                 </div>
                                 <p className="chats-me-page__message-text">
                                     {renderMessageText(messagePendingDeletion.text)}
@@ -706,13 +794,21 @@ export default function ChatsMePage() {
     );
 }
 
-function getChatTitle(chat: Chat, authenticatedUserUuid: string | null) {
+function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
     if (chat.name) {
         return chat.name;
     }
 
+    if (!chat.isPrivate) {
+        return chat.uuid;
+    }
+
     const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
-    return companionUuid ?? chat.uuid;
+    if (!companionUuid) {
+        return chat.uuid;
+    }
+
+    return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
 }
 
 function formatMessageTime(date: string) {
@@ -742,6 +838,10 @@ function isMessageEdited(message: ChatMessage) {
 
 function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUuid: string | null) {
     return !message.isPending && message.userUuid === authenticatedUserUuid;
+}
+
+function getMessageAuthorName(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return profilesByUserUuid[message.userUuid]?.name ?? message.userUuid;
 }
 
 function renderMessageText(text: string) {
@@ -791,4 +891,19 @@ function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
+}
+
+function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
+    return profiles.reduce<Record<string, PublicProfile>>((accumulator, profile) => {
+        accumulator[profile.userUuid] = profile;
+        return accumulator;
+    }, {});
+}
+
+function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[], searchProfiles: PublicProfile[]) {
+    return Array.from(new Set([
+        ...chats.flatMap((chat) => chat.memberUuids),
+        ...messages.map((message) => message.userUuid),
+        ...searchProfiles.map((profile) => profile.userUuid),
+    ]));
 }
