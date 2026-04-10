@@ -72,6 +72,22 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, validationError
 	}
 
+	if command.IsPrivate {
+		existingChat, err := handler.chatRepository.FindPrivateByMemberUuids(ctx, command.CreatorUuid, command.MemberUuids[0])
+		if err != nil {
+			return uuid.Nil, fmt.Errorf(
+				"finding existing private chat for members %q and %q: %w",
+				command.CreatorUuid,
+				command.MemberUuids[0],
+				err,
+			)
+		}
+
+		if existingChat != nil {
+			return existingChat.Uuid, nil
+		}
+	}
+
 	now := time.Now().UTC()
 	chat := domain.Chat{
 		Uuid:              uuid.UUID(uuidv7.New()),

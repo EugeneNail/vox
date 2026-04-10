@@ -10,5 +10,6 @@ import (
 type ChatRepository interface {
 	FindByUuid(ctx context.Context, chatUuid uuid.UUID) (*Chat, error)
 	FindAllByMemberUuid(ctx context.Context, memberUuid uuid.UUID) ([]Chat, error)
+	FindPrivateByMemberUuids(ctx context.Context, firstMemberUuid uuid.UUID, secondMemberUuid uuid.UUID) (*Chat, error)
 	CreateWithMembers(ctx context.Context, chat Chat, members []ChatMember) error
 }

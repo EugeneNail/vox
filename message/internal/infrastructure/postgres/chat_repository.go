@@ -90,6 +90,57 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 	return chats, nil
 }
 
+// FindPrivateByMemberUuids returns a private chat with exactly the given two members or nil when it does not exist.
+func (repository *ChatRepository) FindPrivateByMemberUuids(ctx context.Context, firstMemberUuid uuid.UUID, secondMemberUuid uuid.UUID) (*domain.Chat, error) {
+	const query = `
+		SELECT c.uuid, c.name, c.avatar, c.is_private, c.created_by_user_uuid, c.created_at, c.updated_at
+		FROM chats c
+		WHERE c.is_private = TRUE
+		  AND 2 = (
+			SELECT COUNT(*)
+			FROM chat_members cm_all
+			WHERE cm_all.chat_uuid = c.uuid
+		  )
+		  AND EXISTS (
+			SELECT 1
+			FROM chat_members cm_first
+			WHERE cm_first.chat_uuid = c.uuid
+			  AND cm_first.user_uuid = $1
+		  )
+		  AND EXISTS (
+			SELECT 1
+			FROM chat_members cm_second
+			WHERE cm_second.chat_uuid = c.uuid
+			  AND cm_second.user_uuid = $2
+		  )
+		LIMIT 1
+	`
+
+	var chat domain.Chat
+	if err := repository.database.QueryRowContext(ctx, query, firstMemberUuid, secondMemberUuid).Scan(
+		&chat.Uuid,
+		&chat.Name,
+		&chat.Avatar,
+		&chat.IsPrivate,
+		&chat.CreatedByUserUuid,
+		&chat.CreatedAt,
+		&chat.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf(
+			"finding private chat by member uuids %q and %q: %w",
+			firstMemberUuid,
+			secondMemberUuid,
+			err,
+		)
+	}
+
+	return &chat, nil
+}
+
 // CreateWithMembers persists a new chat and its initial members in PostgreSQL.
 func (repository *ChatRepository) CreateWithMembers(ctx context.Context, chat domain.Chat, members []domain.ChatMember) error {
 	transaction, err := repository.database.BeginTx(ctx, nil)
