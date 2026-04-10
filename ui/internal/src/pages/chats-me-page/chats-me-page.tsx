@@ -401,7 +401,7 @@ export default function ChatsMePage() {
             return;
         }
 
-        const pendingMessageUuid = `pending-${crypto.randomUUID()}`;
+        const pendingMessageUuid = `pending-${generatePendingMessageUuid()}`;
         const createdAt = new Date().toISOString();
 
         setMessages((currentMessages) => [
@@ -919,4 +919,8 @@ function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[], sear
         ...messages.map((message) => message.userUuid),
         ...searchProfiles.map((profile) => profile.userUuid),
     ]));
+}
+
+function generatePendingMessageUuid() {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
