@@ -1,5 +1,5 @@
 import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
 import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
@@ -28,6 +28,13 @@ type ChatMessage = {
     pendingServerUuid?: string;
 };
 
+type SearchProfile = {
+    userUuid: string;
+    avatar: string | null;
+    name: string;
+    nickname: string;
+};
+
 type MessageContextMenu = {
     message: ChatMessage;
     x: number;
@@ -40,6 +47,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 
 export default function ChatsMePage() {
     const apiClient = useApiClient();
+    const navigate = useNavigate();
     const { addMessageListener, removeMessageListener, subscribeChat, unsubscribeChat, updateMessageListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -53,8 +61,15 @@ export default function ChatsMePage() {
     const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenu | null>(null);
     const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
     const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchProfiles, setSearchProfiles] = useState<SearchProfile[]>([]);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [isSearchingProfiles, setIsSearchingProfiles] = useState(false);
+    const [searchProfilesError, setSearchProfilesError] = useState<string | null>(null);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
+    const isSearchActive = isSearchFocused || searchQuery.length > 0;
 
     useEffect(() => {
         let isMounted = true;
@@ -86,6 +101,54 @@ export default function ChatsMePage() {
             isMounted = false;
         };
     }, [apiClient]);
+
+    useEffect(() => {
+        if (!isSearchActive) {
+            setSearchProfiles([]);
+            setSearchProfilesError(null);
+            setIsSearchingProfiles(false);
+            return;
+        }
+
+        const trimmedQuery = searchQuery.trim();
+        if (trimmedQuery.length === 0) {
+            setSearchProfiles([]);
+            setSearchProfilesError(null);
+            setIsSearchingProfiles(false);
+            return;
+        }
+
+        let isMounted = true;
+        const timeoutId = window.setTimeout(async () => {
+            setIsSearchingProfiles(true);
+            setSearchProfilesError(null);
+
+            try {
+                const { data } = await apiClient.get<SearchProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(trimmedQuery)}&limit=10`);
+                if (!isMounted) {
+                    return;
+                }
+
+                setSearchProfiles(data.filter((profile) => profile.userUuid !== authenticatedUserUuid));
+            } catch {
+                if (!isMounted) {
+                    return;
+                }
+
+                setSearchProfiles([]);
+                setSearchProfilesError("Could not search users.");
+            } finally {
+                if (isMounted) {
+                    setIsSearchingProfiles(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            isMounted = false;
+            window.clearTimeout(timeoutId);
+        };
+    }, [apiClient, authenticatedUserUuid, isSearchActive, searchQuery]);
 
     useEffect(() => {
         if (!selectedChatUuid) {
@@ -350,36 +413,110 @@ export default function ChatsMePage() {
         }
     }
 
+    async function createPrivateChat(profile: SearchProfile) {
+        setIsCreatingChat(true);
+        try {
+            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats", {
+                memberUuids: [profile.userUuid],
+                name: null,
+                avatar: null,
+                isPrivate: true,
+            });
+
+            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            setChats(nextChats);
+            clearSearch();
+            navigate(`/chats/@me/${createdChatUuid}`);
+        } finally {
+            setIsCreatingChat(false);
+        }
+    }
+
+    function clearSearch() {
+        setSearchQuery("");
+        setSearchProfiles([]);
+        setSearchProfilesError(null);
+        setIsSearchFocused(false);
+        setIsSearchingProfiles(false);
+    }
+
     return (
         <section className="chats-me-page">
             <aside className="chats-me-page__sidebar" aria-label="Chats">
                 <div className="chats-me-page__sidebar-header">
                     <p className="chats-me-page__eyebrow">Messages</p>
                     <h1 className="chats-me-page__title">Chats</h1>
+                    <label className="chats-me-page__search">
+                        <span className="material-symbols-rounded chats-me-page__search-icon" aria-hidden="true">search</span>
+                        <input
+                            className="chats-me-page__search-input"
+                            type="text"
+                            name="search"
+                            placeholder="Search users"
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            onFocus={() => setIsSearchFocused(true)}
+                        />
+                        {isSearchActive && (
+                            <button className="chats-me-page__search-clear" type="button" onClick={clearSearch}>
+                                <span className="material-symbols-rounded" aria-hidden="true">close</span>
+                            </button>
+                        )}
+                    </label>
                 </div>
 
                 <div className="chats-me-page__list">
-                    {isLoading && <p className="chats-me-page__state">Loading chats...</p>}
-                    {error && <p className="chats-me-page__state chats-me-page__state--error">{error}</p>}
-                    {!isLoading && !error && chats.length === 0 && (
-                        <p className="chats-me-page__state">No chats yet.</p>
+                    {isSearchActive ? (
+                        <>
+                            {searchQuery.trim().length === 0 && (
+                                <p className="chats-me-page__state">Type a name or nickname.</p>
+                            )}
+                            {isSearchingProfiles && <p className="chats-me-page__state">Searching users...</p>}
+                            {searchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{searchProfilesError}</p>}
+                            {!isSearchingProfiles && !searchProfilesError && searchQuery.trim().length > 0 && searchProfiles.length === 0 && (
+                                <p className="chats-me-page__state">No users found.</p>
+                            )}
+                            {searchProfiles.map((profile) => (
+                                <button
+                                    className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
+                                    disabled={isCreatingChat}
+                                    key={profile.userUuid}
+                                    type="button"
+                                    onClick={() => void createPrivateChat(profile)}
+                                >
+                                    <span className="chats-me-page__avatar" aria-hidden="true" />
+                                    <span className="chats-me-page__chat-preview">
+                                        <span className="chats-me-page__chat-name">{profile.name}</span>
+                                        <span className="chats-me-page__chat-nickname">@{profile.nickname}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </>
+                    ) : (
+                        <>
+                            {isLoading && <p className="chats-me-page__state">Loading chats...</p>}
+                            {error && <p className="chats-me-page__state chats-me-page__state--error">{error}</p>}
+                            {!isLoading && !error && chats.length === 0 && (
+                                <p className="chats-me-page__state">No chats yet.</p>
+                            )}
+                            {chats.map((chat) => (
+                                <NavLink
+                                    className={
+                                        ({ isActive }) => (
+                                            isActive
+                                                ? "chats-me-page__chat-button chats-me-page__chat-button--active"
+                                                : "chats-me-page__chat-button"
+                                        )
+                                    }
+                                    key={chat.uuid}
+                                    to={`/chats/@me/${chat.uuid}`}
+                                >
+                                    <span className="chats-me-page__avatar" aria-hidden="true" />
+                                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid)}</span>
+                                </NavLink>
+                            ))}
+                        </>
                     )}
-                    {chats.map((chat) => (
-                        <NavLink
-                            className={
-                                ({ isActive }) => (
-                                    isActive
-                                        ? "chats-me-page__chat-button chats-me-page__chat-button--active"
-                                        : "chats-me-page__chat-button"
-                                )
-                            }
-                            key={chat.uuid}
-                            to={`/chats/@me/${chat.uuid}`}
-                        >
-                            <span className="chats-me-page__avatar" aria-hidden="true" />
-                            <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid)}</span>
-                        </NavLink>
-                    ))}
                 </div>
             </aside>
 

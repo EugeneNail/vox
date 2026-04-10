@@ -27,6 +27,55 @@
   display: grid
   gap: 8px
 
+.chats-me-page__search
+  position: relative
+  display: flex
+  align-items: center
+  min-height: 44px
+  padding: 0 12px 0 40px
+  border: 1px solid rgba(255, 255, 255, 0.1)
+  border-radius: 14px
+  background: rgba(255, 255, 255, 0.04)
+
+.chats-me-page__search:focus-within
+  border-color: rgba(240, 197, 169, 0.28)
+  background: rgba(240, 197, 169, 0.08)
+
+.chats-me-page__search-icon
+  position: absolute
+  left: 12px
+  color: rgba(246, 239, 228, 0.5)
+  font-size: 18px
+
+.chats-me-page__search-input
+  flex: 1
+  width: 100%
+  min-width: 0
+  border: 0
+  background: transparent
+  color: #f6efe4
+  font: inherit
+  outline: 0
+
+.chats-me-page__search-input::placeholder
+  color: rgba(246, 239, 228, 0.42)
+
+.chats-me-page__search-clear
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 28px
+  height: 28px
+  border: 0
+  border-radius: 999px
+  background: transparent
+  color: rgba(246, 239, 228, 0.58)
+  cursor: pointer
+
+.chats-me-page__search-clear:hover
+  background: rgba(255, 255, 255, 0.08)
+  color: #f6efe4
+
 .chats-me-page__eyebrow
   margin: 0
   color: #f0c5a9
@@ -83,6 +132,24 @@
   font-size: 14px
   text-overflow: ellipsis
   white-space: nowrap
+
+.chats-me-page__chat-preview
+  display: grid
+  min-width: 0
+
+.chats-me-page__chat-nickname
+  overflow: hidden
+  color: rgba(246, 239, 228, 0.52)
+  font-size: 12px
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.chats-me-page__chat-button--search-result
+  border: 1px solid transparent
+
+.chats-me-page__chat-button--search-result:disabled
+  cursor: progress
+  opacity: 0.72
 
 .chats-me-page__chat
   display: flex
