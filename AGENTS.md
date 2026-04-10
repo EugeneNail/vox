@@ -2,110 +2,66 @@
 
 ## Commits
 - Use conventional commits in the format `operation (service/scope): English message`.
-- `service/scope` is mandatory. The slash is part of the format.
-- Split changes into semantic groups before committing.
-- Split changes from different microservices into separate commits, even when they implement the same feature.
-- If a change includes shared infrastructure and multiple use-cases, commit shared infrastructure first, then commit each use-case separately.
-- Semantic grouping may split changes within a single file, not only by file.
+- `service/scope` is mandatory.
+- Split commits by semantic groups.
+- Commit changes from different microservices separately, even for one feature.
+- If a change spans shared infrastructure and multiple use-cases, commit shared infrastructure first, then each use-case separately.
 
-## Microservice Boundaries
+## Service Boundaries
 - Each microservice may know only what exists inside its own directory.
 - Do not couple a service to sibling directories during build or runtime.
-- Shared code must be consumed as a Go module dependency unless a different approach is explicitly agreed.
 
 ## Go Modules
-- Shared libraries in repository subdirectories are published as independent Go modules.
-- Subdirectory modules must use path-prefixed tags such as `lib-common/v0.0.1`.
-- Dependent services must reference the module version in `go.mod`, for example `github.com/EugeneNail/acta/lib-common v0.0.1`.
-- For private modules, Go commands must run with:
-    - `GOPRIVATE=github.com/EugeneNail/acta`
-    - `GONOSUMDB=github.com/EugeneNail/acta`
+- Repository submodules are independent Go modules.
+- Use path-prefixed tags such as `lib-common/v0.0.1`.
 
-## DDD And Application
-- Implement use-cases as separate packages.
-- Use one package per use-case.
-- Do not add an extra `command/` or `query/` package level unless there is an explicit architectural need.
+## Application And Domain
+- Implement use-cases as separate packages, one package per use-case.
 - A use-case handler should default to a struct with dependencies and a `Handle` method.
-- Return simple values from a use-case when a dedicated result type does not add real value.
+- Return simple values when a dedicated result type adds no real value.
 - Do not place the happy path above error handling.
-- Do not check `errors.Is` or `errors.As` before a general `if err != nil` when it makes the code harder to read.
-- Wrap errors with context at the current layer instead of returning a bare `err`.
+- Wrap errors with context at the current layer instead of returning bare `err`.
 
 ## HTTP Transport
-- Keep HTTP as a thin adapter layer.
-- HTTP is responsible only for decoding requests, primitive transport validation, calling use-cases, and mapping results to HTTP responses.
-- Transport-level validation is structural validation only. It exists to ensure the request is safe to parse and process, for example to reject excessively large or long values before deeper processing.
-- Business validation must live in application or domain, not in HTTP.
-- Apply middleware in `main`, not by calling it manually inside route handlers.
-- It is acceptable to keep one shared HTTP handler object with route methods.
-- The internal HTTP handler signature is `func(request *http.Request) (status int, payload any)`.
-- Use HTTP method-aware route patterns in `main`, for example `POST /auth/users`.
-- HTTP request example files must be named after the route pattern.
-- Path parameters in HTTP request example file names must keep curly braces, for example `GET api.v1.journal.habits.{uuid}.http`.
-- Keep structural validation in transport separate from business validation.
-- Use HTTP for operations that change or read business state in a request-response manner, for example creating messages, fetching message history, creating chats, adding users, or any operation whose result must be validated, persisted, and returned explicitly.
-- Do not use WebSocket as the default transport for business write operations when ordinary HTTP semantics are sufficient. Prefer HTTP first, then publish the resulting domain event to realtime delivery mechanisms after the state change succeeds.
+- Keep HTTP a thin adapter layer: decode requests, perform structural validation, call use-cases, and map results to responses.
+- Business validation belongs to application/domain, not HTTP.
+- Apply middleware in `main`, not inside route handlers.
+- Internal HTTP handler signature: `func(request *http.Request) (status int, payload any)`.
+- HTTP request example files must be named after the route pattern, keeping path parameter braces.
 
 ## WebSocket Transport
-- Use WebSocket for server-to-client realtime delivery and other connection-scoped runtime interactions.
-- Runtime subscription state over WebSocket is not business state and must not be modeled as persisted domain data unless the product explicitly requires persisted subscriptions.
-- Chat subscribe and unsubscribe actions that only control which live events are pushed to the current browser connection must go through WebSocket, not HTTP.
-- A WebSocket subscribe or unsubscribe command controls only the current live connection, for example "start sending events from chat X to this socket" or "stop sending events from chat X to this socket".
-- Do not treat runtime chat subscription as chat membership. Membership, permissions, and other durable access rules are business state and belong to HTTP/application/domain flows backed by persistence.
-- Use WebSocket for ephemeral, connection-bound actions such as realtime message delivery, typing indicators, presence updates, transient chat subscription changes, and WebRTC signaling.
-- When a browser opens a chat, the expected model is: history is fetched through HTTP, then realtime updates for the currently open chat are subscribed through WebSocket.
-- When a browser switches from one chat to another, the expected model is: unsubscribe from the old chat over WebSocket, subscribe to the new chat over WebSocket, and fetch any required persisted history through HTTP.
-- Keep WebSocket connection management and runtime chat subscription management separate when these states can be separated.
-- Do not make `ChatSubscriptionRegistry` own sockets, and do not make `ConnectionHub` know about chats.
-- Centralize WebSocket connection cleanup in one idempotent method, for example `ConnectionDropper.Drop`, so adding new runtime registries does not require manually adding cleanup calls in every disconnect path.
-- Do not spread WebSocket cleanup across multiple manual calls such as `Unregister + Unsubscribe + Close`.
-- Name WebSocket senders by the client-facing action when they send commands for the UI. Prefer names such as `AddMessageWebSocketSender` over names tied to internal domain events such as `MessageCreatedWebSocketSender`.
-- Avoid generic names such as `Dispatcher`, `Realtime`, or `Manager` when the name does not explain the concrete action.
-- The frontend WebSocket client must support reconnecting and re-sending current runtime subscriptions after reconnect.
+- Use WebSocket for server-to-client realtime delivery and connection-scoped runtime interactions.
+- Runtime WebSocket subscription state is not business state unless the product explicitly requires persisted subscriptions.
+- Expected chat flow: fetch history over HTTP, then subscribe over WebSocket; when switching chats, unsubscribe from the old chat, subscribe to the new chat, and fetch required history over HTTP.
+- Keep connection management and chat subscription management separate when these states can be separated.
+- Centralize WebSocket connection cleanup in one idempotent method, for example `ConnectionDropper.Drop`.
 
 ## Event Consumers
 - If a Redis consumer handles one concrete event type, name it concretely, for example `MessageCreatedConsumer`.
-- A concrete Redis consumer should use `Start` as the method that starts the consumption loop.
-- Pass handlers to a concrete Redis consumer when creating the consumer, not when calling `Start`.
-- If a Redis event must be handled by multiple handlers, pass multiple handlers explicitly to the consumer instead of building a hidden in-process pub/sub layer over Redis Pub/Sub.
 
-## Application Bootstrap
-- When `main.go` dependency wiring becomes long, group the wiring with section comments.
-
-## Frontend Styles
-- CSS class names must follow BEM naming.
-- Use 4 spaces for indentation in `.tsx` files.
-
-## Validation
-- Shared validation must live in `lib-common`, not be copied into services.
-- Validation rules must live in a `rules` subpackage.
-- Validation failures must use a dedicated `validation.Error` type.
-- Transport-level validation and application-level validation are different layers and must stay separate.
-- Transport-level validation checks request structure and safety limits.
-- Application-level validation checks business rules and domain constraints.
-- The same field may be validated more than once across layers if the purpose is different at each layer.
-
-## Errors
-- Error messages must be as specific as possible.
-- If an error can be tied to a concrete entity, include the entity identifier in the message.
-- Prefer messages such as `detaching habit '%uuid%' from entry '%uuid%'` over generic variants such as `detaching habit from entry`.
+## Validation And Errors
+- Validation failures must use `validation.Error`.
+- Transport validation is structural and safety-oriented; business validation belongs to application/domain.
+- The same field may be validated in multiple layers if the purpose differs by layer.
+- Error messages must be as specific as possible and include concrete entity identifiers when applicable.
 
 ## Repositories
-- For repository query methods, use the contract `nil, nil` for "not found" when absence of the entity is not an exceptional situation.
+- For repository query methods, use the contract `nil, nil` for "not found" when absence is not exceptional.
 
-## Docker And Runtime
+## Runtime
 - Each microservice is encapsulated in Docker.
-- If a service uses a database, it must also have its own database container and its own one-shot migrator image.
-- Use a shared Docker network for inter-service communication.
-- Use a dedicated local Docker network for communication inside a single service.
+- If a service uses a database, it must also have its own database container and one-shot migrator image.
+- Use a shared Docker network for inter-service communication and a dedicated local Docker network inside one service.
+- All external entry goes through the `proxy` service.
+- `proxy` is the single ingress point and forwards traffic to services over the internal network.
+- When `main.go` wiring becomes long, group it with section comments.
 
 ## Migrations
 - One migration file may operate on only one table.
-- The number of operations inside that migration file is not limited.
 
-## Proxy
-- All external entry to services goes through the `proxy` service.
-- `proxy` is the single ingress point and forwards traffic to services over the internal network.
+## Frontend
+- CSS class names must follow BEM.
+- Use 4 spaces for indentation in `.tsx` files.
 
 ## IDE Files
 - Do not commit local IDE user files such as `dataSources.xml`.
