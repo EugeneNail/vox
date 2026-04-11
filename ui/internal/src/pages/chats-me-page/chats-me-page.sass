@@ -269,6 +269,53 @@
   gap: 4px
   min-width: 0
 
+.chats-me-page__message-attachments
+  display: flex
+  flex-wrap: wrap
+  gap: 8px
+  min-width: 0
+  padding-top: 6px
+
+.chats-me-page__message-attachment
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  min-width: 0
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 14px
+  background: rgba(255, 255, 255, 0.04)
+  color: inherit
+  text-decoration: none
+
+.chats-me-page__message-attachment--image
+  overflow: hidden
+  max-width: 62.5%
+  max-height: 62.5vh
+  border-radius: 16px
+
+.chats-me-page__message-attachment-image
+  display: block
+  width: 100%
+  height: auto
+  max-height: 100%
+  object-fit: contain
+
+.chats-me-page__message-attachment--document
+  padding: 10px 12px
+
+.chats-me-page__message-attachment-icon
+  flex: 0 0 auto
+  color: #f0c5a9
+  font-size: 20px
+
+.chats-me-page__message-attachment-name
+  overflow: hidden
+  color: rgba(246, 239, 228, 0.88)
+  font-size: 13px
+  text-overflow: ellipsis
+  white-space: nowrap
+  max-width: 24ch
+
 .chats-me-page__message-header
   min-width: 0
 
@@ -411,6 +458,9 @@
   padding: 14px 12px
   border-radius: 14px
   background: linear-gradient(90deg, rgba(240, 197, 169, 0.08), rgba(255, 255, 255, 0.025))
+
+.chats-me-page__delete-message-preview .chats-me-page__message-attachments
+  grid-column: 2 / 3
 
 .chats-me-page__delete-message-preview .chats-me-page__message-text
   display: -webkit-box

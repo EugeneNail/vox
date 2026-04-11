@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from "react
 
 import { authTokensChangedEventName, getLoginToken } from "../../auth/auth-tokens";
 import { getValidLoginToken } from "../../auth/refresh-login-token";
+import { MessageAttachment } from "../../messages/message-attachments";
 
 type MessageWebSocketContextValue = {
     isConnected: boolean;
@@ -26,6 +27,7 @@ export type AddMessageEvent = {
     chatUuid: string;
     userUuid: string;
     text: string;
+    attachments: MessageAttachment[];
     createdAt: string;
     updatedAt: string;
 };
@@ -35,6 +37,7 @@ export type UpdateMessageEvent = {
     chatUuid: string;
     userUuid: string;
     text: string;
+    attachments: MessageAttachment[];
     createdAt: string;
     updatedAt: string;
 };

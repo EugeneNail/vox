@@ -4,6 +4,7 @@ import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
 import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
+import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
 import "./chats-me-page.sass";
 
@@ -23,6 +24,7 @@ type ChatMessage = {
     chatUuid: string;
     userUuid: string;
     text: string;
+    attachments: MessageAttachment[];
     createdAt: string;
     updatedAt: string;
     isPending?: boolean;
@@ -251,7 +253,10 @@ export default function ChatsMePage() {
                     return;
                 }
 
-                setMessages([...data].reverse());
+                setMessages([...data].reverse().map((message) => ({
+                    ...message,
+                    attachments: message.attachments ?? [],
+                })));
             } catch {
                 if (!isMounted) {
                     return;
@@ -318,7 +323,8 @@ export default function ChatsMePage() {
                         (
                             message.chatUuid === event.chatUuid &&
                             message.userUuid === event.userUuid &&
-                            message.text === event.text
+                            message.text === event.text &&
+                            areAttachmentNamesEqual(message.attachments, event.attachments)
                         )
                     )
                 ));
@@ -387,22 +393,26 @@ export default function ChatsMePage() {
 
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
 
-    async function submitMessage(text: string) {
+    async function submitMessage(text: string, attachments: string[]) {
         if (editingMessage) {
-            await editMessage(editingMessage, text);
+            await editMessage(editingMessage, text, attachments);
             return;
         }
 
-        await sendMessage(text);
+        await sendMessage(text, attachments);
     }
 
-    async function sendMessage(text: string) {
+    async function sendMessage(text: string, attachments: string[]) {
         if (!selectedChat || !authenticatedUserUuid) {
             return;
         }
 
         const pendingMessageUuid = `pending-${generatePendingMessageUuid()}`;
         const createdAt = new Date().toISOString();
+        const pendingAttachments = attachments.map((name) => ({
+            uuid: name,
+            name,
+        }));
 
         setMessages((currentMessages) => [
             ...currentMessages,
@@ -411,6 +421,7 @@ export default function ChatsMePage() {
                 chatUuid: selectedChat.uuid,
                 userUuid: authenticatedUserUuid,
                 text,
+                attachments: pendingAttachments,
                 createdAt,
                 updatedAt: createdAt,
                 isPending: true,
@@ -420,6 +431,7 @@ export default function ChatsMePage() {
         try {
             const { data: messageUuid } = await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
                 text,
+                attachments,
             });
 
             setMessages((currentMessages) => {
@@ -439,9 +451,10 @@ export default function ChatsMePage() {
         }
     }
 
-    async function editMessage(message: ChatMessage, text: string) {
+    async function editMessage(message: ChatMessage, text: string, attachments: string[]) {
         await apiClient.put<string>(`/api/v1/message/messages/${message.uuid}`, {
             text,
+            attachments,
         });
 
         setEditingMessage(null);
@@ -660,12 +673,21 @@ export default function ChatsMePage() {
                                                     <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
                                                 </div>
                                             )}
-                                            <p className="chats-me-page__message-text">
-                                                {renderMessageText(message.text)}
-                                                {isMessageEdited(message) && (
-                                                    <span className="chats-me-page__message-edited"> (edited)</span>
-                                                )}
-                                            </p>
+                                            {hasRenderableMessageText(message.text) && (
+                                                <p className="chats-me-page__message-text">
+                                                    {renderMessageText(message.text)}
+                                                    {isMessageEdited(message) && (
+                                                        <span className="chats-me-page__message-edited"> (edited)</span>
+                                                    )}
+                                                </p>
+                                            )}
+                                            {message.attachments.length > 0 && (
+                                                <div className="chats-me-page__message-attachments" aria-label="Message attachments">
+                                                    {message.attachments.map((attachment) => (
+                                                        <MessageAttachmentView attachment={attachment} key={attachment.uuid} />
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="chats-me-page__message-status">
                                             {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
@@ -745,6 +767,7 @@ export default function ChatsMePage() {
                         <MessageComposer
                             disabled={!authenticatedUserUuid}
                             editingText={editingMessage?.text ?? null}
+                            editingAttachments={editingMessage?.attachments ?? []}
                             onCancelEdit={() => setEditingMessage(null)}
                             onSubmit={submitMessage}
                         />
@@ -775,12 +798,21 @@ export default function ChatsMePage() {
                                 <div className="chats-me-page__message-header">
                                     <p className="chats-me-page__message-author">{getMessageAuthorName(messagePendingDeletion, profilesByUserUuid)}</p>
                                 </div>
-                                <p className="chats-me-page__message-text">
-                                    {renderMessageText(messagePendingDeletion.text)}
-                                    {isMessageEdited(messagePendingDeletion) && (
-                                        <span className="chats-me-page__message-edited"> (edited)</span>
-                                    )}
-                                </p>
+                                {hasRenderableMessageText(messagePendingDeletion.text) && (
+                                    <p className="chats-me-page__message-text">
+                                        {renderMessageText(messagePendingDeletion.text)}
+                                        {isMessageEdited(messagePendingDeletion) && (
+                                            <span className="chats-me-page__message-edited"> (edited)</span>
+                                        )}
+                                    </p>
+                                )}
+                                {messagePendingDeletion.attachments.length > 0 && (
+                                    <div className="chats-me-page__message-attachments" aria-label="Message attachments">
+                                        {messagePendingDeletion.attachments.map((attachment) => (
+                                            <MessageAttachmentView attachment={attachment} key={attachment.uuid} />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div className="chats-me-page__message-status">
                                 <time
@@ -871,6 +903,10 @@ function renderMessageText(text: string) {
     });
 }
 
+function hasRenderableMessageText(text: string) {
+    return text.trim().length > 0;
+}
+
 function copyTextWithFallback(text: string) {
     const textarea = document.createElement("textarea");
     textarea.value = text;
@@ -890,6 +926,7 @@ function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
         text: event.text,
+        attachments: event.attachments ?? [],
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
@@ -901,9 +938,36 @@ function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
         text: event.text,
+        attachments: event.attachments ?? [],
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
+}
+
+function areAttachmentNamesEqual(left: MessageAttachment[], right: MessageAttachment[]) {
+    if (left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((attachment, index) => attachment.name === right[index]?.name);
+}
+
+function MessageAttachmentView({ attachment }: { attachment: MessageAttachment; }) {
+    if (isImageAttachmentName(attachment.name)) {
+        const url = buildAttachmentUrl(attachment.name);
+        return (
+            <a className="chats-me-page__message-attachment chats-me-page__message-attachment--image" href={url} target="_blank" rel="noreferrer">
+                <img className="chats-me-page__message-attachment-image" src={url} alt={attachment.name} />
+            </a>
+        );
+    }
+
+    return (
+        <a className="chats-me-page__message-attachment chats-me-page__message-attachment--document" href={buildAttachmentUrl(attachment.name)} target="_blank" rel="noreferrer">
+            <span className="material-symbols-rounded chats-me-page__message-attachment-icon" aria-hidden="true">description</span>
+            <span className="chats-me-page__message-attachment-name">{attachment.name}</span>
+        </a>
+    );
 }
 
 function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
