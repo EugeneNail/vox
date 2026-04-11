@@ -12,6 +12,8 @@ type Message struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
+	Attachments []Attachment
+
 	ChatUuid uuid.UUID
 	UserUuid uuid.UUID
 }

@@ -7,14 +7,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// Attachment describes a file attached to a message.
+type Attachment struct {
+	Uuid uuid.UUID `json:"uuid"`
+	Name string    `json:"name"`
+}
+
 // MessageCreated describes a message that was persisted and can be delivered to realtime subscribers.
 type MessageCreated struct {
-	MessageUuid uuid.UUID `json:"messageUuid"`
-	ChatUuid    uuid.UUID `json:"chatUuid"`
-	UserUuid    uuid.UUID `json:"userUuid"`
-	Text        string    `json:"text"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	MessageUuid uuid.UUID    `json:"messageUuid"`
+	ChatUuid    uuid.UUID    `json:"chatUuid"`
+	UserUuid    uuid.UUID    `json:"userUuid"`
+	Text        string       `json:"text"`
+	Attachments []Attachment `json:"attachments"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
 }
 
 // MessageCreatedPublisher publishes message-created events.
@@ -24,12 +31,13 @@ type MessageCreatedPublisher interface {
 
 // MessageEdited describes a message that was edited and can be delivered to realtime subscribers.
 type MessageEdited struct {
-	MessageUuid uuid.UUID `json:"messageUuid"`
-	ChatUuid    uuid.UUID `json:"chatUuid"`
-	UserUuid    uuid.UUID `json:"userUuid"`
-	Text        string    `json:"text"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	MessageUuid uuid.UUID    `json:"messageUuid"`
+	ChatUuid    uuid.UUID    `json:"chatUuid"`
+	UserUuid    uuid.UUID    `json:"userUuid"`
+	Text        string       `json:"text"`
+	Attachments []Attachment `json:"attachments"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
 }
 
 // MessageEditedPublisher publishes message-edited events.
