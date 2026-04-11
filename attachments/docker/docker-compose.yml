@@ -22,4 +22,5 @@ networks:
   vox-shared-network:
     external: true
   vox-attachments-local-network:
+    external: true
     name: vox-attachments-local-network

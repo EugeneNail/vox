@@ -32,4 +32,5 @@ networks:
   vox-shared-network:
     external: true
   vox-auth-local-network:
+    external: true
     name: vox-auth-local-network

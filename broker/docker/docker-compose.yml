@@ -10,4 +10,5 @@ networks:
   vox-shared-network:
     external: true
   vox-broker-local-network:
+    external: true
     name: vox-broker-local-network

@@ -32,4 +32,5 @@ networks:
   vox-shared-network:
     external: true
   vox-message-local-network:
+    external: true
     name: vox-message-local-network
