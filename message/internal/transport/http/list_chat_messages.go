@@ -58,11 +58,11 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 	})
 	if err != nil {
 		if errors.Is(err, list_chat_messages.ErrChatNotFound) {
-			return http.StatusNotFound, err
+			return http.StatusNotFound, fmt.Errorf("chat %q not found: %w", chatUuid, err)
 		}
 
 		if errors.Is(err, list_chat_messages.ErrChatAccessDenied) {
-			return http.StatusForbidden, err
+			return http.StatusForbidden, fmt.Errorf("access to chat %q denied for user %q: %w", chatUuid, userUuid, err)
 		}
 
 		return http.StatusInternalServerError, fmt.Errorf("handling the ListChatMessages usecase: %w", err)
@@ -70,13 +70,22 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 
 	resources := make([]resource.Message, 0, len(messages))
 	for _, message := range messages {
+		attachments := make([]resource.Attachment, 0, len(message.Attachments))
+		for _, attachment := range message.Attachments {
+			attachments = append(attachments, resource.Attachment{
+				Uuid: attachment.Uuid,
+				Name: attachment.Name,
+			})
+		}
+
 		resources = append(resources, resource.Message{
-			Uuid:      message.Uuid,
-			ChatUuid:  message.ChatUuid,
-			UserUuid:  message.UserUuid,
-			Text:      message.Text,
-			CreatedAt: message.CreatedAt,
-			UpdatedAt: message.UpdatedAt,
+			Uuid:        message.Uuid,
+			ChatUuid:    message.ChatUuid,
+			UserUuid:    message.UserUuid,
+			Text:        message.Text,
+			Attachments: attachments,
+			CreatedAt:   message.CreatedAt,
+			UpdatedAt:   message.UpdatedAt,
 		})
 	}
 

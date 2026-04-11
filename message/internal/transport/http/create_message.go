@@ -14,7 +14,8 @@ import (
 )
 
 type createMessagePayload struct {
-	Text string `json:"text"`
+	Text        string   `json:"text"`
+	Attachments []string `json:"attachments"`
 }
 
 type CreateMessageHandler struct {
@@ -44,7 +45,7 @@ func (handler *CreateMessageHandler) Handle(request *http.Request) (int, any) {
 	validator := validation.NewValidator(map[string]any{
 		"text": payload.Text,
 	}, map[string][]rules.Rule{
-		"text": {rules.Required(), rules.Max(3000)},
+		"text": {rules.Max(3000)},
 	})
 
 	if err := validator.Validate(); err != nil {
@@ -64,9 +65,10 @@ func (handler *CreateMessageHandler) Handle(request *http.Request) (int, any) {
 	}
 
 	messageUuid, err := handler.usecase.Handle(request.Context(), create_message.Command{
-		ChatUuid: chatUuid,
-		UserUuid: userUuid,
-		Text:     payload.Text,
+		ChatUuid:    chatUuid,
+		UserUuid:    userUuid,
+		Text:        payload.Text,
+		Attachments: payload.Attachments,
 	})
 	if err != nil {
 		var validationError validation.Error
@@ -75,11 +77,11 @@ func (handler *CreateMessageHandler) Handle(request *http.Request) (int, any) {
 		}
 
 		if errors.Is(err, create_message.ErrChatNotFound) {
-			return http.StatusNotFound, err
+			return http.StatusNotFound, fmt.Errorf("chat %q not found: %w", chatUuid, err)
 		}
 
 		if errors.Is(err, create_message.ErrChatAccessDenied) {
-			return http.StatusForbidden, err
+			return http.StatusForbidden, fmt.Errorf("access to chat %q denied for user %q: %w", chatUuid, userUuid, err)
 		}
 
 		return http.StatusInternalServerError, fmt.Errorf("handling the CreateMessage usecase: %w", err)

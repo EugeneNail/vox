@@ -15,7 +15,8 @@ import (
 )
 
 type editMessagePayload struct {
-	Text string `json:"text"`
+	Text        string   `json:"text"`
+	Attachments []string `json:"attachments"`
 }
 
 type EditMessageHandler struct {
@@ -45,7 +46,7 @@ func (handler *EditMessageHandler) Handle(request *http.Request) (int, any) {
 	validator := validation.NewValidator(map[string]any{
 		"text": payload.Text,
 	}, map[string][]rules.Rule{
-		"text": {rules.Required(), rules.Max(3000)},
+		"text": {rules.Max(3000)},
 	})
 
 	if err := validator.Validate(); err != nil {
@@ -68,6 +69,7 @@ func (handler *EditMessageHandler) Handle(request *http.Request) (int, any) {
 		MessageUuid: messageUuid,
 		UserUuid:    userUuid,
 		Text:        payload.Text,
+		Attachments: payload.Attachments,
 	}); err != nil {
 		var validationError validation.Error
 		if errors.As(err, &validationError) {
@@ -75,11 +77,11 @@ func (handler *EditMessageHandler) Handle(request *http.Request) (int, any) {
 		}
 
 		if errors.Is(err, edit_message.ErrMessageNotFound) || errors.Is(err, edit_message.ErrChatNotFound) {
-			return http.StatusNotFound, err
+			return http.StatusNotFound, fmt.Errorf("message %q or its chat not found: %w", messageUuid, err)
 		}
 
 		if errors.Is(err, edit_message.ErrMessageAccessDenied) || errors.Is(err, edit_message.ErrChatAccessDenied) {
-			return http.StatusForbidden, err
+			return http.StatusForbidden, fmt.Errorf("access denied for user %q editing message %q: %w", userUuid, messageUuid, err)
 		}
 
 		return http.StatusInternalServerError, fmt.Errorf("handling the EditMessage usecase: %w", err)

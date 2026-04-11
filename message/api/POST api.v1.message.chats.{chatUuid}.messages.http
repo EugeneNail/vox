@@ -3,5 +3,8 @@ Content-Type: application/json
 Authorization: Bearer <login-token>
 
 {
-    "text": "Hello from message service"
+    "text": "Hello from message service",
+    "attachments": [
+        "f353ca91-4fc5-49f2-9b9e-304f83d11914.png"
+    ]
 }

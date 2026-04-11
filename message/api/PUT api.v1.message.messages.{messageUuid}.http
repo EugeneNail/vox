@@ -3,5 +3,8 @@ Content-Type: application/json
 Authorization: Bearer <login-token>
 
 {
-    "text": "Edited message text"
+    "text": "Edited message text",
+    "attachments": [
+        "https://cdn.example.com/message-attachment.png"
+    ]
 }
