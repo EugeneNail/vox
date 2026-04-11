@@ -2,8 +2,14 @@ ENV_EXAMPLE_FILES := $(wildcard docker/.env.*.example)
 DOCKER_COMPOSE := docker compose -p vox-profile --env-file docker/.env.development -f docker/docker-compose.yml
 MIGRATOR_IMAGE := vox-profile-migrator:latest
 MIGRATOR_DOCKER_RUN := docker run --rm --env-file docker/.env.development --network vox-profile-local-network -v $(CURDIR)/migrations:/migrations
+SHARED_NETWORK := vox-shared-network
+LOCAL_NETWORK := vox-profile-local-network
 
-.PHONY: up down env migrate rollback
+.PHONY: up down env migrate rollback networks
+
+networks:
+	@docker network inspect $(SHARED_NETWORK) >/dev/null 2>&1 || docker network create $(SHARED_NETWORK)
+	@docker network inspect $(LOCAL_NETWORK) >/dev/null 2>&1 || docker network create $(LOCAL_NETWORK)
 
 up: env
 	$(DOCKER_COMPOSE) up --build -d

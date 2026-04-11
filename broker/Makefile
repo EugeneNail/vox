@@ -1,7 +1,13 @@
 ENV_EXAMPLE_FILES := $(wildcard docker/.env.*.example)
 DOCKER_COMPOSE := docker compose -p vox-broker --env-file docker/.env.development -f docker/docker-compose.yml
+SHARED_NETWORK := vox-shared-network
+LOCAL_NETWORK := vox-broker-local-network
 
-.PHONY: up down env
+.PHONY: up down env networks
+
+networks:
+	@docker network inspect $(SHARED_NETWORK) >/dev/null 2>&1 || docker network create $(SHARED_NETWORK)
+	@docker network inspect $(LOCAL_NETWORK) >/dev/null 2>&1 || docker network create $(LOCAL_NETWORK)
 
 up: env
 	$(DOCKER_COMPOSE) up -d
