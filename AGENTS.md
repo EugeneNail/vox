@@ -58,6 +58,7 @@
 
 ## Migrations
 - One migration file may operate on only one table.
+- Never use `ON DELETE` actions in foreign key constraints.
 
 ## Frontend
 - CSS class names must follow BEM.
