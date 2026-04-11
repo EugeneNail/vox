@@ -1,4 +1,5 @@
 .message-composer
+  position: relative
   display: grid
   grid-template-columns: 36px minmax(0, 1fr) 28px 36px
   align-items: start
@@ -9,6 +10,20 @@
   border-radius: 26px
   background: rgba(5, 9, 14, 0.58)
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24)
+
+.message-composer--drag-active
+  border-color: rgba(240, 197, 169, 0.3)
+  background: rgba(240, 197, 169, 0.12)
+
+.message-composer__file-input
+  position: absolute
+  width: 1px
+  height: 1px
+  margin: -1px
+  padding: 0
+  overflow: hidden
+  clip: rect(0, 0, 0, 0)
+  border: 0
 
 .message-composer__attach-button,
 .message-composer__send-button
@@ -69,6 +84,120 @@
   display: grid
   gap: 4px
   min-width: 0
+  grid-column: 2 / 3
+
+.message-composer__attachments
+  display: flex
+  flex-wrap: nowrap
+  gap: 10px
+  min-width: 0
+  overflow-x: auto
+  padding: 2px 0 1px
+  scrollbar-color: rgba(246, 239, 228, 0.16) transparent
+  scrollbar-width: thin
+
+.message-composer__attachments::-webkit-scrollbar
+  height: 6px
+
+.message-composer__attachments::-webkit-scrollbar-track
+  background: transparent
+
+.message-composer__attachments::-webkit-scrollbar-thumb
+  border-radius: 999px
+  background: rgba(246, 239, 228, 0.16)
+
+.message-composer__attachment-note
+  color: rgba(246, 239, 228, 0.58)
+  font-size: 12px
+  line-height: 1.4
+
+.message-composer__attachment-card
+  position: relative
+  flex: 0 0 auto
+  display: grid
+  gap: 8px
+  width: 164px
+  min-width: 164px
+  padding: 8px
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 16px
+  background: rgba(255, 255, 255, 0.04)
+
+.message-composer__attachment-card--uploading
+  border-color: rgba(240, 197, 169, 0.24)
+  background: rgba(240, 197, 169, 0.08)
+
+.message-composer__attachment-preview-shell
+  position: relative
+  overflow: hidden
+  border-radius: 12px
+  aspect-ratio: 16 / 10
+  background: rgba(255, 255, 255, 0.04)
+
+.message-composer__attachment-preview
+  display: block
+  width: 100%
+  height: 100%
+  object-fit: cover
+
+.message-composer__attachment-overlay
+  position: absolute
+  inset: 0
+  display: grid
+  place-content: center
+  justify-items: center
+  gap: 6px
+  color: #f6efe4
+  background: rgba(7, 10, 15, 0.62)
+  font-size: 12px
+
+.message-composer__attachment-document
+  display: grid
+  justify-items: start
+  gap: 8px
+  min-height: 84px
+  padding: 10px
+  border-radius: 12px
+  background: rgba(255, 255, 255, 0.04)
+
+.message-composer__attachment-document-icon
+  color: #f0c5a9
+  font-size: 32px
+
+.message-composer__attachment-document-name
+  overflow: hidden
+  color: rgba(246, 239, 228, 0.88)
+  font-size: 12px
+  line-height: 1.4
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.message-composer__attachment-remove
+  position: absolute
+  top: 6px
+  right: 6px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 24px
+  height: 24px
+  padding: 0
+  border: 0
+  border-radius: 50%
+  background: rgba(7, 10, 15, 0.72)
+  color: #f6efe4
+  cursor: pointer
+
+.message-composer__attachment-remove:hover
+  background: rgba(7, 10, 15, 0.88)
+
+.message-composer__attachment-remove .material-symbols-rounded
+  font-size: 16px
+
+.message-composer__attachment-error
+  color: #ff9e89
+  font-size: 11px
+  line-height: 1.4
 
 .message-composer__editing-state
   grid-column: 1 / -1
