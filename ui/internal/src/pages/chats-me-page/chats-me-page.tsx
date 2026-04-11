@@ -47,6 +47,7 @@ export default function ChatsMePage() {
     const { addMessageListener, removeMessageListener, subscribeChat, unsubscribeChat, updateMessageListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -68,6 +69,18 @@ export default function ChatsMePage() {
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
+
+    useEffect(() => {
+        const audio = new Audio("/message-received.mp3");
+        audio.preload = "auto";
+        messageReceivedAudioRef.current = audio;
+
+        return () => {
+            audio.pause();
+            audio.src = "";
+            messageReceivedAudioRef.current = null;
+        };
+    }, []);
 
     useEffect(() => {
         const staleCachedUserUuids = getStaleCachedUserUuids();
@@ -308,6 +321,10 @@ export default function ChatsMePage() {
         addMessageListener((event) => {
             if (event.chatUuid !== selectedChatUuid) {
                 return;
+            }
+
+            if (event.userUuid !== authenticatedUserUuid) {
+                void messageReceivedAudioRef.current?.play();
             }
 
             setMessages((currentMessages) => {
