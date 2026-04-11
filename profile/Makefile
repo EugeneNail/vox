@@ -5,11 +5,14 @@ MIGRATOR_DOCKER_RUN := docker run --rm --env-file docker/.env.development --netw
 SHARED_NETWORK := vox-shared-network
 LOCAL_NETWORK := vox-profile-local-network
 
-.PHONY: up down env migrate rollback networks
+.PHONY: up down env migrate rollback networks db
 
 networks:
 	@docker network inspect $(SHARED_NETWORK) >/dev/null 2>&1 || docker network create $(SHARED_NETWORK)
 	@docker network inspect $(LOCAL_NETWORK) >/dev/null 2>&1 || docker network create $(LOCAL_NETWORK)
+
+db: env networks
+	$(DOCKER_COMPOSE) up -d postgres
 
 up: env
 	$(DOCKER_COMPOSE) up --build -d
