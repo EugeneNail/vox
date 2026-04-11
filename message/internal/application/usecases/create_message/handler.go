@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 var ErrChatNotFound = errors.New("chat not found")
 var ErrChatAccessDenied = errors.New("chat access denied")
 
+var attachmentNamePattern = regexp.MustCompile(`^.+\.[a-z]{2,5}$`)
+
 // Handler creates messages through the create_message use-case.
 type Handler struct {
 	messageRepository       domain.MessageRepository
@@ -29,9 +32,10 @@ type Handler struct {
 
 // Command contains the input required to create a message.
 type Command struct {
-	ChatUuid uuid.UUID
-	UserUuid uuid.UUID
-	Text     string
+	ChatUuid    uuid.UUID
+	UserUuid    uuid.UUID
+	Text        string
+	Attachments []string
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
@@ -46,16 +50,23 @@ func NewHandler(messageRepository domain.MessageRepository, chatRepository domai
 
 // Handle validates input and creates a new message.
 func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID, error) {
+	messageUuid := uuid.UUID(uuidv7.New())
 	text := strings.TrimSpace(command.Text)
+	attachments, err := buildAttachments(messageUuid, command.Attachments)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("building attachments for message %q: %w", messageUuid, err)
+	}
 
 	validator := validation.NewValidator(map[string]any{
 		"chatUuid": command.ChatUuid,
 		"userUuid": command.UserUuid,
 		"text":     text,
+		"attachments.length": len(command.Attachments),
 	}, map[string][]rules.Rule{
 		"chatUuid": {rules.Required()},
 		"userUuid": {rules.Required()},
-		"text":     {rules.Required(), rules.Regex(domain.MessageTextPattern), rules.Min(1), rules.Max(2000)},
+		"text":     buildTextRules(text, len(attachments) > 0),
+		"attachments.length": {rules.Max(10)},
 	})
 
 	if err := validator.Validate(); err != nil {
@@ -87,12 +98,13 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 
 	now := time.Now().UTC()
 	message := domain.Message{
-		Uuid:      uuid.UUID(uuidv7.New()),
-		ChatUuid:  command.ChatUuid,
-		UserUuid:  command.UserUuid,
-		Text:      text,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Uuid:        messageUuid,
+		ChatUuid:    command.ChatUuid,
+		UserUuid:    command.UserUuid,
+		Text:        text,
+		Attachments: attachments,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := handler.messageRepository.Create(ctx, message); err != nil {
@@ -104,6 +116,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,
 		Text:        message.Text,
+		Attachments: toEventAttachments(message.Attachments),
 		CreatedAt:   message.CreatedAt,
 		UpdatedAt:   message.UpdatedAt,
 	}); err != nil {
@@ -111,4 +124,58 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	return message.Uuid, nil
+}
+
+func buildTextRules(text string, allowEmpty bool) []rules.Rule {
+	if allowEmpty && text == "" {
+		return nil
+	}
+
+	return []rules.Rule{
+		rules.Required(),
+		rules.Regex(domain.MessageTextPattern),
+		rules.Min(1),
+		rules.Max(2000),
+	}
+}
+
+func buildAttachments(messageUuid uuid.UUID, names []string) ([]domain.Attachment, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+
+	validationError := validation.NewError()
+	attachments := make([]domain.Attachment, 0, len(names))
+
+	for index, rawName := range names {
+		name := strings.TrimSpace(rawName)
+		if !attachmentNamePattern.MatchString(name) {
+			validationError.AddViolation(fmt.Sprintf("attachments.%d", index), "must end with a five-letter extension")
+			continue
+		}
+
+		attachments = append(attachments, domain.Attachment{
+			Uuid:        uuid.UUID(uuidv7.New()),
+			Name:        name,
+			MessageUuid: messageUuid,
+		})
+	}
+
+	if len(validationError.Violations()) > 0 {
+		return nil, validationError
+	}
+
+	return attachments, nil
+}
+
+func toEventAttachments(attachments []domain.Attachment) []events.Attachment {
+	result := make([]events.Attachment, 0, len(attachments))
+	for _, attachment := range attachments {
+		result = append(result, events.Attachment{
+			Uuid: attachment.Uuid,
+			Name: attachment.Name,
+		})
+	}
+
+	return result
 }
