@@ -12,7 +12,6 @@ import (
 
 type createUserPayload struct {
 	Name                 string `json:"name"`
-	Nickname             string `json:"nickname"`
 	Email                string `json:"email"`
 	Password             string `json:"password"`
 	PasswordConfirmation string `json:"passwordConfirmation"`
@@ -37,7 +36,6 @@ func (handler *CreateUserHandler) Handle(request *http.Request) (int, any) {
 
 	userUuid, err := handler.usecase.Handle(request.Context(), create_user.Command{
 		Name:                 payload.Name,
-		Nickname:             payload.Nickname,
 		Email:                payload.Email,
 		Password:             payload.Password,
 		PasswordConfirmation: payload.PasswordConfirmation,

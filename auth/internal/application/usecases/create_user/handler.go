@@ -27,7 +27,6 @@ type Handler struct {
 // Command contains the input required to create a user.
 type Command struct {
 	Name                 string
-	Nickname             string
 	Email                string
 	Password             string
 	PasswordConfirmation string
@@ -44,18 +43,15 @@ func NewHandler(repository domain.UserRepository, userCreatedPublisher events.Us
 // Handle validates input, checks uniqueness, and creates a new user.
 func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID, error) {
 	name := strings.TrimSpace(command.Name)
-	nickname := strings.TrimSpace(command.Nickname)
 	email := strings.ToLower(strings.TrimSpace(command.Email))
 
 	validator := validation.NewValidator(map[string]any{
 		"name":                 name,
-		"nickname":             nickname,
 		"email":                email,
 		"password":             command.Password,
 		"passwordConfirmation": command.PasswordConfirmation,
 	}, map[string][]rules.Rule{
 		"name":                 {rules.Required(), rules.Min(2), rules.Max(64), rules.Regex(rules.SlugWithSpacesPattern)},
-		"nickname":             {rules.Required(), rules.Min(3), rules.Max(32), rules.Regex(rules.SlugPattern)},
 		"email":                {rules.Required(), rules.Regex(rules.EmailPattern)},
 		"password":             {rules.Required(), rules.Min(8), rules.Password()},
 		"passwordConfirmation": {rules.Required(), rules.Same("password")},
@@ -100,7 +96,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	if err := handler.userCreatedPublisher.Publish(ctx, events.UserCreated{
 		UserUuid:  user.Uuid,
 		Name:      name,
-		Nickname:  nickname,
 		CreatedAt: user.CreatedAt,
 	}); err != nil {
 		return uuid.Nil, fmt.Errorf("publishing user created event for user %q: %w", user.Uuid, err)
