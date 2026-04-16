@@ -2,9 +2,13 @@ package create_profile
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/profile/internal/domain"
 	"github.com/google/uuid"
 )
@@ -30,6 +34,28 @@ func NewHandler(repository domain.ProfileRepository) *Handler {
 
 // Handle creates a profile when it does not exist yet.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
+	command.Name = strings.TrimSpace(command.Name)
+	command.Nickname = strings.TrimSpace(command.Nickname)
+
+	validator := validation.NewValidator(map[string]any{
+		"userUuid": command.UserUuid,
+		"name":     command.Name,
+		"nickname": command.Nickname,
+	}, map[string][]rules.Rule{
+		"userUuid": {rules.Required()},
+		"name":     {rules.Required(), rules.Min(2), rules.Max(64), rules.Regex(rules.SlugWithSpacesPattern)},
+		"nickname": {rules.Required(), rules.Min(3), rules.Max(32), rules.Regex(rules.SlugPattern)},
+	})
+
+	if err := validator.Validate(); err != nil {
+		var validationError validation.Error
+		if errors.As(err, &validationError) {
+			return validationError
+		}
+
+		return fmt.Errorf("validating create profile command for user %q: %w", command.UserUuid, err)
+	}
+
 	existingProfile, err := handler.repository.FindByUserUuid(ctx, command.UserUuid)
 	if err != nil {
 		return fmt.Errorf("finding profile for user %q: %w", command.UserUuid, err)

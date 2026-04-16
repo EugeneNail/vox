@@ -1,0 +1,9 @@
+PUT http://127.0.0.1:10003/api/v1/profile/profiles/me
+Content-Type: application/json
+Authorization: Bearer <login-token>
+
+{
+    "name": "Eugene Nail",
+    "nickname": "eugene",
+    "avatar": "019d6778-5f15-7b80-b69f-4ed86cb5ba99.png"
+}

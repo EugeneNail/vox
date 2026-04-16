@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const AvatarPattern = `^.+\.(png|jpe?g)$`
+
 type Profile struct {
 	UserUuid  uuid.UUID
 	Avatar    *string

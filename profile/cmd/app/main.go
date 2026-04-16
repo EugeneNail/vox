@@ -6,8 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/EugeneNail/vox/lib-common/http/middleware"
+	lib_middleware "github.com/EugeneNail/vox/lib-common/http/middleware"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/create_profile"
+	"github.com/EugeneNail/vox/profile/internal/application/usecases/edit_profile"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/get_profiles"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/search_profiles"
 	"github.com/EugeneNail/vox/profile/internal/domain/events"
@@ -42,6 +43,7 @@ func main() {
 
 	// --- Section: Application use-cases ---
 	createProfileHandler := create_profile.NewHandler(profileRepository)
+	editProfileHandler := edit_profile.NewHandler(profileRepository)
 	getProfilesHandler := get_profiles.NewHandler(profileRepository)
 	searchProfilesHandler := search_profiles.NewHandler(profileRepository)
 
@@ -56,13 +58,15 @@ func main() {
 	userCreatedConsumer.ListenAndConsume(context.Background())
 
 	// --- Section: HTTP transport ---
+	editProfileHttpHandler := transport_http.NewEditProfileHandler(editProfileHandler)
 	getProfilesHttpHandler := transport_http.NewGetProfilesHandler(getProfilesHandler)
 	searchProfilesHttpHandler := transport_http.NewSearchProfilesHandler(searchProfilesHandler)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("POST   /api/v1/profile/profiles/batch", middleware.WriteJsonResponse(getProfilesHttpHandler.Handle))
-	webServer.HandleFunc("GET    /api/v1/profile/search", middleware.WriteJsonResponse(searchProfilesHttpHandler.Handle))
+	webServer.HandleFunc("POST   /api/v1/profile/profiles/batch", lib_middleware.WriteJsonResponse(getProfilesHttpHandler.Handle))
+	webServer.HandleFunc("GET    /api/v1/profile/search", lib_middleware.WriteJsonResponse(searchProfilesHttpHandler.Handle))
+	webServer.Handle("PUT    /api/v1/profile/profiles/me", lib_middleware.RequireAuthenticatedUser(lib_middleware.WriteJsonResponse(editProfileHttpHandler.Handle)))
 
 	// --- Section: HTTP server ---
 	address := fmt.Sprintf("0.0.0.0:%d", configuration.App.Port)
