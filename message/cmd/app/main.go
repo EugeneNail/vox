@@ -15,7 +15,6 @@ import (
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
-	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
 	redis_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/redis"
 	websocket_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/websocket"
@@ -91,12 +90,12 @@ func main() {
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("POST   /api/v1/message/chats", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createChatHttpHandler.Handle))))
-	webServer.HandleFunc("GET    /api/v1/message/chats", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatsHttpHandler.Handle)))
-	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
-	webServer.HandleFunc("GET    /api/v1/message/chats/{chatUuid}/messages", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatMessagesHttpHandler.Handle)))
-	webServer.HandleFunc("PUT    /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(editMessageHttpHandler.Handle))))
-	webServer.HandleFunc("DELETE /api/v1/message/messages/{messageUuid}", message_middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(deleteMessageHttpHandler.Handle)))
+	webServer.HandleFunc("POST   /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createChatHttpHandler.Handle))))
+	webServer.HandleFunc("GET    /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatsHttpHandler.Handle)))
+	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
+	webServer.HandleFunc("GET    /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatMessagesHttpHandler.Handle)))
+	webServer.HandleFunc("PUT    /api/v1/message/messages/{messageUuid}", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(editMessageHttpHandler.Handle))))
+	webServer.HandleFunc("DELETE /api/v1/message/messages/{messageUuid}", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(deleteMessageHttpHandler.Handle)))
 	webServer.HandleFunc("GET    /api/v1/message/ws", openWebSocketHttpHandler.Handle)
 
 	// --- Section: HTTP server ---

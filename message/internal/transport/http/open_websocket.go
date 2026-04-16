@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
-	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	websocket_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/websocket"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -45,7 +45,7 @@ var openWebSocketUpgrader = websocket.Upgrader{
 // OpenWebSocket streams realtime message updates to the current browser tab.
 func (handler *OpenWebSocketHandler) Handle(writer http.ResponseWriter, request *http.Request) {
 	token := request.URL.Query().Get("token")
-	userUuid, err := message_middleware.UserUuidFromLoginToken(token)
+	userUuid, err := authentication.UserUuidFromLoginToken(token)
 	if err != nil {
 		http.Error(writer, "invalid token", http.StatusUnauthorized)
 		return

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
-	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/EugeneNail/vox/message/internal/transport/http/resource"
 )
 
@@ -21,7 +21,7 @@ func NewListChatsHandler(usecase *list_chats.Handler) *ListChatsHandler {
 
 // Handle calls the use-case and returns chats available to the user.
 func (handler *ListChatsHandler) Handle(request *http.Request) (int, any) {
-	userUuid, ok := message_middleware.UserUuidFromContext(request.Context())
+	userUuid, ok := authentication.UserUuidFromContext(request.Context())
 	if !ok {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}

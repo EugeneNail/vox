@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_chat"
-	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/google/uuid"
 )
 
@@ -47,7 +47,7 @@ func (handler *CreateChatHandler) Handle(request *http.Request) (int, any) {
 		memberUuids = append(memberUuids, memberUuid)
 	}
 
-	userUuid, ok := message_middleware.UserUuidFromContext(request.Context())
+	userUuid, ok := authentication.UserUuidFromContext(request.Context())
 	if !ok {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
