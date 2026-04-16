@@ -44,8 +44,8 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, string
 		"email":    email,
 		"password": query.Password,
 	}, map[string][]rules.Rule{
-		"email":    {rules.Required(), rules.Regex(rules.EmailPattern)},
-		"password": {rules.Required()},
+		"email":    {rules.Required(), rules.Max(256), rules.Regex(rules.EmailPattern)},
+		"password": {rules.Required(), rules.Max(256)},
 	})
 
 	if err := validator.Validate(); err != nil {

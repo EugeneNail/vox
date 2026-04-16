@@ -38,7 +38,7 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, error)
 	validator := validation.NewValidator(map[string]any{
 		"refreshToken": query.RefreshToken,
 	}, map[string][]rules.Rule{
-		"refreshToken": {rules.Required()},
+		"refreshToken": {rules.Required(), rules.Max(4096)},
 	})
 
 	if err := validator.Validate(); err != nil {
