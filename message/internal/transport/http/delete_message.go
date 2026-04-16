@@ -22,13 +22,11 @@ func NewDeleteMessageHandler(usecase *delete_message.Handler) *DeleteMessageHand
 	}
 }
 
-// DeleteMessage applies transport validation and calls the use-case.
+// DeleteMessage calls the use-case.
 func (handler *DeleteMessageHandler) Handle(request *http.Request) (int, any) {
 	messageUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("messageUuid")))
 	if err != nil {
-		validationError := validation.NewError()
-		validationError.AddViolation("messageUuid", "Must be a valid UUID")
-		return http.StatusBadRequest, validationError.Violations()
+		return http.StatusBadRequest, fmt.Errorf("parsing message uuid %q: %w", request.PathValue("messageUuid"), err)
 	}
 
 	// TODO

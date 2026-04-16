@@ -37,20 +37,14 @@ func (handler *CreateChatHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
 	}
 
-	validationError := validation.NewError()
 	memberUuids := make([]uuid.UUID, 0, len(payload.MemberUuids))
 	for index, rawMemberUuid := range payload.MemberUuids {
 		memberUuid, err := uuid.Parse(strings.TrimSpace(rawMemberUuid))
 		if err != nil {
-			validationError.AddViolation(fmt.Sprintf("memberUuids.%d", index), "Must contain valid UUID values")
-			continue
+			return http.StatusBadRequest, fmt.Errorf("parsing member uuid at index %d: %w", index, err)
 		}
 
 		memberUuids = append(memberUuids, memberUuid)
-	}
-
-	if len(validationError.Violations()) > 0 {
-		return http.StatusBadRequest, validationError.Violations()
 	}
 
 	userUuid, ok := message_middleware.UserUuidFromContext(request.Context())

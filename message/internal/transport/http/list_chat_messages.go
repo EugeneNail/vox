@@ -15,7 +15,6 @@ import (
 )
 
 const defaultChatMessagesLength = 250
-const maxChatMessagesLength = 250
 
 type ListChatMessagesHandler struct {
 	usecase *list_chat_messages.Handler
@@ -27,23 +26,16 @@ func NewListChatMessagesHandler(usecase *list_chat_messages.Handler) *ListChatMe
 	}
 }
 
-// ListChatMessages validates transport input and calls the use-case.
+// ListChatMessages reads transport input and calls the use-case.
 func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any) {
 	chatUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("chatUuid")))
 	if err != nil {
-		validationError := validation.NewError()
-		validationError.AddViolation("chatUuid", "Must be a valid UUID")
-		return http.StatusBadRequest, validationError.Violations()
+		return http.StatusBadRequest, fmt.Errorf("parsing chat uuid %q: %w", request.PathValue("chatUuid"), err)
 	}
 
 	length, err := parseChatMessagesLength(request)
 	if err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return http.StatusBadRequest, validationError.Violations()
-		}
-
-		return http.StatusInternalServerError, fmt.Errorf("parsing chat messages length: %w", err)
+		return http.StatusBadRequest, err
 	}
 
 	userUuid, ok := message_middleware.UserUuidFromContext(request.Context())
@@ -57,6 +49,11 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 		Length:   length,
 	})
 	if err != nil {
+		var validationError validation.Error
+		if errors.As(err, &validationError) {
+			return http.StatusUnprocessableEntity, validationError.Violations()
+		}
+
 		if errors.Is(err, list_chat_messages.ErrChatNotFound) {
 			return http.StatusNotFound, fmt.Errorf("chat %q not found: %w", chatUuid, err)
 		}
@@ -100,15 +97,7 @@ func parseChatMessagesLength(request *http.Request) (int, error) {
 
 	length, err := strconv.Atoi(rawLength)
 	if err != nil {
-		validationError := validation.NewError()
-		validationError.AddViolation("length", "Must be a valid integer")
-		return 0, validationError
-	}
-
-	if length < 1 || length > maxChatMessagesLength {
-		validationError := validation.NewError()
-		validationError.AddViolation("length", fmt.Sprintf("Must be between 1 and %d", maxChatMessagesLength))
-		return 0, validationError
+		return 0, fmt.Errorf("parsing length query parameter %q: %w", rawLength, err)
 	}
 
 	return length, nil

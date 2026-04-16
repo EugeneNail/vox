@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/edit_message"
 	message_middleware "github.com/EugeneNail/vox/message/internal/infrastructure/http/middleware"
 	"github.com/google/uuid"
@@ -29,33 +28,16 @@ func NewEditMessageHandler(usecase *edit_message.Handler) *EditMessageHandler {
 	}
 }
 
-// EditMessage decodes the request, applies transport validation, and calls the use-case.
+// EditMessage decodes the request and calls the use-case.
 func (handler *EditMessageHandler) Handle(request *http.Request) (int, any) {
 	messageUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("messageUuid")))
 	if err != nil {
-		validationError := validation.NewError()
-		validationError.AddViolation("messageUuid", "Must be a valid UUID")
-		return http.StatusBadRequest, validationError.Violations()
+		return http.StatusBadRequest, fmt.Errorf("parsing message uuid %q: %w", request.PathValue("messageUuid"), err)
 	}
 
 	var payload editMessagePayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
-	}
-
-	validator := validation.NewValidator(map[string]any{
-		"text": payload.Text,
-	}, map[string][]rules.Rule{
-		"text": {rules.Max(3000)},
-	})
-
-	if err := validator.Validate(); err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return http.StatusBadRequest, validationError.Violations()
-		}
-
-		return http.StatusInternalServerError, fmt.Errorf("validating edit message payload: %w", err)
 	}
 
 	// TODO
