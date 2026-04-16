@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/EugeneNail/vox/auth/internal/application/services"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
@@ -42,13 +41,10 @@ func main() {
 	// --- Section: Event delivery ---
 	userCreatedPublisher := redis_infrastructure.NewUserCreatedPublisher(redisClient)
 
-	// --- Section: Application services ---
-	tokenSigner := services.NewTokenSigner()
-
 	// --- Section: Application use-cases ---
 	createUserHandler := create_user.NewHandler(userRepository, userCreatedPublisher)
-	authenticateHandler := authenticate.NewHandler(userRepository, tokenSigner)
-	refreshHandler := refresh.NewHandler(userRepository, tokenSigner)
+	authenticateHandler := authenticate.NewHandler(userRepository)
+	refreshHandler := refresh.NewHandler(userRepository)
 
 	// --- Section: HTTP transport ---
 	createUserHttpHandler := transport_http.NewCreateUserHandler(createUserHandler)

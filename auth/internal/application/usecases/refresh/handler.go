@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/EugeneNail/vox/auth/internal/application/services"
 	"github.com/EugeneNail/vox/auth/internal/domain"
+	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
@@ -16,8 +16,7 @@ var ErrInvalidToken = errors.New("invalid token")
 
 // Handler validates refresh tokens and issues a new login token.
 type Handler struct {
-	repository  domain.UserRepository
-	tokenSigner *services.TokenSigner
+	repository domain.UserRepository
 }
 
 // Query contains the input required to refresh tokens.
@@ -26,10 +25,9 @@ type Query struct {
 }
 
 // NewHandler constructs a refresh handler with its dependencies.
-func NewHandler(repository domain.UserRepository, tokenSigner *services.TokenSigner) *Handler {
+func NewHandler(repository domain.UserRepository) *Handler {
 	return &Handler{
-		repository:  repository,
-		tokenSigner: tokenSigner,
+		repository: repository,
 	}
 }
 
@@ -50,8 +48,8 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, error)
 		return "", fmt.Errorf("validating refresh query: %w", err)
 	}
 
-	userUuid, err := handler.tokenSigner.ValidateRefreshToken(query.RefreshToken)
-	if errors.Is(err, services.ErrInvalidToken) {
+	userUuid, err := authentication.UserUuidFromRefreshToken(query.RefreshToken)
+	if errors.Is(err, authentication.ErrInvalidToken) {
 		return "", ErrInvalidToken
 	}
 	if err != nil {
@@ -67,7 +65,7 @@ func (handler *Handler) Handle(ctx context.Context, query Query) (string, error)
 		return "", ErrInvalidToken
 	}
 
-	loginToken, err := handler.tokenSigner.NewLoginToken(user.Uuid.String())
+	loginToken, err := authentication.NewTokenSigner().NewLoginToken(user.Uuid.String())
 	if err != nil {
 		return "", fmt.Errorf("generating login token for user %q: %w", user.Uuid, err)
 	}
