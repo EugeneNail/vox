@@ -123,8 +123,24 @@
   width: 42px
   height: 42px
   border-radius: 50%
-  background: radial-gradient(circle at 35% 30%, #f0c5a9, #cc7052 58%, #4a2732)
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18)
+  overflow: hidden
+  border: 1px solid rgba(255, 255, 255, 0.16)
+  background: #5b6471
+  box-sizing: border-box
+  color: #f8fafc
+
+.chats-me-page__avatar--placeholder
+  display: flex
+  align-items: center
+  justify-content: center
+  font-size: 14px
+  font-weight: 700
+  letter-spacing: 0.04em
+  text-transform: uppercase
+
+.chats-me-page__avatar--image
+  display: block
+  object-fit: cover
 
 .chats-me-page__chat-name
   overflow: hidden
@@ -254,8 +270,24 @@
   width: 36px
   height: 36px
   border-radius: 50%
-  background: radial-gradient(circle at 35% 30%, #f0c5a9, #cc7052 58%, #4a2732)
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18)
+  overflow: hidden
+  border: 1px solid rgba(255, 255, 255, 0.16)
+  background: #5b6471
+  box-sizing: border-box
+  color: #f8fafc
+
+.chats-me-page__message-avatar--placeholder
+  display: flex
+  align-items: center
+  justify-content: center
+  font-size: 12px
+  font-weight: 700
+  letter-spacing: 0.04em
+  text-transform: uppercase
+
+.chats-me-page__message-avatar--image
+  display: block
+  object-fit: cover
 
 .chats-me-page__message-body
   display: grid

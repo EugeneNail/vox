@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MouseEvent, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
@@ -615,7 +615,11 @@ export default function ChatsMePage() {
                                     type="button"
                                     onClick={() => void createPrivateChat(profile)}
                                 >
-                                    <span className="chats-me-page__avatar" aria-hidden="true" />
+                                    <UserAvatar
+                                        className="chats-me-page__avatar"
+                                        src={getProfileAvatarUrl(profile)}
+                                        label={profile.name}
+                                    />
                                     <span className="chats-me-page__chat-preview">
                                         <span className="chats-me-page__chat-name">{profile.name}</span>
                                     </span>
@@ -641,7 +645,11 @@ export default function ChatsMePage() {
                                     key={chat.uuid}
                                     to={`/chats/@me/${chat.uuid}`}
                                 >
-                                    <span className="chats-me-page__avatar" aria-hidden="true" />
+                                    <UserAvatar
+                                        className="chats-me-page__avatar"
+                                        src={getChatAvatarUrl(chat, authenticatedUserUuid, profilesByUserUuid)}
+                                        label={getChatAvatarLabel(chat, authenticatedUserUuid, profilesByUserUuid)}
+                                    />
                                     <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
                                 </NavLink>
                             ))}
@@ -681,7 +689,13 @@ export default function ChatsMePage() {
                                         onContextMenu={(event) => handleMessageContextMenu(event, message)}
                                     >
                                         <div className="chats-me-page__message-avatar-cell">
-                                            {isThreadStart && <span className="chats-me-page__message-avatar" aria-hidden="true" />}
+                                            {isThreadStart && (
+                                                <UserAvatar
+                                                    className="chats-me-page__message-avatar"
+                                                    src={getMessageAuthorAvatarUrl(message, profilesByUserUuid)}
+                                                    label={getMessageAuthorAvatarLabel(message, profilesByUserUuid)}
+                                                />
+                                            )}
                                         </div>
                                         <div className="chats-me-page__message-body">
                                             {isThreadStart && (
@@ -808,7 +822,11 @@ export default function ChatsMePage() {
 
                         <article className="chats-me-page__delete-message-preview">
                             <div className="chats-me-page__message-avatar-cell">
-                                <span className="chats-me-page__message-avatar" aria-hidden="true" />
+                                <UserAvatar
+                                    className="chats-me-page__message-avatar"
+                                    src={getMessageAuthorAvatarUrl(messagePendingDeletion, profilesByUserUuid)}
+                                    label={getMessageAuthorAvatarLabel(messagePendingDeletion, profilesByUserUuid)}
+                                />
                             </div>
                             <div className="chats-me-page__message-body">
                                 <div className="chats-me-page__message-header">
@@ -872,6 +890,36 @@ function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profiles
     return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
 }
 
+function getChatAvatarUrl(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
+    if (chat.isPrivate) {
+        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+        if (!companionUuid) {
+            return null;
+        }
+
+        return getProfileAvatarUrl(profilesByUserUuid[companionUuid] ?? null);
+    }
+
+    if (!chat.avatar) {
+        return null;
+    }
+
+    return buildAttachmentUrl(chat.avatar);
+}
+
+function getChatAvatarLabel(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
+    if (chat.isPrivate) {
+        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+        if (!companionUuid) {
+            return chat.uuid;
+        }
+
+        return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
+    }
+
+    return getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid);
+}
+
 function formatMessageTime(date: string) {
     return new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
@@ -903,6 +951,14 @@ function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUuid: stri
 
 function getMessageAuthorName(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
     return profilesByUserUuid[message.userUuid]?.name ?? message.userUuid;
+}
+
+function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getProfileAvatarUrl(profilesByUserUuid[message.userUuid] ?? null);
+}
+
+function getMessageAuthorAvatarLabel(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getMessageAuthorName(message, profilesByUserUuid);
 }
 
 function renderMessageText(text: string) {
@@ -984,6 +1040,120 @@ function MessageAttachmentView({ attachment }: { attachment: MessageAttachment; 
             <span className="chats-me-page__message-attachment-name">{attachment.name}</span>
         </a>
     );
+}
+
+function getProfileAvatarUrl(profile: PublicProfile | null | undefined) {
+    if (!profile?.avatar) {
+        return null;
+    }
+
+    return buildAttachmentUrl(profile.avatar);
+}
+
+function UserAvatar({ className, src, label }: { className: string; src: string | null; label: string; }) {
+    if (src) {
+        return (
+            <img
+                className={`${className} ${className}--image`}
+                src={src}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+            />
+        );
+    }
+
+    const placeholder = getAvatarPlaceholder(label);
+
+    return (
+        <span
+            className={`${className} ${className}--placeholder`}
+            style={placeholder.style}
+            aria-hidden="true"
+        >
+            {placeholder.initials}
+        </span>
+    );
+}
+
+function getAvatarPlaceholder(label: string) {
+    const initials = getAvatarInitials(label);
+    const backgroundColor = hashToAvatarColor(label);
+
+    return {
+        initials,
+        style: {
+            backgroundColor,
+            borderColor: "rgba(255, 255, 255, 0.16)",
+            color: "#f8fafc",
+        } satisfies CSSProperties,
+    };
+}
+
+function getAvatarInitials(label: string) {
+    const normalizedLabel = label.trim().replace(/\s+/g, " ");
+    if (normalizedLabel.length === 0) {
+        return "?";
+    }
+
+    const words = normalizedLabel.split(" ").filter(Boolean);
+    if (words.length >= 2) {
+        return `${firstAlphabeticCharacter(words[0])}${firstAlphabeticCharacter(words[1])}`.toUpperCase();
+    }
+
+    return normalizedLabel.slice(0, 2).toUpperCase();
+}
+
+function firstAlphabeticCharacter(value: string) {
+    const match = value.match(/[a-zа-я0-9]/i);
+    return match?.[0] ?? value[0] ?? "?";
+}
+
+function hashToAvatarColor(value: string) {
+    const normalizedValue = value.trim().toLowerCase();
+    let hash = 0;
+
+    for (let index = 0; index < normalizedValue.length; index += 1) {
+        hash = ((hash << 5) - hash + normalizedValue.charCodeAt(index)) | 0;
+    }
+
+    const hue = Math.abs(hash) % 360;
+    return hslToHex(hue, 0.56, 0.46);
+}
+
+function hslToHex(hue: number, saturation: number, lightness: number) {
+    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+    const hueSection = hue / 60;
+    const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
+    let red = 0;
+    let green = 0;
+    let blue = 0;
+
+    if (hueSection >= 0 && hueSection < 1) {
+        red = chroma;
+        green = secondary;
+    } else if (hueSection < 2) {
+        red = secondary;
+        green = chroma;
+    } else if (hueSection < 3) {
+        green = chroma;
+        blue = secondary;
+    } else if (hueSection < 4) {
+        green = secondary;
+        blue = chroma;
+    } else if (hueSection < 5) {
+        red = secondary;
+        blue = chroma;
+    } else {
+        red = chroma;
+        blue = secondary;
+    }
+
+    const matchValue = lightness - chroma / 2;
+    const toHexByte = (channel: number) => Math.round((channel + matchValue) * 255).toString(16).padStart(2, "0");
+
+    return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
 }
 
 function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
