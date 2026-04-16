@@ -16,9 +16,8 @@ type EditProfileHandler struct {
 }
 
 type editProfilePayload struct {
-	Name     string  `json:"name"`
-	Nickname string  `json:"nickname"`
-	Avatar   *string `json:"avatar"`
+	Name   string  `json:"name"`
+	Avatar *string `json:"avatar"`
 }
 
 func NewEditProfileHandler(usecase *edit_profile.Handler) *EditProfileHandler {
@@ -41,7 +40,6 @@ func (handler *EditProfileHandler) Handle(request *http.Request) (int, any) {
 	_, err := handler.usecase.Handle(request.Context(), edit_profile.Command{
 		UserUuid: userUuid,
 		Name:     payload.Name,
-		Nickname: payload.Nickname,
 		Avatar:   payload.Avatar,
 	})
 	if err != nil {

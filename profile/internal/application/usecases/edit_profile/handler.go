@@ -24,7 +24,6 @@ type Handler struct {
 type Command struct {
 	UserUuid uuid.UUID
 	Name     string
-	Nickname string
 	Avatar   *string
 }
 
@@ -38,18 +37,15 @@ func NewHandler(repository domain.ProfileRepository) *Handler {
 // Handle validates input and updates an existing profile.
 func (handler *Handler) Handle(ctx context.Context, command Command) (*domain.Profile, error) {
 	command.Name = strings.TrimSpace(command.Name)
-	command.Nickname = strings.TrimSpace(command.Nickname)
 
 	fields := map[string]any{
 		"userUuid": command.UserUuid,
 		"name":     command.Name,
-		"nickname": command.Nickname,
 	}
 
 	rls := map[string][]rules.Rule{
 		"userUuid": {rules.Required()},
 		"name":     {rules.Required(), rules.Min(2), rules.Max(64), rules.Regex(rules.SlugWithSpacesPattern)},
-		"nickname": {rules.Required(), rules.Min(3), rules.Max(32), rules.Regex(rules.SlugPattern)},
 	}
 
 	if command.Avatar != nil {
@@ -76,7 +72,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (*domain.Pr
 	}
 
 	profile.Name = command.Name
-	profile.Nickname = command.Nickname
 	profile.UpdatedAt = time.Now().UTC()
 	if command.Avatar != nil {
 		profile.Avatar = command.Avatar

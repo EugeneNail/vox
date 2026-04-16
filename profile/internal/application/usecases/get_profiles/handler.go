@@ -23,7 +23,6 @@ type Result struct {
 	UserUuid uuid.UUID `json:"userUuid"`
 	Avatar   *string   `json:"avatar"`
 	Name     string    `json:"name"`
-	Nickname string    `json:"nickname"`
 }
 
 func NewHandler(repository domain.ProfileRepository) *Handler {
@@ -83,7 +82,6 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]Result, erro
 			UserUuid: profile.UserUuid,
 			Avatar:   profile.Avatar,
 			Name:     profile.Name,
-			Nickname: profile.Nickname,
 		})
 	}
 

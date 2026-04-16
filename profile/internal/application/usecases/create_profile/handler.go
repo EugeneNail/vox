@@ -22,7 +22,6 @@ type Handler struct {
 type Command struct {
 	UserUuid uuid.UUID
 	Name     string
-	Nickname string
 }
 
 // NewHandler constructs a create_profile handler with its dependencies.
@@ -35,16 +34,13 @@ func NewHandler(repository domain.ProfileRepository) *Handler {
 // Handle creates a profile when it does not exist yet.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	command.Name = strings.TrimSpace(command.Name)
-	command.Nickname = strings.TrimSpace(command.Nickname)
 
 	validator := validation.NewValidator(map[string]any{
 		"userUuid": command.UserUuid,
 		"name":     command.Name,
-		"nickname": command.Nickname,
 	}, map[string][]rules.Rule{
 		"userUuid": {rules.Required()},
 		"name":     {rules.Required(), rules.Min(2), rules.Max(64), rules.Regex(rules.SlugWithSpacesPattern)},
-		"nickname": {rules.Required(), rules.Min(3), rules.Max(32), rules.Regex(rules.SlugPattern)},
 	})
 
 	if err := validator.Validate(); err != nil {
@@ -70,7 +66,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		UserUuid:  command.UserUuid,
 		Avatar:    nil,
 		Name:      command.Name,
-		Nickname:  command.Nickname,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}

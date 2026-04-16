@@ -29,7 +29,7 @@ func (repository *ProfileRepository) FindAllByUserUuids(ctx context.Context, use
 	}
 
 	query := fmt.Sprintf(`
-		SELECT user_uuid, avatar, name, nickname, created_at, updated_at
+		SELECT user_uuid, avatar, name, created_at, updated_at
 		FROM profiles
 		WHERE user_uuid IN (%s)
 	`, strings.Join(placeholders, ", "))
@@ -47,7 +47,6 @@ func (repository *ProfileRepository) FindAllByUserUuids(ctx context.Context, use
 			&profile.UserUuid,
 			&profile.Avatar,
 			&profile.Name,
-			&profile.Nickname,
 			&profile.CreatedAt,
 			&profile.UpdatedAt,
 		); err != nil {
@@ -74,7 +73,7 @@ func NewProfileRepository(database *sql.DB) *ProfileRepository {
 // FindByUserUuid returns a profile by auth user UUID or nil when the profile does not exist.
 func (repository *ProfileRepository) FindByUserUuid(ctx context.Context, userUuid uuid.UUID) (*domain.Profile, error) {
 	const query = `
-		SELECT user_uuid, avatar, name, nickname, created_at, updated_at
+		SELECT user_uuid, avatar, name, created_at, updated_at
 		FROM profiles
 		WHERE user_uuid = $1
 	`
@@ -85,7 +84,6 @@ func (repository *ProfileRepository) FindByUserUuid(ctx context.Context, userUui
 		&profile.UserUuid,
 		&profile.Avatar,
 		&profile.Name,
-		&profile.Nickname,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
 	); err != nil {
@@ -99,21 +97,18 @@ func (repository *ProfileRepository) FindByUserUuid(ctx context.Context, userUui
 	return &profile, nil
 }
 
-// Search returns profiles matched by name or nickname.
+// Search returns profiles matched by name.
 func (repository *ProfileRepository) Search(ctx context.Context, query string, limit int) ([]domain.Profile, error) {
 	const sqlQuery = `
-		SELECT user_uuid, avatar, name, nickname, created_at, updated_at
+		SELECT user_uuid, avatar, name, created_at, updated_at
 		FROM profiles
 		WHERE name ILIKE '%' || $1 || '%'
-		   OR nickname ILIKE '%' || $1 || '%'
 		ORDER BY
 			CASE
-				WHEN nickname ILIKE $1 || '%' THEN 0
-				WHEN name ILIKE $1 || '%' THEN 1
-				ELSE 2
+				WHEN name ILIKE $1 || '%' THEN 0
+				ELSE 1
 			END,
-			name ASC,
-			nickname ASC
+			name ASC
 		LIMIT $2
 	`
 
@@ -130,7 +125,6 @@ func (repository *ProfileRepository) Search(ctx context.Context, query string, l
 			&profile.UserUuid,
 			&profile.Avatar,
 			&profile.Name,
-			&profile.Nickname,
 			&profile.CreatedAt,
 			&profile.UpdatedAt,
 		); err != nil {
@@ -150,8 +144,8 @@ func (repository *ProfileRepository) Search(ctx context.Context, query string, l
 // Create persists a new public user profile in PostgreSQL.
 func (repository *ProfileRepository) Create(ctx context.Context, profile domain.Profile) error {
 	_, err := repository.database.ExecContext(ctx,
-		`INSERT INTO profiles (user_uuid, avatar, name, nickname, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
-		profile.UserUuid, profile.Avatar, profile.Name, profile.Nickname, profile.CreatedAt, profile.UpdatedAt,
+		`INSERT INTO profiles (user_uuid, avatar, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+		profile.UserUuid, profile.Avatar, profile.Name, profile.CreatedAt, profile.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("creating profile for user %q: %w", profile.UserUuid, err)
@@ -163,8 +157,8 @@ func (repository *ProfileRepository) Create(ctx context.Context, profile domain.
 // Update replaces public user profile data in PostgreSQL.
 func (repository *ProfileRepository) Update(ctx context.Context, profile domain.Profile) error {
 	_, err := repository.database.ExecContext(ctx,
-		`UPDATE profiles SET avatar = $2, name = $3, nickname = $4, updated_at = $5 WHERE user_uuid = $1`,
-		profile.UserUuid, profile.Avatar, profile.Name, profile.Nickname, profile.UpdatedAt,
+		`UPDATE profiles SET avatar = $2, name = $3, updated_at = $4 WHERE user_uuid = $1`,
+		profile.UserUuid, profile.Avatar, profile.Name, profile.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("updating profile for user %q: %w", profile.UserUuid, err)

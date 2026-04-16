@@ -7,5 +7,4 @@ type Profile struct {
 	UserUuid uuid.UUID `json:"userUuid"`
 	Avatar   *string   `json:"avatar"`
 	Name     string    `json:"name"`
-	Nickname string    `json:"nickname"`
 }

@@ -55,7 +55,6 @@ func (handler *SearchProfilesHandler) Handle(request *http.Request) (int, any) {
 			UserUuid: result.UserUuid,
 			Avatar:   result.Avatar,
 			Name:     result.Name,
-			Nickname: result.Nickname,
 		})
 	}
 

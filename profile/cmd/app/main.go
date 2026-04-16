@@ -52,7 +52,6 @@ func main() {
 		return createProfileHandler.Handle(ctx, create_profile.Command{
 			UserUuid: event.UserUuid,
 			Name:     event.Name,
-			Nickname: event.Nickname,
 		})
 	})
 	userCreatedConsumer.ListenAndConsume(context.Background())
