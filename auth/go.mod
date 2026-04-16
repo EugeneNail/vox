@@ -3,8 +3,7 @@ module github.com/EugeneNail/vox/auth
 go 1.26.1
 
 require (
-	github.com/EugeneNail/vox/lib-common v0.0.1
-	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/EugeneNail/vox/lib-common v0.0.3
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
@@ -16,4 +15,5 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 )
