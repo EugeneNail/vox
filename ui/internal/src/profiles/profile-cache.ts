@@ -2,7 +2,6 @@ export type PublicProfile = {
     userUuid: string;
     avatar: string | null;
     name: string;
-    nickname: string;
 };
 
 type CachedProfile = PublicProfile & {
@@ -96,6 +95,5 @@ function toPublicProfile(profile: CachedProfile): PublicProfile {
         userUuid: profile.userUuid,
         avatar: profile.avatar,
         name: profile.name,
-        nickname: profile.nickname,
     };
 }

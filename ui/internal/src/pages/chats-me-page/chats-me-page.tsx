@@ -600,7 +600,7 @@ export default function ChatsMePage() {
                     {isSearchActive ? (
                         <>
                             {searchQuery.trim().length === 0 && (
-                                <p className="chats-me-page__state">Type a name or nickname.</p>
+                                <p className="chats-me-page__state">Type a name.</p>
                             )}
                             {isSearchingProfiles && <p className="chats-me-page__state">Searching users...</p>}
                             {searchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{searchProfilesError}</p>}
@@ -618,7 +618,6 @@ export default function ChatsMePage() {
                                     <span className="chats-me-page__avatar" aria-hidden="true" />
                                     <span className="chats-me-page__chat-preview">
                                         <span className="chats-me-page__chat-name">{profile.name}</span>
-                                        <span className="chats-me-page__chat-nickname">@{profile.nickname}</span>
                                     </span>
                                 </button>
                             ))}

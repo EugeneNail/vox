@@ -11,7 +11,6 @@ import "./signup-page.sass";
 
 type SignupForm = {
     name: string;
-    nickname: string;
     email: string;
     password: string;
     passwordConfirmation: string;
@@ -26,7 +25,6 @@ type AuthenticateResponse = {
 
 const initialForm: SignupForm = {
     name: "",
-    nickname: "",
     email: "",
     password: "",
     passwordConfirmation: "",
@@ -114,16 +112,6 @@ export default function SignupPage() {
                         placeholder="Your display name"
                         value={form.name}
                         error={violations.name}
-                        onChange={handleInputChange}
-                    />
-                    <FormTextField
-                        label="Nickname"
-                        name="nickname"
-                        type="text"
-                        autoComplete="nickname"
-                        placeholder="your.nickname"
-                        value={form.nickname}
-                        error={violations.nickname}
                         onChange={handleInputChange}
                     />
                     <FormTextField
