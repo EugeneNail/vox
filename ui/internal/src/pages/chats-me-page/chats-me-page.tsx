@@ -28,7 +28,6 @@ type ChatMessage = {
     createdAt: string;
     updatedAt: string;
     isPending?: boolean;
-    pendingServerUuid?: string;
 };
 
 type MessageContextMenu = {
@@ -333,28 +332,6 @@ export default function ChatsMePage() {
                 }
 
                 const confirmedMessage = addMessageEventToChatMessage(event);
-                const pendingMessageIndex = currentMessages.findIndex((message) => (
-                    message.isPending &&
-                    (
-                        message.pendingServerUuid === event.messageUuid ||
-                        (
-                            message.chatUuid === event.chatUuid &&
-                            message.userUuid === event.userUuid &&
-                            message.text === event.text &&
-                            areAttachmentNamesEqual(message.attachments, event.attachments)
-                        )
-                    )
-                ));
-
-                if (pendingMessageIndex !== -1) {
-                    return currentMessages.map((message, index) => (
-                        index === pendingMessageIndex
-                            ? confirmedMessage
-                            : message
-                    ));
-                }
-
-                // TODO: Sort confirmed messages by server createdAt while keeping pending messages stable.
                 return [
                     ...currentMessages,
                     confirmedMessage,
@@ -451,17 +428,7 @@ export default function ChatsMePage() {
                 attachments,
             });
 
-            setMessages((currentMessages) => {
-                if (currentMessages.some((message) => message.uuid === messageUuid && !message.isPending)) {
-                    return currentMessages.filter((message) => message.uuid !== pendingMessageUuid);
-                }
-
-                return currentMessages.map((message) => (
-                    message.uuid === pendingMessageUuid
-                        ? { ...message, uuid: messageUuid, pendingServerUuid: messageUuid }
-                        : message
-                ));
-            });
+            setMessages((currentMessages) => confirmPendingMessage(currentMessages, pendingMessageUuid, messageUuid));
         } catch (error) {
             setMessages((currentMessages) => currentMessages.filter((message) => message.uuid !== pendingMessageUuid));
             throw error;
@@ -1004,6 +971,31 @@ function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
     };
 }
 
+function confirmPendingMessage(currentMessages: ChatMessage[], pendingMessageUuid: string, confirmedMessageUuid: string) {
+    const confirmedMessageExists = currentMessages.some((message) => message.uuid === confirmedMessageUuid && !message.isPending);
+    if (confirmedMessageExists) {
+        return currentMessages.filter((message) => message.uuid !== pendingMessageUuid);
+    }
+
+    let didReplacePendingMessage = false;
+    const confirmedMessages = currentMessages.map((message) => {
+        if (message.uuid !== pendingMessageUuid) {
+            return message;
+        }
+
+        didReplacePendingMessage = true;
+        return {
+            ...message,
+            uuid: confirmedMessageUuid,
+            isPending: false,
+        };
+    });
+
+    return didReplacePendingMessage
+        ? confirmedMessages
+        : currentMessages;
+}
+
 function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
@@ -1014,14 +1006,6 @@ function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
-}
-
-function areAttachmentNamesEqual(left: MessageAttachment[], right: MessageAttachment[]) {
-    if (left.length !== right.length) {
-        return false;
-    }
-
-    return left.every((attachment, index) => attachment.name === right[index]?.name);
 }
 
 function MessageAttachmentView({ attachment }: { attachment: MessageAttachment; }) {
