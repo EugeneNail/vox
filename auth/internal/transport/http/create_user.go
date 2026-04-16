@@ -8,7 +8,6 @@ import (
 
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/create_user"
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
 
 type createUserPayload struct {
@@ -29,34 +28,11 @@ func NewCreateUserHandler(usecase *create_user.Handler) *CreateUserHandler {
 	}
 }
 
-// CreateUser decodes the request, applies transport validation, and calls the use-case.
+// CreateUser decodes the request and calls the use-case.
 func (handler *CreateUserHandler) Handle(request *http.Request) (int, any) {
 	var payload createUserPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
-	}
-
-	validator := validation.NewValidator(map[string]any{
-		"name":                 payload.Name,
-		"nickname":             payload.Nickname,
-		"email":                payload.Email,
-		"password":             payload.Password,
-		"passwordConfirmation": payload.PasswordConfirmation,
-	}, map[string][]rules.Rule{
-		"name":                 {rules.Required(), rules.Max(64)},
-		"nickname":             {rules.Required(), rules.Max(32)},
-		"email":                {rules.Required(), rules.Max(256)},
-		"password":             {rules.Required(), rules.Max(256)},
-		"passwordConfirmation": {rules.Required(), rules.Max(256)},
-	})
-
-	if err := validator.Validate(); err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return http.StatusBadRequest, validationError.Violations()
-		}
-
-		return http.StatusInternalServerError, fmt.Errorf("validating create user payload: %w", err)
 	}
 
 	userUuid, err := handler.usecase.Handle(request.Context(), create_user.Command{

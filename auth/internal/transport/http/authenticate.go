@@ -8,7 +8,6 @@ import (
 
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/authenticate"
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
 
 type authenticatePayload struct {
@@ -26,28 +25,11 @@ func NewAuthenticateHandler(usecase *authenticate.Handler) *AuthenticateHandler 
 	}
 }
 
-// Authenticate decodes the request, applies transport validation, and calls the use-case.
+// Authenticate decodes the request and calls the use-case.
 func (handler *AuthenticateHandler) Handle(request *http.Request) (int, any) {
 	var payload authenticatePayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
-	}
-
-	validator := validation.NewValidator(map[string]any{
-		"email":    payload.Email,
-		"password": payload.Password,
-	}, map[string][]rules.Rule{
-		"email":    {rules.Required(), rules.Max(256)},
-		"password": {rules.Required(), rules.Max(256)},
-	})
-
-	if err := validator.Validate(); err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return http.StatusBadRequest, validationError.Violations()
-		}
-
-		return http.StatusInternalServerError, fmt.Errorf("validating authenticate payload: %w", err)
 	}
 
 	loginToken, refreshToken, err := handler.usecase.Handle(request.Context(), authenticate.Query{

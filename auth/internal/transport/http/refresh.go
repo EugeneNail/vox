@@ -8,7 +8,6 @@ import (
 
 	"github.com/EugeneNail/vox/auth/internal/application/usecases/refresh"
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/lib-common/validation/rules"
 )
 
 type refreshPayload struct {
@@ -25,26 +24,11 @@ func NewRefreshHandler(usecase *refresh.Handler) *RefreshHandler {
 	}
 }
 
-// Refresh decodes the request, applies transport validation, and calls the use-case.
+// Refresh decodes the request and calls the use-case.
 func (handler *RefreshHandler) Handle(request *http.Request) (int, any) {
 	var payload refreshPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
-	}
-
-	validator := validation.NewValidator(map[string]any{
-		"refreshToken": payload.RefreshToken,
-	}, map[string][]rules.Rule{
-		"refreshToken": {rules.Required(), rules.Max(4096)},
-	})
-
-	if err := validator.Validate(); err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return http.StatusBadRequest, validationError.Violations()
-		}
-
-		return http.StatusInternalServerError, fmt.Errorf("validating refresh payload: %w", err)
 	}
 
 	loginToken, err := handler.usecase.Handle(request.Context(), refresh.Query{
