@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/profile/internal/application/usecases/get_profiles"
 	"github.com/EugeneNail/vox/profile/internal/transport/http/resource"
 	"github.com/google/uuid"
@@ -32,21 +31,15 @@ func (handler *GetProfilesHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
 	}
 
-	validationError := validation.NewError()
 	userUuids := make([]uuid.UUID, 0, len(payload.UserUuids))
 
 	for index, userUuidString := range payload.UserUuids {
 		userUuid, err := uuid.Parse(userUuidString)
 		if err != nil {
-			validationError.AddViolation(fmt.Sprintf("userUuids.%d", index), "Must be a valid UUID")
-			continue
+			return http.StatusBadRequest, fmt.Errorf("parsing user uuid at index %d: %w", index, err)
 		}
 
 		userUuids = append(userUuids, userUuid)
-	}
-
-	if len(validationError.Violations()) > 0 {
-		return http.StatusBadRequest, validationError.Violations()
 	}
 
 	results, err := handler.usecase.Handle(request.Context(), get_profiles.Query{
