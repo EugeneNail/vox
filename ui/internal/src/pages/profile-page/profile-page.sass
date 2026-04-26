@@ -1,0 +1,349 @@
+.profile-page
+  position: relative
+  height: 100%
+  min-height: 100%
+  overflow-y: auto
+  overflow-x: hidden
+  padding: 28px
+  background: radial-gradient(circle at top left, rgba(240, 197, 169, 0.14), transparent 28%), radial-gradient(circle at right, rgba(108, 153, 198, 0.14), transparent 32%), linear-gradient(135deg, rgba(7, 11, 16, 0.96), rgba(16, 23, 34, 0.95))
+
+.profile-page__backdrop
+  position: absolute
+  inset: 0
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 36%), linear-gradient(300deg, rgba(255, 255, 255, 0.02), transparent 30%)
+  pointer-events: none
+
+.profile-page__glow
+  position: absolute
+  width: 420px
+  height: 420px
+  border-radius: 50%
+  filter: blur(44px)
+  opacity: 0.58
+  pointer-events: none
+
+.profile-page__glow--left
+  top: -100px
+  left: -90px
+  background: rgba(240, 197, 169, 0.12)
+
+.profile-page__glow--right
+  right: -140px
+  bottom: -120px
+  background: rgba(121, 172, 214, 0.12)
+
+.profile-page__shell
+  position: relative
+  z-index: 1
+  display: grid
+  gap: 24px
+  width: min(1240px, 100%)
+  margin: 0 auto
+
+.profile-page__header
+  display: grid
+  gap: 10px
+  max-width: 70ch
+
+.profile-page__eyebrow
+  margin: 0
+  color: #f0c5a9
+  font-size: 12px
+  letter-spacing: 0.22em
+  text-transform: uppercase
+
+.profile-page__title
+  margin: 0
+  font-size: clamp(34px, 5vw, 62px)
+  line-height: 0.95
+
+.profile-page__text
+  margin: 0
+  max-width: 52ch
+  color: rgba(246, 239, 228, 0.74)
+  font-size: 17px
+  line-height: 1.6
+
+.profile-page__content
+  display: grid
+  justify-items: center
+  gap: 20px
+  min-height: 0
+
+.profile-page__editor
+  min-width: 0
+  width: min(760px, 100%)
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 28px
+  background: rgba(10, 15, 22, 0.72)
+  backdrop-filter: blur(18px)
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28)
+
+.profile-page__editor
+  display: grid
+  gap: 18px
+  padding: 22px
+
+.profile-page__dropzone
+  position: relative
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  gap: 18px
+  align-items: center
+  min-height: 192px
+  padding: 20px
+  border: 1px dashed rgba(255, 255, 255, 0.14)
+  border-radius: 24px
+  background: rgba(255, 255, 255, 0.03)
+  overflow: hidden
+
+.profile-page__dropzone--active
+  border-color: rgba(240, 197, 169, 0.44)
+  background: rgba(240, 197, 169, 0.08)
+
+.profile-page__file-input
+  position: absolute
+  inset: 0
+  opacity: 0
+  cursor: pointer
+  pointer-events: none
+
+.profile-page__dropzone-copy
+  display: grid
+  gap: 10px
+  align-content: start
+
+.profile-page__dropzone-title,
+.profile-page__section-title
+  margin: 0
+  color: #f0c5a9
+  font-size: 12px
+  letter-spacing: 0.2em
+  text-transform: uppercase
+
+.profile-page__dropzone-text,
+.profile-page__section-text,
+.profile-page__dropzone-preview-text,
+.profile-page__preview-subtitle,
+.profile-page__crop-placeholder-text
+  margin: 0
+  color: rgba(246, 239, 228, 0.72)
+  line-height: 1.55
+
+.profile-page__dropzone-actions
+  display: flex
+  flex-wrap: wrap
+  align-items: center
+  gap: 12px
+  margin-top: 4px
+
+.profile-page__hint
+  color: rgba(246, 239, 228, 0.56)
+  font-size: 13px
+
+.profile-page__button
+  min-height: 44px
+  padding: 0 18px
+  border: 1px solid transparent
+  border-radius: 999px
+  font: inherit
+  font-weight: 700
+  cursor: pointer
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease
+
+.profile-page__button:hover
+  transform: translateY(-1px)
+
+.profile-page__button--primary
+  background: #f0c5a9
+  color: #101722
+
+.profile-page__button--secondary
+  border-color: rgba(255, 255, 255, 0.14)
+  background: rgba(255, 255, 255, 0.04)
+  color: #f6efe4
+
+.profile-page__dropzone-preview
+  display: grid
+  justify-items: center
+  gap: 14px
+  width: 204px
+  padding: 10px
+
+.profile-page__avatar
+  position: relative
+  overflow: hidden
+  flex: none
+  border: 1px solid rgba(255, 255, 255, 0.16)
+  background: #4d5664
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22)
+
+.profile-page__avatar-image
+  display: block
+  width: 100%
+  height: 100%
+  object-fit: cover
+
+.profile-page__avatar-image--cropped
+  position: absolute
+  max-width: none
+  max-height: none
+  object-fit: none
+
+.profile-page__avatar-placeholder
+  position: absolute
+  inset: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  color: #f8fafc
+  font-size: 32px
+  font-weight: 700
+  letter-spacing: 0.04em
+  text-transform: uppercase
+
+.profile-page__dropzone-overlay
+  position: absolute
+  inset: 0
+  display: grid
+  align-content: center
+  justify-items: center
+  gap: 12px
+  background: rgba(7, 11, 16, 0.72)
+  color: #f6efe4
+  text-align: center
+
+.profile-page__dropzone-overlay-icon
+  font-size: 34px
+
+.profile-page__dropzone-overlay-text
+  margin: 0
+  font-size: 14px
+
+.profile-page__cropper
+  display: grid
+  gap: 12px
+
+.profile-page__cropper-header
+  display: flex
+  align-items: start
+  justify-content: space-between
+  gap: 16px
+
+.profile-page__crop-stage
+  position: relative
+  min-height: 380px
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 24px
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)), rgba(255, 255, 255, 0.02)
+  overflow: hidden
+  touch-action: none
+
+.profile-page__crop-stage--ready
+  cursor: grab
+
+.profile-page__crop-stage--ready:active
+  cursor: grabbing
+
+.profile-page__crop-stage-inner
+  position: absolute
+  inset: 0
+  overflow: hidden
+
+.profile-page__crop-image
+  position: absolute
+  inset: 0
+  display: block
+  width: 100%
+  height: 100%
+  object-fit: contain
+  user-select: none
+  pointer-events: none
+
+.profile-page__crop-placeholder
+  display: grid
+  place-content: center
+  justify-items: center
+  gap: 10px
+  width: 100%
+  height: 100%
+  padding: 24px
+  text-align: center
+
+.profile-page__crop-placeholder-icon
+  color: rgba(240, 197, 169, 0.82)
+  font-size: 42px
+
+.profile-page__crop-placeholder-title
+  margin: 0
+  font-size: 18px
+  font-weight: 700
+
+.profile-page__crop-rect
+  position: absolute
+  border: 1px solid rgba(240, 197, 169, 0.92)
+  border-radius: 18px
+  box-shadow: 0 0 0 1px rgba(7, 11, 16, 0.42), 0 0 0 999px rgba(7, 11, 16, 0.38)
+  touch-action: none
+
+.profile-page__crop-rect-hint
+  position: absolute
+  top: -30px
+  left: 0
+  padding: 4px 8px
+  border-radius: 999px
+  background: rgba(7, 11, 16, 0.86)
+  color: #f6efe4
+  font-size: 12px
+  font-weight: 700
+
+.profile-page__crop-handle
+  position: absolute
+  right: -14px
+  bottom: -14px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 34px
+  height: 34px
+  border: 1px solid rgba(255, 255, 255, 0.16)
+  border-radius: 50%
+  background: rgba(7, 11, 16, 0.92)
+  color: #f6efe4
+  cursor: nwse-resize
+  touch-action: none
+
+.profile-page__feedback
+  min-height: 24px
+
+.profile-page__feedback-text
+  margin: 0
+  font-size: 14px
+
+.profile-page__feedback-text--error
+  color: #ff9e89
+
+.profile-page__feedback-text--success
+  color: #9ed7b2
+
+@media (max-width: 1080px)
+  .profile-page
+    padding: 18px
+
+  .profile-page__editor
+    padding: 18px
+
+  .profile-page__dropzone
+    grid-template-columns: 1fr
+    justify-items: start
+
+  .profile-page__dropzone-preview
+    width: 100%
+    justify-items: start
+    padding: 0
+
+  .profile-page__crop-stage
+    min-height: 280px
+
+  .profile-page__cropper-header
+    flex-direction: column
