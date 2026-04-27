@@ -27,8 +27,6 @@ var attachmentNamePattern = regexp.MustCompile(`^.+\.[a-z]{2,5}$`)
 // Handler edits messages through the edit_message use-case.
 type Handler struct {
 	messageRepository      domain.MessageRepository
-	chatRepository         domain.ChatRepository
-	chatMemberRepository   domain.ChatMemberRepository
 	messageEditedPublisher events.MessageEditedPublisher
 }
 
@@ -41,11 +39,9 @@ type Command struct {
 }
 
 // NewHandler constructs an edit_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageEditedPublisher events.MessageEditedPublisher) *Handler {
+func NewHandler(messageRepository domain.MessageRepository, messageEditedPublisher events.MessageEditedPublisher) *Handler {
 	return &Handler{
 		messageRepository:      messageRepository,
-		chatRepository:         chatRepository,
-		chatMemberRepository:   chatMemberRepository,
 		messageEditedPublisher: messageEditedPublisher,
 	}
 }
@@ -86,24 +82,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 
 	if message == nil {
 		return ErrMessageNotFound
-	}
-
-	chat, err := handler.chatRepository.FindByUuid(ctx, message.ChatUuid)
-	if err != nil {
-		return fmt.Errorf("finding chat by uuid %q: %w", message.ChatUuid, err)
-	}
-
-	if chat == nil {
-		return ErrChatNotFound
-	}
-
-	member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, message.ChatUuid, command.UserUuid)
-	if err != nil {
-		return fmt.Errorf("finding member %q in chat %q: %w", command.UserUuid, message.ChatUuid, err)
-	}
-
-	if member == nil {
-		return ErrChatAccessDenied
 	}
 
 	if message.UserUuid != command.UserUuid {
