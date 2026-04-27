@@ -70,7 +70,6 @@ let messageWebSocket: WebSocket | null = null;
 let messageWebSocketToken: string | null = null;
 let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
-const chatSubscriptions = new Set<string>();
 const addMessageListeners = new Set<AddMessageListener>();
 const updateMessageListeners = new Set<UpdateMessageListener>();
 const removeMessageListeners = new Set<RemoveMessageListener>();
@@ -123,12 +122,6 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         function handleOpen() {
             messageWebSocketReconnectAttempt = 0;
             setIsConnected(true);
-            chatSubscriptions.forEach((chatUuid) => {
-                sendMessageWebSocketCommand({
-                    type: "chat.subscribe",
-                    chatUuid,
-                });
-            });
         }
 
         function handleClose() {
@@ -205,7 +198,7 @@ function openMessageWebSocket(loginToken: string, listeners: MessageWebSocketLis
     clearMessageWebSocketReconnect();
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = new URL("/api/v1/message/ws", `${protocol}//${window.location.host}`);
+    const url = new URL("/api/v1/realtime/ws", `${protocol}//${window.location.host}`);
     url.searchParams.set("token", loginToken);
 
     messageWebSocket = new WebSocket(url);
@@ -270,27 +263,11 @@ function clearMessageWebSocketReconnect() {
 }
 
 function subscribeChat(chatUuid: string) {
-    chatSubscriptions.add(chatUuid);
-    sendMessageWebSocketCommand({
-        type: "chat.subscribe",
-        chatUuid,
-    });
+    void chatUuid;
 }
 
 function unsubscribeChat(chatUuid: string) {
-    chatSubscriptions.delete(chatUuid);
-    sendMessageWebSocketCommand({
-        type: "chat.unsubscribe",
-        chatUuid,
-    });
-}
-
-function sendMessageWebSocketCommand(command: { type: string; chatUuid: string }) {
-    if (!messageWebSocket || messageWebSocket.readyState !== WebSocket.OPEN) {
-        return;
-    }
-
-    messageWebSocket.send(JSON.stringify(command));
+    void chatUuid;
 }
 
 function addMessageListener(listener: AddMessageListener) {
