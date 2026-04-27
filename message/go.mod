@@ -3,7 +3,7 @@ module github.com/EugeneNail/vox/message
 go 1.26.1
 
 require (
-	github.com/EugeneNail/vox/lib-common v0.0.0-20260427190817-eb2108f7222f
+	github.com/EugeneNail/vox/lib-common v0.0.0-20260427195807-c386f880566b
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3

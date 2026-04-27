@@ -9,8 +9,6 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-const messageDeletedStream = "message.deleted"
-
 // MessageDeletedPublisher publishes message-deleted events through Redis Streams.
 type MessageDeletedPublisher struct {
 	client *redisclient.Client
@@ -33,7 +31,7 @@ func (publisher *MessageDeletedPublisher) Publish(ctx context.Context, event eve
 	}
 
 	if err := publisher.client.XAdd(ctx, &redisclient.XAddArgs{
-		Stream: messageDeletedStream,
+		Stream: events.MessageDeletedStream,
 		MaxLen: publisher.maxLen,
 		Approx: true,
 		Values: map[string]any{

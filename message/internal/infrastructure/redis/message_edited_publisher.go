@@ -9,8 +9,6 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-const messageEditedStream = "message.edited"
-
 // MessageEditedPublisher publishes message-edited events through Redis Streams.
 type MessageEditedPublisher struct {
 	client *redisclient.Client
@@ -33,7 +31,7 @@ func (publisher *MessageEditedPublisher) Publish(ctx context.Context, event even
 	}
 
 	if err := publisher.client.XAdd(ctx, &redisclient.XAddArgs{
-		Stream: messageEditedStream,
+		Stream: events.MessageEditedStream,
 		MaxLen: publisher.maxLen,
 		Approx: true,
 		Values: map[string]any{

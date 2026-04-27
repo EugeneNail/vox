@@ -9,8 +9,6 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-const messageCreatedStream = "message.created"
-
 // MessageCreatedPublisher publishes message-created events through Redis Streams.
 type MessageCreatedPublisher struct {
 	client *redisclient.Client
@@ -33,7 +31,7 @@ func (publisher *MessageCreatedPublisher) Publish(ctx context.Context, event eve
 	}
 
 	if err := publisher.client.XAdd(ctx, &redisclient.XAddArgs{
-		Stream: messageCreatedStream,
+		Stream: events.MessageCreatedStream,
 		MaxLen: publisher.maxLen,
 		Approx: true,
 		Values: map[string]any{
