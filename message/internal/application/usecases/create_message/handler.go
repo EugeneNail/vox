@@ -51,7 +51,7 @@ func NewHandler(messageRepository domain.MessageRepository, chatRepository domai
 // Handle validates input and creates a new message.
 func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID, error) {
 	messageUuid := uuid.UUID(uuidv7.New())
-	text := strings.TrimSpace(command.Text)
+	command.Text = strings.TrimSpace(command.Text)
 	attachments, err := buildAttachments(messageUuid, command.Attachments)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("building attachments for message %q: %w", messageUuid, err)
@@ -60,12 +60,12 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	validator := validation.NewValidator(map[string]any{
 		"chatUuid":           command.ChatUuid,
 		"userUuid":           command.UserUuid,
-		"text":               text,
+		"text":               command.Text,
 		"attachments.length": len(command.Attachments),
 	}, map[string][]rules.Rule{
 		"chatUuid":           {rules.Required()},
 		"userUuid":           {rules.Required()},
-		"text":               buildTextRules(text, len(attachments) > 0),
+		"text":               buildTextRules(command.Text, len(attachments) > 0),
 		"attachments.length": {rules.Max(10)},
 	})
 
@@ -101,7 +101,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		Uuid:        messageUuid,
 		ChatUuid:    command.ChatUuid,
 		UserUuid:    command.UserUuid,
-		Text:        text,
+		Text:        command.Text,
 		Attachments: attachments,
 		CreatedAt:   now,
 		UpdatedAt:   now,
