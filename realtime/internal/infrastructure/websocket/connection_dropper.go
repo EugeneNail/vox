@@ -4,13 +4,15 @@ import "github.com/google/uuid"
 
 // ConnectionDropper removes a websocket connection and every runtime state attached to it.
 type ConnectionDropper struct {
-	connectionHub *ConnectionHub
+	connectionHub        *ConnectionHub
+	subscriptionRegistry *ChatSubscriptionRegistry
 }
 
 // NewConnectionDropper constructs a websocket connection dropper.
-func NewConnectionDropper(connectionHub *ConnectionHub) *ConnectionDropper {
+func NewConnectionDropper(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry) *ConnectionDropper {
 	return &ConnectionDropper{
-		connectionHub: connectionHub,
+		connectionHub:        connectionHub,
+		subscriptionRegistry: subscriptionRegistry,
 	}
 }
 
@@ -18,6 +20,7 @@ func NewConnectionDropper(connectionHub *ConnectionHub) *ConnectionDropper {
 func (dropper *ConnectionDropper) Drop(connectionUuid uuid.UUID) {
 	connection := dropper.connectionHub.FindByUuid(connectionUuid)
 
+	dropper.subscriptionRegistry.Unsubscribe(connectionUuid)
 	dropper.connectionHub.Unregister(connectionUuid)
 
 	if connection != nil {

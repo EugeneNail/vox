@@ -51,3 +51,18 @@ func (hub *ConnectionHub) FindByUuid(connectionUuid uuid.UUID) *Connection {
 
 	return hub.connections[connectionUuid]
 }
+
+// FindByUserUuid finds all active websocket connections for the user.
+func (hub *ConnectionHub) FindByUserUuid(userUuid uuid.UUID) []*Connection {
+	hub.mutex.RLock()
+	defer hub.mutex.RUnlock()
+
+	connections := make([]*Connection, 0)
+	for _, connection := range hub.connections {
+		if connection.UserUuid() == userUuid {
+			connections = append(connections, connection)
+		}
+	}
+
+	return connections
+}
