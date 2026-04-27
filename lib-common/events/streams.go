@@ -1,8 +1,8 @@
 package events
 
 const (
-	// ChatViewOpenedStream is the Redis stream for chat view open events.
-	ChatViewOpenedStream = "ChatViewOpened"
+	// UserOpenedChatStream is the Redis stream for chat view open events.
+	UserOpenedChatStream = "UserOpenedChat"
 	// MessageCreatedStream is the Redis stream for created messages.
 	MessageCreatedStream = "message.created"
 	// MessageEditedStream is the Redis stream for edited messages.

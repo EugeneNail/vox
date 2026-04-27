@@ -57,19 +57,13 @@ type MessageDeletedPublisher interface {
 	Publish(ctx context.Context, event MessageDeleted) error
 }
 
-// ChatViewOpened describes that a user opened a chat view in the browser.
-type ChatViewOpened struct {
+// UserOpenedChat describes that a user opened a chat view in the browser.
+type UserOpenedChat struct {
 	UserUuid uuid.UUID `json:"userUuid"`
 	ChatUuid uuid.UUID `json:"chatUuid"`
 }
 
-// ChatViewOpenedPublisher publishes chat-view-opened events.
-type ChatViewOpenedPublisher interface {
-	Publish(ctx context.Context, event ChatViewOpened) error
-}
-
-// ChatViewClosed describes that a user closed a chat view in the browser.
-type ChatViewClosed struct {
-	UserUuid uuid.UUID `json:"userUuid"`
-	ChatUuid uuid.UUID `json:"chatUuid"`
+// UserOpenedChatPublisher publishes user-opened-chat events.
+type UserOpenedChatPublisher interface {
+	Publish(ctx context.Context, event UserOpenedChat) error
 }
