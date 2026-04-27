@@ -63,6 +63,11 @@ type ChatViewOpened struct {
 	ChatUuid uuid.UUID `json:"chatUuid"`
 }
 
+// ChatViewOpenedPublisher publishes chat-view-opened events.
+type ChatViewOpenedPublisher interface {
+	Publish(ctx context.Context, event ChatViewOpened) error
+}
+
 // ChatViewClosed describes that a user closed a chat view in the browser.
 type ChatViewClosed struct {
 	UserUuid uuid.UUID `json:"userUuid"`
