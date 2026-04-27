@@ -2,7 +2,7 @@ import { MouseEvent, useEffect, useLayoutEffect, useRef, useState, type CSSPrope
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
-import { AddMessageEvent, UpdateMessageEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import { MessageCreatedEvent, MessageEditedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
@@ -43,7 +43,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { addMessageListener, isConnected, removeMessageListener, updateMessageListener } = useMessageWebSocket();
+    const { isConnected, messageCreatedListener, messageDeletedListener, messageEditedListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -315,7 +315,7 @@ export default function ChatsMePage() {
     }, [selectedChatUuid]);
 
     useEffect(() => (
-        addMessageListener((event) => {
+        messageCreatedListener((event) => {
             if (event.chatUuid !== selectedChatUuid) {
                 return;
             }
@@ -329,38 +329,38 @@ export default function ChatsMePage() {
                     return currentMessages;
                 }
 
-                const confirmedMessage = addMessageEventToChatMessage(event);
+                const confirmedMessage = messageCreatedEventToChatMessage(event);
                 return [
                     ...currentMessages,
                     confirmedMessage,
                 ];
             });
         })
-    ), [addMessageListener, selectedChatUuid]);
+    ), [messageCreatedListener, selectedChatUuid]);
 
     useEffect(() => (
-        updateMessageListener((event) => {
+        messageEditedListener((event) => {
             if (event.chatUuid !== selectedChatUuid) {
                 return;
             }
 
             setMessages((currentMessages) => currentMessages.map((message) => (
                 message.uuid === event.messageUuid
-                    ? updateMessageEventToChatMessage(event)
+                    ? messageEditedEventToChatMessage(event)
                     : message
             )));
         })
-    ), [selectedChatUuid, updateMessageListener]);
+    ), [messageEditedListener, selectedChatUuid]);
 
     useEffect(() => (
-        removeMessageListener((event) => {
+        messageDeletedListener((event) => {
             if (event.chatUuid !== selectedChatUuid) {
                 return;
             }
 
             setMessages((currentMessages) => currentMessages.filter((message) => message.uuid !== event.messageUuid));
         })
-    ), [removeMessageListener, selectedChatUuid]);
+    ), [messageDeletedListener, selectedChatUuid]);
 
     useEffect(() => {
         function handleWindowClick() {
@@ -957,7 +957,7 @@ function copyTextWithFallback(text: string) {
     textarea.remove();
 }
 
-function addMessageEventToChatMessage(event: AddMessageEvent): ChatMessage {
+function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
@@ -994,7 +994,7 @@ function confirmPendingMessage(currentMessages: ChatMessage[], pendingMessageUui
         : currentMessages;
 }
 
-function updateMessageEventToChatMessage(event: UpdateMessageEvent): ChatMessage {
+function messageEditedEventToChatMessage(event: MessageEditedEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,

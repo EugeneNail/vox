@@ -8,9 +8,9 @@ type MessageWebSocketContextValue = {
     isConnected: boolean;
     subscribeChat: (chatUuid: string) => void;
     unsubscribeChat: (chatUuid: string) => void;
-    addMessageListener: (listener: AddMessageListener) => () => void;
-    updateMessageListener: (listener: UpdateMessageListener) => () => void;
-    removeMessageListener: (listener: RemoveMessageListener) => () => void;
+    messageCreatedListener: (listener: MessageCreatedListener) => () => void;
+    messageEditedListener: (listener: MessageEditedListener) => () => void;
+    messageDeletedListener: (listener: MessageDeletedListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
@@ -22,7 +22,7 @@ type MessageWebSocketEvent = {
     data?: unknown;
 };
 
-export type AddMessageEvent = {
+export type MessageCreatedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
@@ -32,7 +32,7 @@ export type AddMessageEvent = {
     updatedAt: string;
 };
 
-export type UpdateMessageEvent = {
+export type MessageEditedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
@@ -42,15 +42,15 @@ export type UpdateMessageEvent = {
     updatedAt: string;
 };
 
-export type RemoveMessageEvent = {
+export type MessageDeletedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
 };
 
-type AddMessageListener = (event: AddMessageEvent) => void;
-type UpdateMessageListener = (event: UpdateMessageEvent) => void;
-type RemoveMessageListener = (event: RemoveMessageEvent) => void;
+type MessageCreatedListener = (event: MessageCreatedEvent) => void;
+type MessageEditedListener = (event: MessageEditedEvent) => void;
+type MessageDeletedListener = (event: MessageDeletedEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
     handleClose: () => void;
@@ -61,18 +61,18 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
     subscribeChat,
     unsubscribeChat,
-    addMessageListener,
-    updateMessageListener,
-    removeMessageListener,
+    messageCreatedListener,
+    messageEditedListener,
+    messageDeletedListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
 let messageWebSocketToken: string | null = null;
 let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
-const addMessageListeners = new Set<AddMessageListener>();
-const updateMessageListeners = new Set<UpdateMessageListener>();
-const removeMessageListeners = new Set<RemoveMessageListener>();
+const messageCreatedListeners = new Set<MessageCreatedListener>();
+const messageEditedListeners = new Set<MessageEditedListener>();
+const messageDeletedListeners = new Set<MessageDeletedListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
 
@@ -139,22 +139,22 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             try {
                 const websocketEvent = JSON.parse(event.data) as MessageWebSocketEvent;
                 if (websocketEvent.type === "MessageCreated") {
-                    addMessageListeners.forEach((listener) => {
-                        listener(websocketEvent.data as AddMessageEvent);
+                    messageCreatedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as MessageCreatedEvent);
                     });
                     return;
                 }
 
-                if (websocketEvent.type === "chat.update_message") {
-                    updateMessageListeners.forEach((listener) => {
-                        listener(websocketEvent.data as UpdateMessageEvent);
+                if (websocketEvent.type === "MessageEdited") {
+                    messageEditedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as MessageEditedEvent);
                     });
                     return;
                 }
 
-                if (websocketEvent.type === "chat.remove_message") {
-                    removeMessageListeners.forEach((listener) => {
-                        listener(websocketEvent.data as RemoveMessageEvent);
+                if (websocketEvent.type === "MessageDeleted") {
+                    messageDeletedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as MessageDeletedEvent);
                     });
                     return;
                 }
@@ -175,7 +175,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, addMessageListener, updateMessageListener, removeMessageListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, messageCreatedListener, messageEditedListener, messageDeletedListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -270,26 +270,26 @@ function unsubscribeChat(chatUuid: string) {
     void chatUuid;
 }
 
-function addMessageListener(listener: AddMessageListener) {
-    addMessageListeners.add(listener);
+function messageCreatedListener(listener: MessageCreatedListener) {
+    messageCreatedListeners.add(listener);
 
     return () => {
-        addMessageListeners.delete(listener);
+        messageCreatedListeners.delete(listener);
     };
 }
 
-function updateMessageListener(listener: UpdateMessageListener) {
-    updateMessageListeners.add(listener);
+function messageEditedListener(listener: MessageEditedListener) {
+    messageEditedListeners.add(listener);
 
     return () => {
-        updateMessageListeners.delete(listener);
+        messageEditedListeners.delete(listener);
     };
 }
 
-function removeMessageListener(listener: RemoveMessageListener) {
-    removeMessageListeners.add(listener);
+function messageDeletedListener(listener: MessageDeletedListener) {
+    messageDeletedListeners.add(listener);
 
     return () => {
-        removeMessageListeners.delete(listener);
+        messageDeletedListeners.delete(listener);
     };
 }
