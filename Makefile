@@ -23,6 +23,9 @@ deploy:
 	$(MAKE) -C attachments networks
 	$(MAKE) -C attachments env
 	$(MAKE) -C attachments up
+	$(MAKE) -C realtime networks
+	$(MAKE) -C realtime env
+	$(MAKE) -C realtime up
 	$(MAKE) -C ui networks
 	$(MAKE) -C ui env
 	$(MAKE) -C ui up
