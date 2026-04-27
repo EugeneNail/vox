@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain/events"
+	"github.com/EugeneNail/vox/lib-common/events"
 	redisclient "github.com/redis/go-redis/v9"
 )
 

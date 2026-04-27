@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/EugeneNail/vox/lib-common/events"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
-	"github.com/EugeneNail/vox/message/internal/domain/events"
 	"github.com/google/uuid"
 )
 

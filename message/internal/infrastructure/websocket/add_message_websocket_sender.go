@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/EugeneNail/vox/message/internal/domain/events"
+	"github.com/EugeneNail/vox/lib-common/events"
 )
 
 // AddMessageWebSocketSender sends add-message commands to websocket connections selected by subscriptions.

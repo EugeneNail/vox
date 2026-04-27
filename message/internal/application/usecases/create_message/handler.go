@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EugeneNail/vox/lib-common/events"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
-	"github.com/EugeneNail/vox/message/internal/domain/events"
 	"github.com/google/uuid"
 	"github.com/samborkent/uuidv7"
 )
@@ -58,14 +58,14 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	validator := validation.NewValidator(map[string]any{
-		"chatUuid": command.ChatUuid,
-		"userUuid": command.UserUuid,
-		"text":     text,
+		"chatUuid":           command.ChatUuid,
+		"userUuid":           command.UserUuid,
+		"text":               text,
 		"attachments.length": len(command.Attachments),
 	}, map[string][]rules.Rule{
-		"chatUuid": {rules.Required()},
-		"userUuid": {rules.Required()},
-		"text":     buildTextRules(text, len(attachments) > 0),
+		"chatUuid":           {rules.Required()},
+		"userUuid":           {rules.Required()},
+		"text":               buildTextRules(text, len(attachments) > 0),
 		"attachments.length": {rules.Max(10)},
 	})
 
