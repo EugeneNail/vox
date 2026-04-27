@@ -1,0 +1,18 @@
+services:
+  realtime:
+    container_name: vox-realtime-app
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+    env_file:
+      - .env.development
+    networks:
+      - vox-shared-network
+      - vox-realtime-local-network
+
+networks:
+  vox-shared-network:
+    external: true
+  vox-realtime-local-network:
+    external: true
+    name: vox-realtime-local-network
