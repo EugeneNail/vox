@@ -2,17 +2,22 @@ package open_chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/EugeneNail/vox/lib-common/events"
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
+	"github.com/EugeneNail/vox/message/internal/domain"
 	"github.com/google/uuid"
 )
 
+var ErrChatNotFound = errors.New("chat not found")
+var ErrChatAccessDenied = errors.New("chat access denied")
+
 // Handler opens a chat view and publishes a runtime subscription event.
 type Handler struct {
-	chatAuthorizer          *authorize_chat_updates.Handler
+	chatRepository          domain.ChatRepository
+	chatMemberRepository    domain.ChatMemberRepository
 	userOpenedChatPublisher events.UserOpenedChatPublisher
 }
 
@@ -23,9 +28,10 @@ type Command struct {
 }
 
 // NewHandler constructs an open_chat handler with its dependencies.
-func NewHandler(chatAuthorizer *authorize_chat_updates.Handler, userOpenedChatPublisher events.UserOpenedChatPublisher) *Handler {
+func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, userOpenedChatPublisher events.UserOpenedChatPublisher) *Handler {
 	return &Handler{
-		chatAuthorizer:          chatAuthorizer,
+		chatRepository:          chatRepository,
+		chatMemberRepository:    chatMemberRepository,
 		userOpenedChatPublisher: userOpenedChatPublisher,
 	}
 }
@@ -45,11 +51,22 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return validationError
 	}
 
-	if err := handler.chatAuthorizer.Handle(ctx, authorize_chat_updates.Query{
-		ChatUuid: command.ChatUuid,
-		UserUuid: command.UserUuid,
-	}); err != nil {
-		return err
+	chat, err := handler.chatRepository.FindByUuid(ctx, command.ChatUuid)
+	if err != nil {
+		return fmt.Errorf("finding chat by uuid %q: %w", command.ChatUuid, err)
+	}
+
+	if chat == nil {
+		return ErrChatNotFound
+	}
+
+	member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, command.ChatUuid, command.UserUuid)
+	if err != nil {
+		return fmt.Errorf("finding member %q in chat %q: %w", command.UserUuid, command.ChatUuid, err)
+	}
+
+	if member == nil {
+		return ErrChatAccessDenied
 	}
 
 	if err := handler.userOpenedChatPublisher.Publish(ctx, events.UserOpenedChat{

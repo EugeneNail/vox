@@ -8,7 +8,6 @@ import (
 
 	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
 	open_chat "github.com/EugeneNail/vox/message/internal/application/usecases/open_chat"
 	"github.com/google/uuid"
 )
@@ -44,11 +43,11 @@ func (handler *OpenChatHandler) Handle(request *http.Request) (int, any) {
 			return http.StatusUnprocessableEntity, validationError.Violations()
 		}
 
-		if errors.Is(err, authorize_chat_updates.ErrChatNotFound) {
+		if errors.Is(err, open_chat.ErrChatNotFound) {
 			return http.StatusNotFound, fmt.Errorf("chat %q not found: %w", chatUuid, err)
 		}
 
-		if errors.Is(err, authorize_chat_updates.ErrChatAccessDenied) {
+		if errors.Is(err, open_chat.ErrChatAccessDenied) {
 			return http.StatusForbidden, fmt.Errorf("access to chat %q denied for user %q: %w", chatUuid, userUuid, err)
 		}
 

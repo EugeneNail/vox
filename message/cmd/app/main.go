@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
-	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/delete_message"
@@ -52,12 +51,11 @@ func main() {
 	userOpenedChatPublisher := redis_infrastructure.NewUserOpenedChatPublisher(redisClient)
 
 	// --- Section: Application use-cases ---
-	authorizeChatUpdatesHandler := authorize_chat_updates.NewHandler(chatRepository, chatMemberRepository)
 	createChatHandler := create_chat.NewHandler(chatRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageCreatedPublisher)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
-	openChatHandler := open_chat.NewHandler(authorizeChatUpdatesHandler, userOpenedChatPublisher)
+	openChatHandler := open_chat.NewHandler(chatRepository, chatMemberRepository, userOpenedChatPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
 	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
 
