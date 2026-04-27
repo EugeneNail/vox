@@ -29,8 +29,6 @@ func (handler *DeleteMessageHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusBadRequest, fmt.Errorf("parsing message uuid %q: %w", request.PathValue("messageUuid"), err)
 	}
 
-	// TODO
-	// Extract into 'authentication' package
 	userUuid, ok := authentication.UserUuidFromContext(request.Context())
 	if !ok {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")

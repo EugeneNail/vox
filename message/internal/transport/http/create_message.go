@@ -39,8 +39,6 @@ func (handler *CreateMessageHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusBadRequest, fmt.Errorf("decoding payload: %w", err)
 	}
 
-	// TODO
-	// Extract into 'authentication' package
 	userUuid, ok := authentication.UserUuidFromContext(request.Context())
 	if !ok {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
