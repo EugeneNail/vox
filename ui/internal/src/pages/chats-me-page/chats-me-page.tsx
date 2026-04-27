@@ -43,7 +43,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { addMessageListener, removeMessageListener, subscribeChat, unsubscribeChat, updateMessageListener } = useMessageWebSocket();
+    const { addMessageListener, removeMessageListener, updateMessageListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -249,6 +249,16 @@ export default function ChatsMePage() {
 
     useEffect(() => {
         if (!selectedChatUuid) {
+            return;
+        }
+
+        void apiClient.post(`/api/v1/message/chats/${selectedChatUuid}/view-open`).catch((error) => {
+            console.error("opening chat view:", error);
+        });
+    }, [apiClient, selectedChatUuid]);
+
+    useEffect(() => {
+        if (!selectedChatUuid) {
             setMessages([]);
             return;
         }
@@ -303,18 +313,6 @@ export default function ChatsMePage() {
         setMessageContextMenu(null);
         setMessagePendingDeletion(null);
     }, [selectedChatUuid]);
-
-    useEffect(() => {
-        if (!selectedChatUuid) {
-            return;
-        }
-
-        subscribeChat(selectedChatUuid);
-
-        return () => {
-            unsubscribeChat(selectedChatUuid);
-        };
-    }, [selectedChatUuid, subscribeChat, unsubscribeChat]);
 
     useEffect(() => (
         addMessageListener((event) => {
