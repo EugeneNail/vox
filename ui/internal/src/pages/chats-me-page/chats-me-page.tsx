@@ -252,7 +252,7 @@ export default function ChatsMePage() {
             return;
         }
 
-        void apiClient.post(`/api/v1/message/chats/${selectedChatUuid}/view-open`).catch((error) => {
+        void apiClient.post(`/api/v1/message/chats/${selectedChatUuid}/open`).catch((error) => {
             console.error("opening chat view:", error);
         });
     }, [apiClient, isConnected, selectedChatUuid]);
