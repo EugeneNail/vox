@@ -1,2 +1,0 @@
-POST http://127.0.0.1:10000/api/v1/message/chats/0195d2cf-4f0a-7cdb-b36e-3c500f02d4b4/view-open
-Authorization: Bearer <login-token>

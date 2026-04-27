@@ -1,4 +1,4 @@
-package open_chat_view
+package open_chat
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 // Handler opens a chat view and publishes a runtime subscription event.
 type Handler struct {
 	chatAuthorizer          *authorize_chat_updates.Handler
-	chatViewOpenedPublisher events.ChatViewOpenedPublisher
+	userOpenedChatPublisher events.UserOpenedChatPublisher
 }
 
 // Command contains the input required to open a chat view.
@@ -22,15 +22,15 @@ type Command struct {
 	UserUuid uuid.UUID
 }
 
-// NewHandler constructs an open_chat_view handler with its dependencies.
-func NewHandler(chatAuthorizer *authorize_chat_updates.Handler, chatViewOpenedPublisher events.ChatViewOpenedPublisher) *Handler {
+// NewHandler constructs an open_chat handler with its dependencies.
+func NewHandler(chatAuthorizer *authorize_chat_updates.Handler, userOpenedChatPublisher events.UserOpenedChatPublisher) *Handler {
 	return &Handler{
 		chatAuthorizer:          chatAuthorizer,
-		chatViewOpenedPublisher: chatViewOpenedPublisher,
+		userOpenedChatPublisher: userOpenedChatPublisher,
 	}
 }
 
-// Handle validates input, authorizes access and publishes a chat-view-opened event.
+// Handle validates input, authorizes access and publishes a user-opened-chat event.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	validationError := validation.NewError()
 	if command.ChatUuid == uuid.Nil {
@@ -52,11 +52,11 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return err
 	}
 
-	if err := handler.chatViewOpenedPublisher.Publish(ctx, events.ChatViewOpened{
+	if err := handler.userOpenedChatPublisher.Publish(ctx, events.UserOpenedChat{
 		UserUuid: command.UserUuid,
 		ChatUuid: command.ChatUuid,
 	}); err != nil {
-		return fmt.Errorf("publishing chat view opened event for chat %q and user %q: %w", command.ChatUuid, command.UserUuid, err)
+		return fmt.Errorf("publishing user opened chat event for chat %q and user %q: %w", command.ChatUuid, command.UserUuid, err)
 	}
 
 	return nil

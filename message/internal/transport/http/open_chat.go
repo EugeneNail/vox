@@ -9,22 +9,22 @@ import (
 	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/authorize_chat_updates"
-	"github.com/EugeneNail/vox/message/internal/application/usecases/open_chat_view"
+	open_chat "github.com/EugeneNail/vox/message/internal/application/usecases/open_chat"
 	"github.com/google/uuid"
 )
 
-type OpenChatViewHandler struct {
-	usecase *open_chat_view.Handler
+type OpenChatHandler struct {
+	usecase *open_chat.Handler
 }
 
-func NewOpenChatViewHandler(usecase *open_chat_view.Handler) *OpenChatViewHandler {
-	return &OpenChatViewHandler{
+func NewOpenChatHandler(usecase *open_chat.Handler) *OpenChatHandler {
+	return &OpenChatHandler{
 		usecase: usecase,
 	}
 }
 
-// Handle opens a chat view for the authenticated user.
-func (handler *OpenChatViewHandler) Handle(request *http.Request) (int, any) {
+// Handle opens a chat for the authenticated user.
+func (handler *OpenChatHandler) Handle(request *http.Request) (int, any) {
 	chatUuid, err := uuid.Parse(strings.TrimSpace(request.PathValue("chatUuid")))
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("parsing chat uuid %q: %w", request.PathValue("chatUuid"), err)
@@ -35,7 +35,7 @@ func (handler *OpenChatViewHandler) Handle(request *http.Request) (int, any) {
 		return http.StatusInternalServerError, fmt.Errorf("extracting authenticated user uuid from request context")
 	}
 
-	if err := handler.usecase.Handle(request.Context(), open_chat_view.Command{
+	if err := handler.usecase.Handle(request.Context(), open_chat.Command{
 		ChatUuid: chatUuid,
 		UserUuid: userUuid,
 	}); err != nil {
@@ -52,7 +52,7 @@ func (handler *OpenChatViewHandler) Handle(request *http.Request) (int, any) {
 			return http.StatusForbidden, fmt.Errorf("access to chat %q denied for user %q: %w", chatUuid, userUuid, err)
 		}
 
-		return http.StatusInternalServerError, fmt.Errorf("handling the OpenChatView usecase: %w", err)
+		return http.StatusInternalServerError, fmt.Errorf("handling the OpenChat usecase: %w", err)
 	}
 
 	return http.StatusOK, nil
