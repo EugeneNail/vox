@@ -14,6 +14,7 @@ import (
 	"github.com/EugeneNail/vox/message/internal/application/usecases/edit_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/open_chat_view"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
 	redis_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/redis"
@@ -55,6 +56,7 @@ func main() {
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient, configuration.Streams.MessageCreatedMaxLen)
 	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient, configuration.Streams.MessageEditedMaxLen)
 	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient, configuration.Streams.MessageDeletedMaxLen)
+	chatViewOpenedPublisher := redis_infrastructure.NewChatViewOpenedPublisher(redisClient)
 	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	updateMessageWebSocketSender := websocket_infrastructure.NewUpdateMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	removeMessageWebSocketSender := websocket_infrastructure.NewRemoveMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
@@ -68,6 +70,7 @@ func main() {
 	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageCreatedPublisher)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageEditedPublisher)
+	openChatViewHandler := open_chat_view.NewHandler(authorizeChatUpdatesHandler, chatViewOpenedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
 	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
 
@@ -76,6 +79,7 @@ func main() {
 	createMessageHttpHandler := transport_http.NewCreateMessageHandler(createMessageHandler)
 	deleteMessageHttpHandler := transport_http.NewDeleteMessageHandler(deleteMessageHandler)
 	editMessageHttpHandler := transport_http.NewEditMessageHandler(editMessageHandler)
+	openChatViewHttpHandler := transport_http.NewOpenChatViewHandler(openChatViewHandler)
 	listChatMessagesHttpHandler := transport_http.NewListChatMessagesHandler(listChatMessagesHandler)
 	listChatsHttpHandler := transport_http.NewListChatsHandler(listChatsHandler)
 	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(authorizeChatUpdatesHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
@@ -92,6 +96,7 @@ func main() {
 	webServer := http.NewServeMux()
 	webServer.HandleFunc("POST   /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createChatHttpHandler.Handle))))
 	webServer.HandleFunc("GET    /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatsHttpHandler.Handle)))
+	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/view-open", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(openChatViewHttpHandler.Handle)))
 	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
 	webServer.HandleFunc("GET    /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatMessagesHttpHandler.Handle)))
 	webServer.HandleFunc("PUT    /api/v1/message/messages/{messageUuid}", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(editMessageHttpHandler.Handle))))
