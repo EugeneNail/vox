@@ -32,7 +32,7 @@ func NewMessageDeletedConsumer(client *redisclient.Client, handlers ...MessageDe
 // ListenAndConsume starts message-deleted consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageDeletedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		err := redisstream.ListenAndConsume(ctx, consumer.client, messageDeletedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
+		err := redisstream.ListenAndConsume(ctx, consumer.client, events.MessageDeletedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message deleted events: %v", err)
 		}

@@ -32,7 +32,7 @@ func NewMessageCreatedConsumer(client *redisclient.Client, handlers ...MessageCr
 // ListenAndConsume starts message-created consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageCreatedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		err := redisstream.ListenAndConsume(ctx, consumer.client, messageCreatedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
+		err := redisstream.ListenAndConsume(ctx, consumer.client, events.MessageCreatedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message created events: %v", err)
 		}

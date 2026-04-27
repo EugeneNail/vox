@@ -1,3 +1,5 @@
 package redis
 
-const messageEventsConsumerGroup = "message-service"
+const (
+	messageEventsConsumerGroup = "message-service"
+)
