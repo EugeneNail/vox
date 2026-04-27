@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -57,12 +56,6 @@ func main() {
 	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient, configuration.Streams.MessageEditedMaxLen)
 	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient, configuration.Streams.MessageDeletedMaxLen)
 	userOpenedChatPublisher := redis_infrastructure.NewUserOpenedChatPublisher(redisClient)
-	addMessageWebSocketSender := websocket_infrastructure.NewAddMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	updateMessageWebSocketSender := websocket_infrastructure.NewUpdateMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	removeMessageWebSocketSender := websocket_infrastructure.NewRemoveMessageWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, addMessageWebSocketSender.Send)
-	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, updateMessageWebSocketSender.Send)
-	messageDeletedRedisConsumer := redis_infrastructure.NewMessageDeletedConsumer(redisClient, removeMessageWebSocketSender.Send)
 
 	// --- Section: Application use-cases ---
 	authorizeChatUpdatesHandler := authorize_chat_updates.NewHandler(chatRepository, chatMemberRepository)
@@ -83,14 +76,6 @@ func main() {
 	listChatMessagesHttpHandler := transport_http.NewListChatMessagesHandler(listChatMessagesHandler)
 	listChatsHttpHandler := transport_http.NewListChatsHandler(listChatsHandler)
 	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(authorizeChatUpdatesHandler, connectionHub, chatSubscriptionRegistry, connectionDropper)
-
-	// --- Section: Event consumers ---
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	messageCreatedRedisConsumer.ListenAndConsume(ctx)
-	messageEditedRedisConsumer.ListenAndConsume(ctx)
-	messageDeletedRedisConsumer.ListenAndConsume(ctx)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
