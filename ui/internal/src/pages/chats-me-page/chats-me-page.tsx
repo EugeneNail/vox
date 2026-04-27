@@ -43,7 +43,7 @@ const messageThreadGapMs = 10 * 60 * 1000;
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { addMessageListener, removeMessageListener, updateMessageListener } = useMessageWebSocket();
+    const { addMessageListener, isConnected, removeMessageListener, updateMessageListener } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -248,14 +248,14 @@ export default function ChatsMePage() {
     }, [apiClient, authenticatedUserUuid, isSearchActive, searchQuery]);
 
     useEffect(() => {
-        if (!selectedChatUuid) {
+        if (!selectedChatUuid || !isConnected) {
             return;
         }
 
         void apiClient.post(`/api/v1/message/chats/${selectedChatUuid}/view-open`).catch((error) => {
             console.error("opening chat view:", error);
         });
-    }, [apiClient, selectedChatUuid]);
+    }, [apiClient, isConnected, selectedChatUuid]);
 
     useEffect(() => {
         if (!selectedChatUuid) {
