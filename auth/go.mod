@@ -3,7 +3,7 @@ module github.com/EugeneNail/vox/auth
 go 1.26.1
 
 require (
-	github.com/EugeneNail/vox/lib-common v0.0.0-20260427184100-bb1ec724328b
+	github.com/EugeneNail/vox/lib-common v0.0.0-20260427190817-eb2108f7222f
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9

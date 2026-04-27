@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/EugeneNail/vox/lib-common/events"
+	"github.com/EugeneNail/vox/lib-common/redisstream"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -23,7 +24,7 @@ type MessageEditedConsumer struct {
 func NewMessageEditedConsumer(client *redisclient.Client, handlers ...MessageEditedHandler) *MessageEditedConsumer {
 	return &MessageEditedConsumer{
 		client:       client,
-		consumerName: buildConsumerName(),
+		consumerName: redisstream.BuildConsumerName("message-service"),
 		handlers:     handlers,
 	}
 }
@@ -31,7 +32,7 @@ func NewMessageEditedConsumer(client *redisclient.Client, handlers ...MessageEdi
 // ListenAndConsume starts message-edited consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageEditedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		err := listenAndConsumeStream(ctx, consumer.client, messageEditedStream, consumer.consumerName, consumer.handlePayload)
+		err := redisstream.ListenAndConsume(ctx, consumer.client, messageEditedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message edited events: %v", err)
 		}

@@ -1,4 +1,8 @@
-github.com/EugeneNail/vox/lib-common v0.0.1 h1:gJ6RKI/IP78h+ytTDkCTZQv8aWmhpcX4dp1sjgXixWI=
-github.com/EugeneNail/vox/lib-common v0.0.1/go.mod h1:36tQX5qq5dQroubasT+EJOiF+tRxa+wzFCN04vHTJoI=
+github.com/EugeneNail/vox/lib-common v0.0.0-20260427190817-eb2108f7222f h1:0honlwyDtj+GyqvSM9zk+Fy432lTYhf704Gw7lHh75s=
+github.com/EugeneNail/vox/lib-common v0.0.0-20260427190817-eb2108f7222f/go.mod h1:KxLNPJDveo8vDa84UiIIFNO4ct8Hcv6l18RylJFO5ds=
+github.com/golang-jwt/jwt/v5 v5.3.1 h1:kYf81DTWFe7t+1VvL7eS+jKFVWaUnK9cB1qbwn63YCY=
+github.com/golang-jwt/jwt/v5 v5.3.1/go.mod h1:fxCRLWMO43lRc8nhHWY6LGqRcf+1gQWArsqaEUEa5bE=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b h1:39v+thWy220bPAl5iP0p0b1s5DXmrtidMFRZqYsmEfI=
 github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b/go.mod h1:Z46aLAe76cDDo+W1m5zVg+KeB+4P2+xWENVEFFzbBuQ=

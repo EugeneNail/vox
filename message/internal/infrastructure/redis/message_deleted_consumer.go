@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/EugeneNail/vox/lib-common/events"
+	"github.com/EugeneNail/vox/lib-common/redisstream"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -23,7 +24,7 @@ type MessageDeletedConsumer struct {
 func NewMessageDeletedConsumer(client *redisclient.Client, handlers ...MessageDeletedHandler) *MessageDeletedConsumer {
 	return &MessageDeletedConsumer{
 		client:       client,
-		consumerName: buildConsumerName(),
+		consumerName: redisstream.BuildConsumerName("message-service"),
 		handlers:     handlers,
 	}
 }
@@ -31,7 +32,7 @@ func NewMessageDeletedConsumer(client *redisclient.Client, handlers ...MessageDe
 // ListenAndConsume starts message-deleted consumption in a goroutine and logs unexpected errors.
 func (consumer *MessageDeletedConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		err := listenAndConsumeStream(ctx, consumer.client, messageDeletedStream, consumer.consumerName, consumer.handlePayload)
+		err := redisstream.ListenAndConsume(ctx, consumer.client, messageDeletedStream, messageEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("listening message deleted events: %v", err)
 		}
