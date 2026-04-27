@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/EugeneNail/vox/realtime/internal/infrastructure/config"
+	redis_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/redis"
 	websocket_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/websocket"
 	transport_http "github.com/EugeneNail/vox/realtime/internal/transport/http"
 )
@@ -17,12 +19,32 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// --- Section: External clients ---
+	redisClient, err := redis_infrastructure.NewClient(configuration.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redisClient.Close()
+
 	// --- Section: WebSocket runtime ---
 	connectionHub := websocket_infrastructure.NewConnectionHub()
-	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub)
+	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
+	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
 
 	// --- Section: HTTP transport ---
 	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(connectionHub, connectionDropper)
+
+	// --- Section: Event delivery ---
+	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	chatViewOpenedRedisConsumer := redis_infrastructure.NewChatViewOpenedConsumer(redisClient, connectionHub, chatSubscriptionRegistry)
+	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
+
+	// --- Section: Event consumers ---
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	chatViewOpenedRedisConsumer.ListenAndConsume(ctx)
+	messageCreatedRedisConsumer.ListenAndConsume(ctx)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()

@@ -7,11 +7,18 @@ import (
 )
 
 type Config struct {
-	App AppConfig
+	App   AppConfig
+	Redis RedisConfig
 }
 
 // AppConfig contains application runtime settings.
 type AppConfig struct {
+	Port int
+}
+
+// RedisConfig contains Redis connection settings.
+type RedisConfig struct {
+	Host string
 	Port int
 }
 
@@ -22,9 +29,23 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	redisHost, err := readRequiredEnv("REDIS_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	redisPort, err := readIntEnv("REDIS_PORT")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		App: AppConfig{
 			Port: appPort,
+		},
+		Redis: RedisConfig{
+			Host: redisHost,
+			Port: redisPort,
 		},
 	}, nil
 }
