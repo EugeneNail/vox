@@ -138,7 +138,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
         function handleMessage(event: MessageEvent<string>) {
             try {
                 const websocketEvent = JSON.parse(event.data) as MessageWebSocketEvent;
-                if (websocketEvent.type === "MessageCreated" || websocketEvent.type === "chat.add_message") {
+                if (websocketEvent.type === "MessageCreated") {
                     addMessageListeners.forEach((listener) => {
                         listener(websocketEvent.data as AddMessageEvent);
                     });
