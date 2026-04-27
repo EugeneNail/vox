@@ -33,7 +33,7 @@ func (sender *UpdateMessageWebSocketSender) Send(ctx context.Context, event even
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"type": "chat.update_message",
+		"type": "MessageEdited",
 		"data": event,
 	})
 	if err != nil {

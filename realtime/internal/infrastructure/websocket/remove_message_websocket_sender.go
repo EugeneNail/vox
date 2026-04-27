@@ -33,7 +33,7 @@ func (sender *RemoveMessageWebSocketSender) Send(ctx context.Context, event even
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"type": "chat.remove_message",
+		"type": "MessageDeleted",
 		"data": event,
 	})
 	if err != nil {
