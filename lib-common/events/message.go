@@ -56,3 +56,15 @@ type MessageDeleted struct {
 type MessageDeletedPublisher interface {
 	Publish(ctx context.Context, event MessageDeleted) error
 }
+
+// ChatViewOpened describes that a user opened a chat view in the browser.
+type ChatViewOpened struct {
+	UserUuid uuid.UUID `json:"userUuid"`
+	ChatUuid uuid.UUID `json:"chatUuid"`
+}
+
+// ChatViewClosed describes that a user closed a chat view in the browser.
+type ChatViewClosed struct {
+	UserUuid uuid.UUID `json:"userUuid"`
+	ChatUuid uuid.UUID `json:"chatUuid"`
+}
