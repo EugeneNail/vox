@@ -3,7 +3,7 @@ module github.com/EugeneNail/vox/realtime
 go 1.26.1
 
 require (
-	github.com/EugeneNail/vox/lib-common v0.0.0-20260427195807-c386f880566b
+	github.com/EugeneNail/vox/lib-common v0.0.0-20260427202412-7657cce50f3d
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/redis/go-redis/v9 v9.17.0

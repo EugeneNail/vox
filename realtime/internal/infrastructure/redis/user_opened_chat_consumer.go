@@ -12,17 +12,17 @@ import (
 	redisclient "github.com/redis/go-redis/v9"
 )
 
-// ChatViewOpenedConsumer consumes chat-view-opened events through Redis Streams.
-type ChatViewOpenedConsumer struct {
+// UserOpenedChatConsumer consumes user-opened-chat events through Redis Streams.
+type UserOpenedChatConsumer struct {
 	client       *redisclient.Client
 	consumerName string
 	hub          *websocket_infrastructure.ConnectionHub
 	registry     *websocket_infrastructure.ChatSubscriptionRegistry
 }
 
-// NewChatViewOpenedConsumer constructs a Redis-backed chat-view-opened consumer.
-func NewChatViewOpenedConsumer(client *redisclient.Client, hub *websocket_infrastructure.ConnectionHub, registry *websocket_infrastructure.ChatSubscriptionRegistry) *ChatViewOpenedConsumer {
-	return &ChatViewOpenedConsumer{
+// NewUserOpenedChatConsumer constructs a Redis-backed user-opened-chat consumer.
+func NewUserOpenedChatConsumer(client *redisclient.Client, hub *websocket_infrastructure.ConnectionHub, registry *websocket_infrastructure.ChatSubscriptionRegistry) *UserOpenedChatConsumer {
+	return &UserOpenedChatConsumer{
 		client:       client,
 		consumerName: redisstream.BuildConsumerName("realtime-service"),
 		hub:          hub,
@@ -30,20 +30,20 @@ func NewChatViewOpenedConsumer(client *redisclient.Client, hub *websocket_infras
 	}
 }
 
-// ListenAndConsume starts chat-view-opened consumption in a goroutine and logs unexpected errors.
-func (consumer *ChatViewOpenedConsumer) ListenAndConsume(ctx context.Context) {
+// ListenAndConsume starts user-opened-chat consumption in a goroutine and logs unexpected errors.
+func (consumer *UserOpenedChatConsumer) ListenAndConsume(ctx context.Context) {
 	go func() {
-		err := redisstream.ListenAndConsume(ctx, consumer.client, events.ChatViewOpenedStream, realtimeEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
+		err := redisstream.ListenAndConsume(ctx, consumer.client, events.UserOpenedChatStream, realtimeEventsConsumerGroup, consumer.consumerName, consumer.handlePayload)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("listening chat view opened events: %v", err)
+			log.Printf("listening user opened chat events: %v", err)
 		}
 	}()
 }
 
-func (consumer *ChatViewOpenedConsumer) handlePayload(ctx context.Context, payload string) bool {
-	var event events.ChatViewOpened
+func (consumer *UserOpenedChatConsumer) handlePayload(ctx context.Context, payload string) bool {
+	var event events.UserOpenedChat
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
-		log.Printf("unmarshalling chat view opened event: %v", err)
+		log.Printf("unmarshalling user opened chat event: %v", err)
 		return true
 	}
 

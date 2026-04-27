@@ -36,14 +36,14 @@ func main() {
 
 	// --- Section: Event delivery ---
 	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	chatViewOpenedRedisConsumer := redis_infrastructure.NewChatViewOpenedConsumer(redisClient, connectionHub, chatSubscriptionRegistry)
+	userOpenedChatRedisConsumer := redis_infrastructure.NewUserOpenedChatConsumer(redisClient, connectionHub, chatSubscriptionRegistry)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
 
 	// --- Section: Event consumers ---
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	chatViewOpenedRedisConsumer.ListenAndConsume(ctx)
+	userOpenedChatRedisConsumer.ListenAndConsume(ctx)
 	messageCreatedRedisConsumer.ListenAndConsume(ctx)
 
 	// --- Section: HTTP routes ---
