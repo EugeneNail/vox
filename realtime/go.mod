@@ -3,9 +3,14 @@ module github.com/EugeneNail/vox/realtime
 go 1.26.1
 
 require (
-	github.com/EugeneNail/vox/lib-common v0.0.0-20260427190817-eb2108f7222f
+	github.com/EugeneNail/vox/lib-common v0.0.0-20260427195807-c386f880566b
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/redis/go-redis/v9 v9.17.0
 )
 
-require github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+)
