@@ -8,24 +8,24 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// UpdateMessageWebSocketSender sends update-message commands to websocket connections selected by subscriptions.
-type UpdateMessageWebSocketSender struct {
+// MessageDeletedWebSocketSender sends message-deleted commands to websocket connections selected by subscriptions.
+type MessageDeletedWebSocketSender struct {
 	connectionHub        *ConnectionHub
 	subscriptionRegistry *ChatSubscriptionRegistry
 	connectionDropper    *ConnectionDropper
 }
 
-// NewUpdateMessageWebSocketSender constructs an update-message websocket sender.
-func NewUpdateMessageWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *UpdateMessageWebSocketSender {
-	return &UpdateMessageWebSocketSender{
+// NewMessageDeletedWebSocketSender constructs a message-deleted websocket sender.
+func NewMessageDeletedWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageDeletedWebSocketSender {
+	return &MessageDeletedWebSocketSender{
 		connectionHub:        connectionHub,
 		subscriptionRegistry: subscriptionRegistry,
 		connectionDropper:    connectionDropper,
 	}
 }
 
-// Send sends an update-message command to connections subscribed to the message chat.
-func (sender *UpdateMessageWebSocketSender) Send(ctx context.Context, event events.MessageEdited) error {
+// Send sends a message-deleted command to connections subscribed to the message chat.
+func (sender *MessageDeletedWebSocketSender) Send(ctx context.Context, event events.MessageDeleted) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -33,11 +33,11 @@ func (sender *UpdateMessageWebSocketSender) Send(ctx context.Context, event even
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"type": "MessageEdited",
+		"type": "MessageDeleted",
 		"data": event,
 	})
 	if err != nil {
-		return fmt.Errorf("marshalling update message websocket command for message %q: %w", event.MessageUuid, err)
+		return fmt.Errorf("marshalling message deleted websocket command for message %q: %w", event.MessageUuid, err)
 	}
 
 	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)

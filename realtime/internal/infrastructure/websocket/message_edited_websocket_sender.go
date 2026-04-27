@@ -8,24 +8,24 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// RemoveMessageWebSocketSender sends remove-message commands to websocket connections selected by subscriptions.
-type RemoveMessageWebSocketSender struct {
+// MessageEditedWebSocketSender sends message-edited commands to websocket connections selected by subscriptions.
+type MessageEditedWebSocketSender struct {
 	connectionHub        *ConnectionHub
 	subscriptionRegistry *ChatSubscriptionRegistry
 	connectionDropper    *ConnectionDropper
 }
 
-// NewRemoveMessageWebSocketSender constructs a remove-message websocket sender.
-func NewRemoveMessageWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *RemoveMessageWebSocketSender {
-	return &RemoveMessageWebSocketSender{
+// NewMessageEditedWebSocketSender constructs a message-edited websocket sender.
+func NewMessageEditedWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageEditedWebSocketSender {
+	return &MessageEditedWebSocketSender{
 		connectionHub:        connectionHub,
 		subscriptionRegistry: subscriptionRegistry,
 		connectionDropper:    connectionDropper,
 	}
 }
 
-// Send sends a remove-message command to connections subscribed to the message chat.
-func (sender *RemoveMessageWebSocketSender) Send(ctx context.Context, event events.MessageDeleted) error {
+// Send sends a message-edited command to connections subscribed to the message chat.
+func (sender *MessageEditedWebSocketSender) Send(ctx context.Context, event events.MessageEdited) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -33,11 +33,11 @@ func (sender *RemoveMessageWebSocketSender) Send(ctx context.Context, event even
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"type": "MessageDeleted",
+		"type": "MessageEdited",
 		"data": event,
 	})
 	if err != nil {
-		return fmt.Errorf("marshalling remove message websocket command for message %q: %w", event.MessageUuid, err)
+		return fmt.Errorf("marshalling message edited websocket command for message %q: %w", event.MessageUuid, err)
 	}
 
 	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
