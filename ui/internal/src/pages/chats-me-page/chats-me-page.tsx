@@ -12,12 +12,17 @@ type Chat = {
     uuid: string;
     name: string | null;
     avatar: string | null;
-    isPrivate: boolean;
+    chatType: ChatType;
     createdByUserUuid: string;
     memberUuids: string[];
     createdAt: string;
     updatedAt: string;
 };
+
+enum ChatType {
+    Direct = 0,
+    Group = 1,
+}
 
 type ChatMessage = {
     uuid: string;
@@ -500,11 +505,8 @@ export default function ChatsMePage() {
                 [profile.userUuid]: profile,
             }));
 
-            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats", {
-                memberUuids: [profile.userUuid],
-                name: null,
-                avatar: null,
-                isPrivate: true,
+            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats/direct", {
+                interlocutorUuid: profile.userUuid,
             });
 
             const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
@@ -843,7 +845,7 @@ function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profiles
         return chat.name;
     }
 
-    if (!chat.isPrivate) {
+    if (chat.chatType !== ChatType.Direct) {
         return chat.uuid;
     }
 
@@ -856,7 +858,7 @@ function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profiles
 }
 
 function getChatAvatarUrl(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
-    if (chat.isPrivate) {
+    if (chat.chatType === ChatType.Direct) {
         const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
         if (!companionUuid) {
             return null;
@@ -873,7 +875,7 @@ function getChatAvatarUrl(chat: Chat, authenticatedUserUuid: string | null, prof
 }
 
 function getChatAvatarLabel(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
-    if (chat.isPrivate) {
+    if (chat.chatType === ChatType.Direct) {
         const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
         if (!companionUuid) {
             return chat.uuid;
