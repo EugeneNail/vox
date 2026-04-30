@@ -930,7 +930,32 @@ export default function ChatsMePage() {
                 )}
             </section>
 
-            <aside className="chats-me-page__details" aria-label="Chat details" />
+            <aside className="chats-me-page__details" aria-label="Chat details">
+                {selectedChat ? (
+                    <div className="chats-me-page__details-shell">
+                        <p className="chats-me-page__eyebrow">Members</p>
+                        <div className="chats-me-page__members" aria-label="Chat members">
+                            {selectedChat.memberUuids.map((memberUuid) => (
+                                <div className="chats-me-page__member" key={memberUuid}>
+                                    <UserAvatar
+                                        className="chats-me-page__member-avatar"
+                                        src={getChatMemberAvatarUrl(memberUuid, profilesByUserUuid)}
+                                        label={getChatMemberAvatarLabel(memberUuid, profilesByUserUuid)}
+                                    />
+                                    <span className="chats-me-page__member-name">
+                                        {getChatMemberName(memberUuid, profilesByUserUuid)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="chats-me-page__details-shell chats-me-page__details-shell--empty">
+                        <p className="chats-me-page__eyebrow">Members</p>
+                        <p className="chats-me-page__state">Choose a chat to see members.</p>
+                    </div>
+                )}
+            </aside>
 
             {messagePendingDeletion && (
                 <div className="chats-me-page__modal-backdrop" role="presentation">
@@ -1196,6 +1221,18 @@ function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Rec
 
 function getMessageAuthorAvatarLabel(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
     return getMessageAuthorName(message, profilesByUserUuid);
+}
+
+function getChatMemberName(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return profilesByUserUuid[memberUuid]?.name ?? memberUuid;
+}
+
+function getChatMemberAvatarUrl(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getProfileAvatarUrl(profilesByUserUuid[memberUuid] ?? null);
+}
+
+function getChatMemberAvatarLabel(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getChatMemberName(memberUuid, profilesByUserUuid);
 }
 
 function renderMessageText(text: string) {
