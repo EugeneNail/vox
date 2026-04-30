@@ -41,6 +41,7 @@ func (handler *ListChatsHandler) Handle(request *http.Request) (int, any) {
 			ChatType:          chat.ChatType,
 			CreatedByUserUuid: chat.CreatedByUserUuid,
 			MemberUuids:       result.MemberUuids,
+			CurrentUserRole:   result.CurrentUserRole,
 			CreatedAt:         chat.CreatedAt,
 			UpdatedAt:         chat.UpdatedAt,
 		})

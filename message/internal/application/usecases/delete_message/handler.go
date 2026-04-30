@@ -21,6 +21,8 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 // Handler deletes messages through the delete_message use-case.
 type Handler struct {
 	messageRepository       domain.MessageRepository
+	chatRepository          domain.ChatRepository
+	chatMemberRepository    domain.ChatMemberRepository
 	messageDeletedPublisher events.MessageDeletedPublisher
 }
 
@@ -31,9 +33,16 @@ type Command struct {
 }
 
 // NewHandler constructs a delete_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, messageDeletedPublisher events.MessageDeletedPublisher) *Handler {
+func NewHandler(
+	messageRepository domain.MessageRepository,
+	chatRepository domain.ChatRepository,
+	chatMemberRepository domain.ChatMemberRepository,
+	messageDeletedPublisher events.MessageDeletedPublisher,
+) *Handler {
 	return &Handler{
 		messageRepository:       messageRepository,
+		chatRepository:          chatRepository,
+		chatMemberRepository:    chatMemberRepository,
 		messageDeletedPublisher: messageDeletedPublisher,
 	}
 }
@@ -67,7 +76,31 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	if message.UserUuid != command.UserUuid {
-		return ErrMessageAccessDenied
+		chat, err := handler.chatRepository.FindByUuid(ctx, message.ChatUuid)
+		if err != nil {
+			return fmt.Errorf("finding chat by uuid %q: %w", message.ChatUuid, err)
+		}
+
+		if chat == nil {
+			return ErrChatNotFound
+		}
+
+		if chat.ChatType != domain.ChatTypeGroup {
+			return ErrMessageAccessDenied
+		}
+
+		member, err := handler.chatMemberRepository.FindByChatUuidAndUserUuid(ctx, chat.Uuid, command.UserUuid)
+		if err != nil {
+			return fmt.Errorf("finding member %q in chat %q: %w", command.UserUuid, chat.Uuid, err)
+		}
+
+		if member == nil {
+			return ErrChatAccessDenied
+		}
+
+		if member.Role != domain.ChatMemberRoleOwner && member.Role != domain.ChatMemberRoleAdmin {
+			return ErrMessageAccessDenied
+		}
 	}
 
 	if err := handler.messageRepository.Delete(ctx, message.Uuid); err != nil {

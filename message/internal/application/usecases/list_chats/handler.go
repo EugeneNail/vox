@@ -21,8 +21,9 @@ type Query struct {
 
 // Result contains chat metadata and member identifiers for transport resources.
 type Result struct {
-	Chat        domain.Chat
-	MemberUuids []uuid.UUID
+	Chat            domain.Chat
+	MemberUuids     []uuid.UUID
+	CurrentUserRole domain.ChatMemberRole
 }
 
 // NewHandler constructs a list_chats handler with its dependencies.
@@ -49,13 +50,18 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]Result, erro
 		}
 
 		memberUuids := make([]uuid.UUID, 0, len(members))
+		currentUserRole := domain.ChatMemberRoleMember
 		for _, member := range members {
 			memberUuids = append(memberUuids, member.UserUuid)
+			if member.UserUuid == query.UserUuid {
+				currentUserRole = member.Role
+			}
 		}
 
 		results = append(results, Result{
-			Chat:        chat,
-			MemberUuids: memberUuids,
+			Chat:            chat,
+			MemberUuids:     memberUuids,
+			CurrentUserRole: currentUserRole,
 		})
 	}
 
