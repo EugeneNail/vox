@@ -8,7 +8,11 @@ import (
 
 type ChatMemberRole string
 
-const ChatMemberRoleMember ChatMemberRole = "member"
+const (
+	ChatMemberRoleOwner  ChatMemberRole = "owner"
+	ChatMemberRoleAdmin  ChatMemberRole = "admin"
+	ChatMemberRoleMember ChatMemberRole = "member"
+)
 
 // ChatMember represents a user's membership in a chat.
 type ChatMember struct {

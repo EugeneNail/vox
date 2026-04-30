@@ -82,3 +82,49 @@ func (repository *ChatMemberRepository) FindAllByChatUuid(ctx context.Context, c
 
 	return members, nil
 }
+
+// CreateMany persists chat members in PostgreSQL.
+func (repository *ChatMemberRepository) CreateMany(ctx context.Context, members []domain.ChatMember) error {
+	if len(members) == 0 {
+		return nil
+	}
+
+	transaction, err := repository.database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning create chat members transaction: %w", err)
+	}
+	defer transaction.Rollback()
+
+	for _, member := range members {
+		if _, err := transaction.ExecContext(
+			ctx,
+			`INSERT INTO chat_members (chat_uuid, user_uuid, role, joined_at) VALUES ($1, $2, $3, $4)`,
+			member.ChatUuid,
+			member.UserUuid,
+			member.Role,
+			member.JoinedAt,
+		); err != nil {
+			return fmt.Errorf("creating member %q for chat %q: %w", member.UserUuid, member.ChatUuid, err)
+		}
+	}
+
+	if err := transaction.Commit(); err != nil {
+		return fmt.Errorf("committing create chat members transaction: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteByChatUuidAndUserUuid removes a member from a chat in PostgreSQL.
+func (repository *ChatMemberRepository) DeleteByChatUuidAndUserUuid(ctx context.Context, chatUuid uuid.UUID, userUuid uuid.UUID) error {
+	if _, err := repository.database.ExecContext(
+		ctx,
+		`DELETE FROM chat_members WHERE chat_uuid = $1 AND user_uuid = $2`,
+		chatUuid,
+		userUuid,
+	); err != nil {
+		return fmt.Errorf("deleting member %q from chat %q: %w", userUuid, chatUuid, err)
+	}
+
+	return nil
+}

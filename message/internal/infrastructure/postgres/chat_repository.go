@@ -24,7 +24,7 @@ func NewChatRepository(database *sql.DB) *ChatRepository {
 // FindByUuid returns a chat by UUID or nil when the chat does not exist.
 func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.UUID) (*domain.Chat, error) {
 	const query = `
-		SELECT uuid, name, avatar, is_private, created_by_user_uuid, created_at, updated_at
+		SELECT uuid, name, avatar, chat_type, created_by_user_uuid, created_at, updated_at
 		FROM chats
 		WHERE uuid = $1
 	`
@@ -34,7 +34,7 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 		&chat.Uuid,
 		&chat.Name,
 		&chat.Avatar,
-		&chat.IsPrivate,
+		&chat.ChatType,
 		&chat.CreatedByUserUuid,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
@@ -52,7 +52,7 @@ func (repository *ChatRepository) FindByUuid(ctx context.Context, chatUuid uuid.
 // FindAllByMemberUuid returns chats that include the given member.
 func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, memberUuid uuid.UUID) ([]domain.Chat, error) {
 	const query = `
-		SELECT c.uuid, c.name, c.avatar, c.is_private, c.created_by_user_uuid, c.created_at, c.updated_at
+		SELECT c.uuid, c.name, c.avatar, c.chat_type, c.created_by_user_uuid, c.created_at, c.updated_at
 		FROM chats c
 		INNER JOIN chat_members cm ON cm.chat_uuid = c.uuid
 		WHERE cm.user_uuid = $1
@@ -72,7 +72,7 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 			&chat.Uuid,
 			&chat.Name,
 			&chat.Avatar,
-			&chat.IsPrivate,
+			&chat.ChatType,
 			&chat.CreatedByUserUuid,
 			&chat.CreatedAt,
 			&chat.UpdatedAt,
@@ -90,12 +90,12 @@ func (repository *ChatRepository) FindAllByMemberUuid(ctx context.Context, membe
 	return chats, nil
 }
 
-// FindPrivateByMemberUuids returns a private chat with exactly the given two members or nil when it does not exist.
-func (repository *ChatRepository) FindPrivateByMemberUuids(ctx context.Context, firstMemberUuid uuid.UUID, secondMemberUuid uuid.UUID) (*domain.Chat, error) {
+// FindDirectByMemberUuids returns a direct chat with exactly the given two members or nil when it does not exist.
+func (repository *ChatRepository) FindDirectByMemberUuids(ctx context.Context, firstMemberUuid uuid.UUID, secondMemberUuid uuid.UUID) (*domain.Chat, error) {
 	const query = `
-		SELECT c.uuid, c.name, c.avatar, c.is_private, c.created_by_user_uuid, c.created_at, c.updated_at
+		SELECT c.uuid, c.name, c.avatar, c.chat_type, c.created_by_user_uuid, c.created_at, c.updated_at
 		FROM chats c
-		WHERE c.is_private = TRUE
+		WHERE c.chat_type = $3
 		  AND 2 = (
 			SELECT COUNT(*)
 			FROM chat_members cm_all
@@ -117,11 +117,11 @@ func (repository *ChatRepository) FindPrivateByMemberUuids(ctx context.Context, 
 	`
 
 	var chat domain.Chat
-	if err := repository.database.QueryRowContext(ctx, query, firstMemberUuid, secondMemberUuid).Scan(
+	if err := repository.database.QueryRowContext(ctx, query, firstMemberUuid, secondMemberUuid, domain.ChatTypeDirect).Scan(
 		&chat.Uuid,
 		&chat.Name,
 		&chat.Avatar,
-		&chat.IsPrivate,
+		&chat.ChatType,
 		&chat.CreatedByUserUuid,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
@@ -131,7 +131,7 @@ func (repository *ChatRepository) FindPrivateByMemberUuids(ctx context.Context, 
 		}
 
 		return nil, fmt.Errorf(
-			"finding private chat by member uuids %q and %q: %w",
+			"finding direct chat by member uuids %q and %q: %w",
 			firstMemberUuid,
 			secondMemberUuid,
 			err,
@@ -151,11 +151,11 @@ func (repository *ChatRepository) CreateWithMembers(ctx context.Context, chat do
 
 	if _, err := transaction.ExecContext(
 		ctx,
-		`INSERT INTO chats (uuid, name, avatar, is_private, created_by_user_uuid, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`INSERT INTO chats (uuid, name, avatar, chat_type, created_by_user_uuid, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		chat.Uuid,
 		chat.Name,
 		chat.Avatar,
-		chat.IsPrivate,
+		chat.ChatType,
 		chat.CreatedByUserUuid,
 		chat.CreatedAt,
 		chat.UpdatedAt,
