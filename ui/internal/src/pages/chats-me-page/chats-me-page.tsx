@@ -82,6 +82,7 @@ export default function ChatsMePage() {
     const [groupChatSearchProfilesError, setGroupChatSearchProfilesError] = useState<string | null>(null);
     const [groupChatInvitees, setGroupChatInvitees] = useState<PublicProfile[]>([]);
     const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
+    const [groupChatName, setGroupChatName] = useState("");
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
@@ -274,6 +275,7 @@ export default function ChatsMePage() {
 
     useEffect(() => {
         if (!isCreateGroupChatModalOpen) {
+            setGroupChatName("");
             setGroupChatSearchQuery("");
             setGroupChatSearchProfiles([]);
             setGroupChatSearchProfilesError(null);
@@ -621,6 +623,7 @@ export default function ChatsMePage() {
 
     function closeCreateGroupChatModal() {
         setIsCreateGroupChatModalOpen(false);
+        setGroupChatName("");
         setGroupChatSearchQuery("");
         setGroupChatSearchProfiles([]);
         setGroupChatSearchProfilesError(null);
@@ -650,6 +653,7 @@ export default function ChatsMePage() {
 
             const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats/group", {
                 memberUuids: groupChatInvitees.map((profile) => profile.userUuid),
+                name: groupChatName.trim().length > 0 ? groupChatName.trim() : null,
             });
 
             const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
@@ -1004,6 +1008,18 @@ export default function ChatsMePage() {
                                 Add people now or create the group first and invite later.
                             </p>
                         </div>
+
+                        <label className="chats-me-page__group-field">
+                            <span className="chats-me-page__group-field-label">Chat name</span>
+                            <input
+                                className="chats-me-page__group-field-input"
+                                type="text"
+                                name="group-name"
+                                placeholder="Project team"
+                                value={groupChatName}
+                                onChange={(event) => setGroupChatName(event.target.value)}
+                            />
+                        </label>
 
                         <label className="chats-me-page__group-search">
                             <span className="material-symbols-rounded chats-me-page__group-search-icon" aria-hidden="true">search</span>
