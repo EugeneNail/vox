@@ -91,6 +91,7 @@ export default function ChatsMePage() {
     const [addMembersSearchProfilesError, setAddMembersSearchProfilesError] = useState<string | null>(null);
     const [addMembersInvitees, setAddMembersInvitees] = useState<PublicProfile[]>([]);
     const [isAddingMembers, setIsAddingMembers] = useState(false);
+    const [isKickingMember, setIsKickingMember] = useState(false);
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
@@ -563,6 +564,8 @@ export default function ChatsMePage() {
     }, []);
 
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
+    const isSelectedChatGroup = selectedChat?.chatType === ChatType.Group;
+    const isSelectedChatOwnedByAuthenticatedUser = selectedChat?.createdByUserUuid === authenticatedUserUuid;
     const selectedChatMemberUserUuids = new Set(selectedChat?.memberUuids ?? []);
     const addMembersInviteeUserUuids = new Set(addMembersInvitees.map((profile) => profile.userUuid));
     const addMembersVisibleSearchProfiles = [
@@ -795,6 +798,21 @@ export default function ChatsMePage() {
             closeAddMembersModal();
         } finally {
             setIsAddingMembers(false);
+        }
+    }
+
+    async function kickMemberFromChat(memberUuid: string) {
+        if (!selectedChat) {
+            return;
+        }
+
+        setIsKickingMember(true);
+        try {
+            await apiClient.delete(`/api/v1/message/chats/${selectedChat.uuid}/members/${memberUuid}`);
+            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            setChats(nextChats);
+        } finally {
+            setIsKickingMember(false);
         }
     }
 
@@ -1086,6 +1104,18 @@ export default function ChatsMePage() {
                                     <span className="chats-me-page__member-name">
                                         {getChatMemberName(memberUuid, profilesByUserUuid)}
                                     </span>
+                                    {isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && memberUuid !== authenticatedUserUuid && (
+                                        <button
+                                            className="chats-me-page__member-remove-button"
+                                            type="button"
+                                            disabled={isKickingMember}
+                                            title="Remove member"
+                                            aria-label={`Remove member ${getChatMemberName(memberUuid, profilesByUserUuid)}`}
+                                            onClick={() => void kickMemberFromChat(memberUuid)}
+                                        >
+                                            <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
