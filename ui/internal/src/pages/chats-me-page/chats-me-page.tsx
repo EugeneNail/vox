@@ -45,6 +45,11 @@ const linkPattern = /(https?:\/\/[^\s]+)/g;
 const fullLinkPattern = /^https?:\/\/[^\s]+$/;
 const messageThreadGapMs = 10 * 60 * 1000;
 
+async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
+    const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(query)}&limit=10`);
+    return data.filter((profile) => profile.userUuid !== authenticatedUserUuid);
+}
+
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
@@ -69,10 +74,23 @@ export default function ChatsMePage() {
     const [isSearchingProfiles, setIsSearchingProfiles] = useState(false);
     const [searchProfilesError, setSearchProfilesError] = useState<string | null>(null);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const [isCreateGroupChatModalOpen, setIsCreateGroupChatModalOpen] = useState(false);
+    const [groupChatSearchQuery, setGroupChatSearchQuery] = useState("");
+    const [groupChatSearchProfiles, setGroupChatSearchProfiles] = useState<PublicProfile[]>([]);
+    const [isGroupChatSearchFocused, setIsGroupChatSearchFocused] = useState(false);
+    const [isSearchingGroupChatProfiles, setIsSearchingGroupChatProfiles] = useState(false);
+    const [groupChatSearchProfilesError, setGroupChatSearchProfilesError] = useState<string | null>(null);
+    const [groupChatInvitees, setGroupChatInvitees] = useState<PublicProfile[]>([]);
+    const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
+    const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
+    const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
+    const groupChatSearchQueryTrimmed = groupChatSearchQuery.trim();
+    const groupChatInviteeUserUuids = new Set(groupChatInvitees.map((profile) => profile.userUuid));
+    const groupChatVisibleSearchProfiles = groupChatSearchProfiles.filter((profile) => !groupChatInviteeUserUuids.has(profile.userUuid));
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -220,12 +238,11 @@ export default function ChatsMePage() {
             setSearchProfilesError(null);
 
             try {
-                const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(trimmedQuery)}&limit=10`);
+                const nextProfiles = await searchProfilesByQuery(apiClient, trimmedQuery, authenticatedUserUuid);
                 if (!isMounted) {
                     return;
                 }
 
-                const nextProfiles = data.filter((profile) => profile.userUuid !== authenticatedUserUuid);
                 upsertProfiles(nextProfiles);
                 setProfilesByUserUuid((currentProfilesByUserUuid) => ({
                     ...currentProfilesByUserUuid,
@@ -251,6 +268,76 @@ export default function ChatsMePage() {
             window.clearTimeout(timeoutId);
         };
     }, [apiClient, authenticatedUserUuid, isSearchActive, searchQuery]);
+
+    useEffect(() => {
+        if (!isCreateGroupChatModalOpen) {
+            setGroupChatSearchQuery("");
+            setGroupChatSearchProfiles([]);
+            setGroupChatSearchProfilesError(null);
+            setIsSearchingGroupChatProfiles(false);
+            setIsGroupChatSearchFocused(false);
+            setGroupChatInvitees([]);
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            groupChatSearchInputRef.current?.focus();
+        }, 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [isCreateGroupChatModalOpen]);
+
+    useEffect(() => {
+        if (!isCreateGroupChatModalOpen) {
+            return;
+        }
+
+        const trimmedQuery = groupChatSearchQuery.trim();
+        if (trimmedQuery.length === 0) {
+            setGroupChatSearchProfiles([]);
+            setGroupChatSearchProfilesError(null);
+            setIsSearchingGroupChatProfiles(false);
+            return;
+        }
+
+        let isMounted = true;
+        const timeoutId = window.setTimeout(async () => {
+            setIsSearchingGroupChatProfiles(true);
+            setGroupChatSearchProfilesError(null);
+
+            try {
+                const nextProfiles = await searchProfilesByQuery(apiClient, trimmedQuery, authenticatedUserUuid);
+                if (!isMounted) {
+                    return;
+                }
+
+                upsertProfiles(nextProfiles);
+                setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                    ...currentProfilesByUserUuid,
+                    ...profilesByUserUuidFromProfiles(nextProfiles),
+                }));
+                setGroupChatSearchProfiles(nextProfiles);
+            } catch {
+                if (!isMounted) {
+                    return;
+                }
+
+                setGroupChatSearchProfiles([]);
+                setGroupChatSearchProfilesError("Could not search users.");
+            } finally {
+                if (isMounted) {
+                    setIsSearchingGroupChatProfiles(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            isMounted = false;
+            window.clearTimeout(timeoutId);
+        };
+    }, [apiClient, authenticatedUserUuid, groupChatSearchQuery, isCreateGroupChatModalOpen]);
 
     useEffect(() => {
         if (!selectedChatUuid || !isConnected) {
@@ -376,6 +463,13 @@ export default function ChatsMePage() {
             if (event.key === "Escape") {
                 setMessageContextMenu(null);
                 setMessagePendingDeletion(null);
+                setIsCreateGroupChatModalOpen(false);
+                setGroupChatSearchQuery("");
+                setGroupChatSearchProfiles([]);
+                setGroupChatSearchProfilesError(null);
+                setIsSearchingGroupChatProfiles(false);
+                setIsGroupChatSearchFocused(false);
+                setGroupChatInvitees([]);
             }
         }
 
@@ -518,6 +612,56 @@ export default function ChatsMePage() {
         }
     }
 
+    function openCreateGroupChatModal() {
+        setIsCreateGroupChatModalOpen(true);
+    }
+
+    function closeCreateGroupChatModal() {
+        setIsCreateGroupChatModalOpen(false);
+        setGroupChatSearchQuery("");
+        setGroupChatSearchProfiles([]);
+        setGroupChatSearchProfilesError(null);
+        setIsSearchingGroupChatProfiles(false);
+        setIsGroupChatSearchFocused(false);
+        setGroupChatInvitees([]);
+    }
+
+    function toggleGroupChatInvitee(profile: PublicProfile) {
+        setGroupChatInvitees((currentInvitees) => {
+            if (currentInvitees.some((invitee) => invitee.userUuid === profile.userUuid)) {
+                return currentInvitees.filter((invitee) => invitee.userUuid !== profile.userUuid);
+            }
+
+            return [...currentInvitees, profile];
+        });
+    }
+
+    function removeGroupChatInvitee(userUuidToRemove: string) {
+        setGroupChatInvitees((currentInvitees) => currentInvitees.filter((invitee) => invitee.userUuid !== userUuidToRemove));
+    }
+
+    async function createGroupChat() {
+        setIsCreatingGroupChat(true);
+        try {
+            upsertProfiles(groupChatInvitees);
+            setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                ...currentProfilesByUserUuid,
+                ...profilesByUserUuidFromProfiles(groupChatInvitees),
+            }));
+
+            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats/group", {
+                memberUuids: groupChatInvitees.map((profile) => profile.userUuid),
+            });
+
+            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            setChats(nextChats);
+            closeCreateGroupChatModal();
+            navigate(`/chats/@me/${createdChatUuid}`);
+        } finally {
+            setIsCreatingGroupChat(false);
+        }
+    }
+
     function clearSearch() {
         searchInputRef.current?.blur();
         setSearchQuery("");
@@ -532,7 +676,13 @@ export default function ChatsMePage() {
             <aside className="chats-me-page__sidebar" aria-label="Chats">
                 <div className="chats-me-page__sidebar-header">
                     <p className="chats-me-page__eyebrow">Messages</p>
-                    <h1 className="chats-me-page__title">Chats</h1>
+                    <div className="chats-me-page__sidebar-title-row">
+                        <h1 className="chats-me-page__title">Chats</h1>
+                        <button className="chats-me-page__create-group-button" type="button" onClick={openCreateGroupChatModal}>
+                            <span className="material-symbols-rounded chats-me-page__create-group-button-icon" aria-hidden="true">group_add</span>
+                            Group
+                        </button>
+                    </div>
                     <label className="chats-me-page__search">
                         <span className="material-symbols-rounded chats-me-page__search-icon" aria-hidden="true">search</span>
                         <input
@@ -569,11 +719,11 @@ export default function ChatsMePage() {
                             {searchQuery.trim().length === 0 && (
                                 <p className="chats-me-page__state">Type a name.</p>
                             )}
-                            {isSearchingProfiles && <p className="chats-me-page__state">Searching users...</p>}
-                            {searchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{searchProfilesError}</p>}
-                            {!isSearchingProfiles && !searchProfilesError && searchQuery.trim().length > 0 && searchProfiles.length === 0 && (
-                                <p className="chats-me-page__state">No users found.</p>
-                            )}
+                                {isSearchingProfiles && <p className="chats-me-page__state">Searching users...</p>}
+                                {searchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{searchProfilesError}</p>}
+                                {!isSearchingProfiles && !searchProfilesError && searchQuery.trim().length > 0 && searchProfiles.length === 0 && (
+                                    <p className="chats-me-page__state">No users found.</p>
+                                )}
                             {searchProfiles.map((profile) => (
                                 <button
                                     className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
@@ -831,6 +981,127 @@ export default function ChatsMePage() {
                             </button>
                             <button className="chats-me-page__delete-dialog-button chats-me-page__delete-dialog-button--danger" type="button" disabled={isDeletingMessage} onClick={() => void deleteMessage(messagePendingDeletion)}>
                                 Delete
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {isCreateGroupChatModalOpen && (
+                <div className="chats-me-page__modal-backdrop" role="presentation" onClick={closeCreateGroupChatModal}>
+                    <section
+                        className="chats-me-page__group-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="create-group-title"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="chats-me-page__group-dialog-header">
+                            <div>
+                                <p className="chats-me-page__eyebrow">New group</p>
+                                <h2 className="chats-me-page__group-dialog-title" id="create-group-title">Create a group chat</h2>
+                            </div>
+                            <p className="chats-me-page__group-dialog-text">
+                                Add people now or create the group first and invite later.
+                            </p>
+                        </div>
+
+                        <label className="chats-me-page__group-search">
+                            <span className="material-symbols-rounded chats-me-page__group-search-icon" aria-hidden="true">search</span>
+                            <input
+                                className="chats-me-page__group-search-input"
+                                type="text"
+                                name="group-search"
+                                placeholder="Search users"
+                                ref={groupChatSearchInputRef}
+                                value={groupChatSearchQuery}
+                                onChange={(event) => setGroupChatSearchQuery(event.target.value)}
+                                onFocus={() => setIsGroupChatSearchFocused(true)}
+                                onBlur={() => setIsGroupChatSearchFocused(false)}
+                            />
+                            {isGroupChatSearchActive && (
+                                <button
+                                    className="chats-me-page__group-search-clear"
+                                    type="button"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setGroupChatSearchQuery("");
+                                    }}
+                                >
+                                    <span className="material-symbols-rounded" aria-hidden="true">close</span>
+                                </button>
+                            )}
+                        </label>
+
+                        <div className="chats-me-page__group-dialog-content">
+                            <div className="chats-me-page__group-invitees">
+                                <div className="chats-me-page__group-invitees-header">
+                                    <p className="chats-me-page__group-invitees-title">Invited</p>
+                                    <p className="chats-me-page__group-invitees-count">{groupChatInvitees.length}</p>
+                                </div>
+
+                                {groupChatInvitees.length === 0 ? (
+                                    <p className="chats-me-page__group-empty">No users selected yet.</p>
+                                ) : (
+                                    <div className="chats-me-page__group-invitees-list">
+                                        {groupChatInvitees.map((profile) => (
+                                            <button
+                                                className="chats-me-page__group-invitee"
+                                                key={profile.userUuid}
+                                                type="button"
+                                                onClick={() => removeGroupChatInvitee(profile.userUuid)}
+                                            >
+                                                <UserAvatar
+                                                    className="chats-me-page__group-invitee-avatar"
+                                                    src={getProfileAvatarUrl(profile)}
+                                                    label={profile.name}
+                                                />
+                                                <span className="chats-me-page__group-invitee-name">{profile.name}</span>
+                                                <span className="material-symbols-rounded chats-me-page__group-invitee-remove" aria-hidden="true">close</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="chats-me-page__group-results">
+                                {groupChatSearchQueryTrimmed.length === 0 && (
+                                    <p className="chats-me-page__state">Type a name.</p>
+                                )}
+                                {isSearchingGroupChatProfiles && <p className="chats-me-page__state">Searching users...</p>}
+                                {groupChatSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{groupChatSearchProfilesError}</p>}
+                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatVisibleSearchProfiles.length === 0 && (
+                                    <p className="chats-me-page__state">No users found.</p>
+                                )}
+                                {groupChatVisibleSearchProfiles.map((result) => (
+                                    <button
+                                        className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
+                                        disabled={isCreatingGroupChat}
+                                        key={result.userUuid}
+                                        type="button"
+                                        onClick={() => toggleGroupChatInvitee(result)}
+                                    >
+                                        <UserAvatar
+                                            className="chats-me-page__avatar"
+                                            src={getProfileAvatarUrl(result)}
+                                            label={result.name}
+                                        />
+                                        <span className="chats-me-page__chat-preview">
+                                            <span className="chats-me-page__chat-name">{result.name}</span>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="chats-me-page__group-dialog-actions">
+                            <button className="chats-me-page__group-dialog-button" type="button" disabled={isCreatingGroupChat} onClick={closeCreateGroupChatModal}>
+                                Cancel
+                            </button>
+                            <button className="chats-me-page__group-dialog-button chats-me-page__group-dialog-button--primary" type="button" disabled={isCreatingGroupChat} onClick={() => void createGroupChat()}>
+                                {isCreatingGroupChat ? "Creating..." : "Create group"}
                             </button>
                         </div>
                     </section>
