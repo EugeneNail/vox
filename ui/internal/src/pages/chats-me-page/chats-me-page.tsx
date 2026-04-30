@@ -1047,6 +1047,21 @@ export default function ChatsMePage() {
                                     <span className="material-symbols-rounded" aria-hidden="true">link</span>
                                     Copy Message Link
                                 </button>
+                                {isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && messageContextMenu.message.userUuid !== authenticatedUserUuid && (
+                                    <button
+                                        className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
+                                        type="button"
+                                        disabled={isKickingMember}
+                                        onClick={() => {
+                                            const memberUuid = messageContextMenu.message.userUuid;
+                                            setMessageContextMenu(null);
+                                            void kickMemberFromChat(memberUuid);
+                                        }}
+                                    >
+                                        <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
+                                        Kick User
+                                    </button>
+                                )}
                                 {messageContextMenu.message.userUuid === authenticatedUserUuid && (
                                     <div className="chats-me-page__context-menu-danger">
                                         <button
