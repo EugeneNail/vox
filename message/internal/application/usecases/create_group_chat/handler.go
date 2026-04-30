@@ -1,4 +1,4 @@
-package create_chat
+package create_group_chat
 
 import (
 	"context"
@@ -11,28 +11,27 @@ import (
 	"github.com/samborkent/uuidv7"
 )
 
-// Handler creates chats through the create_chat use-case.
+// Handler creates group chats through the create_group_chat use-case.
 type Handler struct {
 	chatRepository domain.ChatRepository
 }
 
-// Command contains the input required to create a chat.
+// Command contains the input required to create a group chat.
 type Command struct {
 	CreatorUuid uuid.UUID
 	MemberUuids []uuid.UUID
 	Name        *string
 	Avatar      *string
-	IsPrivate   bool
 }
 
-// NewHandler constructs a create_chat handler with its dependencies.
+// NewHandler constructs a create_group_chat handler with its dependencies.
 func NewHandler(chatRepository domain.ChatRepository) *Handler {
 	return &Handler{
 		chatRepository: chatRepository,
 	}
 }
 
-// Handle creates a new chat and adds all members.
+// Handle creates a group chat and returns its UUID.
 func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID, error) {
 	validationError := validation.NewError()
 
@@ -59,33 +58,8 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		seenMemberUuids[memberUuid] = struct{}{}
 	}
 
-	memberCount := len(command.MemberUuids) + 1
-	if memberCount < 2 {
-		validationError.AddViolation("memberUuids", "At least one member besides the creator is required")
-	}
-
-	if command.IsPrivate && memberCount != 2 {
-		validationError.AddViolation("memberUuids", "Private chats must have exactly two members")
-	}
-
 	if len(validationError.Violations()) > 0 {
 		return uuid.Nil, validationError
-	}
-
-	if command.IsPrivate {
-		existingChat, err := handler.chatRepository.FindPrivateByMemberUuids(ctx, command.CreatorUuid, command.MemberUuids[0])
-		if err != nil {
-			return uuid.Nil, fmt.Errorf(
-				"finding existing private chat for members %q and %q: %w",
-				command.CreatorUuid,
-				command.MemberUuids[0],
-				err,
-			)
-		}
-
-		if existingChat != nil {
-			return existingChat.Uuid, nil
-		}
 	}
 
 	now := time.Now().UTC()
@@ -93,7 +67,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		Uuid:              uuid.UUID(uuidv7.New()),
 		Name:              command.Name,
 		Avatar:            command.Avatar,
-		IsPrivate:         command.IsPrivate,
+		ChatType:          domain.ChatTypeGroup,
 		CreatedByUserUuid: command.CreatorUuid,
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -103,7 +77,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	members = append(members, domain.ChatMember{
 		ChatUuid: chat.Uuid,
 		UserUuid: command.CreatorUuid,
-		Role:     domain.ChatMemberRoleMember,
+		Role:     domain.ChatMemberRoleOwner,
 		JoinedAt: now,
 	})
 
@@ -117,7 +91,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	if err := handler.chatRepository.CreateWithMembers(ctx, chat, members); err != nil {
-		return uuid.Nil, fmt.Errorf("creating chat %q: %w", chat.Uuid, err)
+		return uuid.Nil, fmt.Errorf("creating group chat %q: %w", chat.Uuid, err)
 	}
 
 	return chat.Uuid, nil

@@ -42,6 +42,7 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]Result, erro
 
 	results := make([]Result, 0, len(chats))
 	for _, chat := range chats {
+		// TODO: avoid N+1 queries here by loading chat members in bulk or via a single aggregated query.
 		members, err := handler.chatMemberRepository.FindAllByChatUuid(ctx, chat.Uuid)
 		if err != nil {
 			return nil, fmt.Errorf("finding members by chat uuid %q: %w", chat.Uuid, err)
