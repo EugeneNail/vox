@@ -6,10 +6,13 @@ import (
 	"net/http"
 
 	"github.com/EugeneNail/vox/lib-common/http/middleware"
-	"github.com/EugeneNail/vox/message/internal/application/usecases/create_chat"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/add_chat_members"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/create_direct_chat"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/create_group_chat"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/create_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/delete_message"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/edit_message"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/kick_chat_member"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/open_chat"
@@ -51,7 +54,10 @@ func main() {
 	userOpenedChatPublisher := redis_infrastructure.NewUserOpenedChatPublisher(redisClient)
 
 	// --- Section: Application use-cases ---
-	createChatHandler := create_chat.NewHandler(chatRepository)
+	createDirectChatHandler := create_direct_chat.NewHandler(chatRepository)
+	createGroupChatHandler := create_group_chat.NewHandler(chatRepository)
+	addChatMembersHandler := add_chat_members.NewHandler(chatRepository, chatMemberRepository)
+	kickChatMemberHandler := kick_chat_member.NewHandler(chatRepository, chatMemberRepository)
 	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageCreatedPublisher)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
@@ -60,7 +66,10 @@ func main() {
 	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
 
 	// --- Section: HTTP transport ---
-	createChatHttpHandler := transport_http.NewCreateChatHandler(createChatHandler)
+	createDirectChatHttpHandler := transport_http.NewCreateDirectChatHandler(createDirectChatHandler)
+	createGroupChatHttpHandler := transport_http.NewCreateGroupChatHandler(createGroupChatHandler)
+	addChatMembersHttpHandler := transport_http.NewAddChatMembersHandler(addChatMembersHandler)
+	kickChatMemberHttpHandler := transport_http.NewKickChatMemberHandler(kickChatMemberHandler)
 	createMessageHttpHandler := transport_http.NewCreateMessageHandler(createMessageHandler)
 	deleteMessageHttpHandler := transport_http.NewDeleteMessageHandler(deleteMessageHandler)
 	editMessageHttpHandler := transport_http.NewEditMessageHandler(editMessageHandler)
@@ -70,7 +79,10 @@ func main() {
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
-	webServer.HandleFunc("POST   /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createChatHttpHandler.Handle))))
+	webServer.HandleFunc("POST   /api/v1/message/chats/direct", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createDirectChatHttpHandler.Handle))))
+	webServer.HandleFunc("POST   /api/v1/message/chats/group", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(createGroupChatHttpHandler.Handle))))
+	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/members", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(2048, middleware.WriteJsonResponse(addChatMembersHttpHandler.Handle))))
+	webServer.HandleFunc("DELETE /api/v1/message/chats/{chatUuid}/members/{userUuid}", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(kickChatMemberHttpHandler.Handle)))
 	webServer.HandleFunc("GET    /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatsHttpHandler.Handle)))
 	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/open", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(openChatHttpHandler.Handle)))
 	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
