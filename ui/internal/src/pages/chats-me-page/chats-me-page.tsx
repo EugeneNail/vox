@@ -83,12 +83,22 @@ export default function ChatsMePage() {
     const [groupChatInvitees, setGroupChatInvitees] = useState<PublicProfile[]>([]);
     const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
     const [groupChatName, setGroupChatName] = useState("");
+    const [isAddMembersModalOpen, setIsAddMembersModalOpen] = useState(false);
+    const [addMembersSearchQuery, setAddMembersSearchQuery] = useState("");
+    const [addMembersSearchProfiles, setAddMembersSearchProfiles] = useState<PublicProfile[]>([]);
+    const [isAddMembersSearchFocused, setIsAddMembersSearchFocused] = useState(false);
+    const [isSearchingAddMembersProfiles, setIsSearchingAddMembersProfiles] = useState(false);
+    const [addMembersSearchProfilesError, setAddMembersSearchProfilesError] = useState<string | null>(null);
+    const [addMembersInvitees, setAddMembersInvitees] = useState<PublicProfile[]>([]);
+    const [isAddingMembers, setIsAddingMembers] = useState(false);
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
     const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
     const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
+    const addMembersSearchInputRef = useRef<HTMLInputElement | null>(null);
+    const isAddMembersSearchActive = isAddMembersSearchFocused || addMembersSearchQuery.length > 0;
     const groupChatSearchQueryTrimmed = groupChatSearchQuery.trim();
     const groupChatInviteeUserUuids = new Set(groupChatInvitees.map((profile) => profile.userUuid));
     const groupChatVisibleSearchProfiles = [
@@ -345,6 +355,76 @@ export default function ChatsMePage() {
     }, [apiClient, authenticatedUserUuid, groupChatSearchQuery, isCreateGroupChatModalOpen]);
 
     useEffect(() => {
+        if (!isAddMembersModalOpen) {
+            setAddMembersSearchQuery("");
+            setAddMembersSearchProfiles([]);
+            setAddMembersSearchProfilesError(null);
+            setIsSearchingAddMembersProfiles(false);
+            setIsAddMembersSearchFocused(false);
+            setAddMembersInvitees([]);
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            addMembersSearchInputRef.current?.focus();
+        }, 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [isAddMembersModalOpen]);
+
+    useEffect(() => {
+        if (!isAddMembersModalOpen) {
+            return;
+        }
+
+        const trimmedQuery = addMembersSearchQuery.trim();
+        if (trimmedQuery.length === 0) {
+            setAddMembersSearchProfiles([]);
+            setAddMembersSearchProfilesError(null);
+            setIsSearchingAddMembersProfiles(false);
+            return;
+        }
+
+        let isMounted = true;
+        const timeoutId = window.setTimeout(async () => {
+            setIsSearchingAddMembersProfiles(true);
+            setAddMembersSearchProfilesError(null);
+
+            try {
+                const nextProfiles = await searchProfilesByQuery(apiClient, trimmedQuery, authenticatedUserUuid);
+                if (!isMounted) {
+                    return;
+                }
+
+                upsertProfiles(nextProfiles);
+                setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                    ...currentProfilesByUserUuid,
+                    ...profilesByUserUuidFromProfiles(nextProfiles),
+                }));
+                setAddMembersSearchProfiles(nextProfiles);
+            } catch {
+                if (!isMounted) {
+                    return;
+                }
+
+                setAddMembersSearchProfiles([]);
+                setAddMembersSearchProfilesError("Could not search users.");
+            } finally {
+                if (isMounted) {
+                    setIsSearchingAddMembersProfiles(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            isMounted = false;
+            window.clearTimeout(timeoutId);
+        };
+    }, [apiClient, authenticatedUserUuid, addMembersSearchQuery, isAddMembersModalOpen]);
+
+    useEffect(() => {
         if (!selectedChatUuid || !isConnected) {
             return;
         }
@@ -468,13 +548,8 @@ export default function ChatsMePage() {
             if (event.key === "Escape") {
                 setMessageContextMenu(null);
                 setMessagePendingDeletion(null);
-                setIsCreateGroupChatModalOpen(false);
-                setGroupChatSearchQuery("");
-                setGroupChatSearchProfiles([]);
-                setGroupChatSearchProfilesError(null);
-                setIsSearchingGroupChatProfiles(false);
-                setIsGroupChatSearchFocused(false);
-                setGroupChatInvitees([]);
+                closeCreateGroupChatModal();
+                closeAddMembersModal();
             }
         }
 
@@ -488,6 +563,15 @@ export default function ChatsMePage() {
     }, []);
 
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
+    const selectedChatMemberUserUuids = new Set(selectedChat?.memberUuids ?? []);
+    const addMembersInviteeUserUuids = new Set(addMembersInvitees.map((profile) => profile.userUuid));
+    const addMembersVisibleSearchProfiles = [
+        ...addMembersInvitees,
+        ...addMembersSearchProfiles.filter((profile) => (
+            !selectedChatMemberUserUuids.has(profile.userUuid)
+                && !addMembersInviteeUserUuids.has(profile.userUuid)
+        )),
+    ];
 
     async function submitMessage(text: string, attachments: string[]) {
         if (editingMessage) {
@@ -662,6 +746,55 @@ export default function ChatsMePage() {
             navigate(`/chats/@me/${createdChatUuid}`);
         } finally {
             setIsCreatingGroupChat(false);
+        }
+    }
+
+    function openAddMembersModal() {
+        setIsAddMembersModalOpen(true);
+    }
+
+    function closeAddMembersModal() {
+        setIsAddMembersModalOpen(false);
+        setAddMembersSearchQuery("");
+        setAddMembersSearchProfiles([]);
+        setAddMembersSearchProfilesError(null);
+        setIsSearchingAddMembersProfiles(false);
+        setIsAddMembersSearchFocused(false);
+        setAddMembersInvitees([]);
+    }
+
+    function toggleAddMembersInvitee(profile: PublicProfile) {
+        setAddMembersInvitees((currentInvitees) => {
+            if (currentInvitees.some((invitee) => invitee.userUuid === profile.userUuid)) {
+                return currentInvitees.filter((invitee) => invitee.userUuid !== profile.userUuid);
+            }
+
+            return [...currentInvitees, profile];
+        });
+    }
+
+    async function addMembersToChat() {
+        if (!selectedChat) {
+            return;
+        }
+
+        setIsAddingMembers(true);
+        try {
+            upsertProfiles(addMembersInvitees);
+            setProfilesByUserUuid((currentProfilesByUserUuid) => ({
+                ...currentProfilesByUserUuid,
+                ...profilesByUserUuidFromProfiles(addMembersInvitees),
+            }));
+
+            await apiClient.post(`/api/v1/message/chats/${selectedChat.uuid}/members`, {
+                memberUuids: addMembersInvitees.map((profile) => profile.userUuid),
+            });
+
+            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            setChats(nextChats);
+            closeAddMembersModal();
+        } finally {
+            setIsAddingMembers(false);
         }
     }
 
@@ -933,7 +1066,15 @@ export default function ChatsMePage() {
             <aside className="chats-me-page__details" aria-label="Chat details">
                 {selectedChat ? (
                     <div className="chats-me-page__details-shell">
-                        <p className="chats-me-page__eyebrow">Members</p>
+                        <div className="chats-me-page__details-header">
+                            <p className="chats-me-page__eyebrow">Members</p>
+                            {selectedChat.chatType === ChatType.Group && (
+                                <button className="chats-me-page__details-action-button" type="button" onClick={openAddMembersModal}>
+                                    <span className="material-symbols-rounded chats-me-page__details-action-button-icon" aria-hidden="true">person_add</span>
+                                    Add members
+                                </button>
+                            )}
+                        </div>
                         <div className="chats-me-page__members" aria-label="Chat members">
                             {selectedChat.memberUuids.map((memberUuid) => (
                                 <div className="chats-me-page__member" key={memberUuid}>
@@ -1126,6 +1267,111 @@ export default function ChatsMePage() {
                             </button>
                             <button className="chats-me-page__group-dialog-button chats-me-page__group-dialog-button--primary" type="button" disabled={isCreatingGroupChat} onClick={() => void createGroupChat()}>
                                 {isCreatingGroupChat ? "Creating..." : "Create group"}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {isAddMembersModalOpen && selectedChat && (
+                <div className="chats-me-page__modal-backdrop" role="presentation" onClick={closeAddMembersModal}>
+                    <section
+                        className="chats-me-page__group-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="add-members-title"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="chats-me-page__group-dialog-header">
+                            <div>
+                                <p className="chats-me-page__eyebrow">Group members</p>
+                                <h2 className="chats-me-page__group-dialog-title" id="add-members-title">Add members</h2>
+                            </div>
+                            <p className="chats-me-page__group-dialog-text">
+                                Pick users to add to this chat. Already selected users stay visible until you uncheck them.
+                            </p>
+                        </div>
+
+                        <label className="chats-me-page__group-search">
+                            <span className="material-symbols-rounded chats-me-page__group-search-icon" aria-hidden="true">search</span>
+                            <input
+                                className="chats-me-page__group-search-input"
+                                type="text"
+                                name="members-search"
+                                placeholder="Search users"
+                                ref={addMembersSearchInputRef}
+                                value={addMembersSearchQuery}
+                                onChange={(event) => setAddMembersSearchQuery(event.target.value)}
+                                onFocus={() => setIsAddMembersSearchFocused(true)}
+                                onBlur={() => setIsAddMembersSearchFocused(false)}
+                            />
+                            {isAddMembersSearchActive && (
+                                <button
+                                    className="chats-me-page__group-search-clear"
+                                    type="button"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setAddMembersSearchQuery("");
+                                    }}
+                                >
+                                    <span className="material-symbols-rounded" aria-hidden="true">close</span>
+                                </button>
+                            )}
+                        </label>
+
+                        <div className="chats-me-page__group-dialog-content">
+                            <div className="chats-me-page__group-results">
+                                {addMembersSearchQuery.trim().length === 0 && addMembersInvitees.length === 0 && (
+                                    <p className="chats-me-page__state">Type a name.</p>
+                                )}
+                                {isSearchingAddMembersProfiles && <p className="chats-me-page__state">Searching users...</p>}
+                                {addMembersSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{addMembersSearchProfilesError}</p>}
+                                {!isSearchingAddMembersProfiles && !addMembersSearchProfilesError && addMembersSearchQuery.trim().length > 0 && addMembersVisibleSearchProfiles.length === 0 && (
+                                    <p className="chats-me-page__state">No users found.</p>
+                                )}
+                                {addMembersVisibleSearchProfiles.map((result) => {
+                                    const isInviteeSelected = addMembersInviteeUserUuids.has(result.userUuid);
+
+                                    return (
+                                        <label
+                                            className={
+                                                [
+                                                    "chats-me-page__chat-button",
+                                                    "chats-me-page__chat-button--search-result",
+                                                    isInviteeSelected ? "chats-me-page__chat-button--selected" : "",
+                                                ].filter(Boolean).join(" ")
+                                            }
+                                            key={result.userUuid}
+                                        >
+                                            <input
+                                                checked={isInviteeSelected}
+                                                className="chats-me-page__group-checkbox"
+                                                disabled={isAddingMembers}
+                                                type="checkbox"
+                                                onChange={() => toggleAddMembersInvitee(result)}
+                                            />
+                                            <UserAvatar
+                                                className="chats-me-page__avatar"
+                                                src={getProfileAvatarUrl(result)}
+                                                label={result.name}
+                                            />
+                                            <span className="chats-me-page__chat-preview">
+                                                <span className="chats-me-page__chat-name">{result.name}</span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="chats-me-page__group-dialog-actions">
+                            <button className="chats-me-page__group-dialog-button" type="button" disabled={isAddingMembers} onClick={closeAddMembersModal}>
+                                Cancel
+                            </button>
+                            <button className="chats-me-page__group-dialog-button chats-me-page__group-dialog-button--primary" type="button" disabled={isAddingMembers || addMembersInvitees.length === 0} onClick={() => void addMembersToChat()}>
+                                {isAddingMembers ? "Adding..." : "Add members"}
                             </button>
                         </div>
                     </section>
