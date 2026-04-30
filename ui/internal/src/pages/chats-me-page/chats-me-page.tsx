@@ -15,6 +15,7 @@ type Chat = {
     chatType: ChatType;
     createdByUserUuid: string;
     memberUuids: string[];
+    currentUserRole: ChatMemberRole;
     createdAt: string;
     updatedAt: string;
 };
@@ -22,6 +23,12 @@ type Chat = {
 enum ChatType {
     Direct = 0,
     Group = 1,
+}
+
+enum ChatMemberRole {
+    Owner = "owner",
+    Admin = "admin",
+    Member = "member",
 }
 
 type ChatMessage = {
@@ -566,6 +573,10 @@ export default function ChatsMePage() {
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
     const isSelectedChatGroup = selectedChat?.chatType === ChatType.Group;
     const isSelectedChatOwnedByAuthenticatedUser = selectedChat?.createdByUserUuid === authenticatedUserUuid;
+    const canDeleteAnyMessage = isSelectedChatGroup && (
+        selectedChat?.currentUserRole === ChatMemberRole.Owner
+            || selectedChat?.currentUserRole === ChatMemberRole.Admin
+    );
     const selectedChatMemberUserUuids = new Set(selectedChat?.memberUuids ?? []);
     const addMembersInviteeUserUuids = new Set(addMembersInvitees.map((profile) => profile.userUuid));
     const addMembersVisibleSearchProfiles = [
@@ -1062,7 +1073,7 @@ export default function ChatsMePage() {
                                         Kick User
                                     </button>
                                 )}
-                                {messageContextMenu.message.userUuid === authenticatedUserUuid && (
+                                {(messageContextMenu.message.userUuid === authenticatedUserUuid || canDeleteAnyMessage) && (
                                     <div className="chats-me-page__context-menu-danger">
                                         <button
                                             className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
