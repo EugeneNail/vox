@@ -90,7 +90,6 @@ export default function ChatsMePage() {
     const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
     const groupChatSearchQueryTrimmed = groupChatSearchQuery.trim();
     const groupChatInviteeUserUuids = new Set(groupChatInvitees.map((profile) => profile.userUuid));
-    const groupChatVisibleSearchProfiles = groupChatSearchProfiles.filter((profile) => !groupChatInviteeUserUuids.has(profile.userUuid));
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -636,10 +635,6 @@ export default function ChatsMePage() {
         });
     }
 
-    function removeGroupChatInvitee(userUuidToRemove: string) {
-        setGroupChatInvitees((currentInvitees) => currentInvitees.filter((invitee) => invitee.userUuid !== userUuidToRemove));
-    }
-
     async function createGroupChat() {
         setIsCreatingGroupChat(true);
         try {
@@ -1036,63 +1031,47 @@ export default function ChatsMePage() {
                         </label>
 
                         <div className="chats-me-page__group-dialog-content">
-                            <div className="chats-me-page__group-invitees">
-                                <div className="chats-me-page__group-invitees-header">
-                                    <p className="chats-me-page__group-invitees-title">Invited</p>
-                                    <p className="chats-me-page__group-invitees-count">{groupChatInvitees.length}</p>
-                                </div>
-
-                                {groupChatInvitees.length === 0 ? (
-                                    <p className="chats-me-page__group-empty">No users selected yet.</p>
-                                ) : (
-                                    <div className="chats-me-page__group-invitees-list">
-                                        {groupChatInvitees.map((profile) => (
-                                            <button
-                                                className="chats-me-page__group-invitee"
-                                                key={profile.userUuid}
-                                                type="button"
-                                                onClick={() => removeGroupChatInvitee(profile.userUuid)}
-                                            >
-                                                <UserAvatar
-                                                    className="chats-me-page__group-invitee-avatar"
-                                                    src={getProfileAvatarUrl(profile)}
-                                                    label={profile.name}
-                                                />
-                                                <span className="chats-me-page__group-invitee-name">{profile.name}</span>
-                                                <span className="material-symbols-rounded chats-me-page__group-invitee-remove" aria-hidden="true">close</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
                             <div className="chats-me-page__group-results">
                                 {groupChatSearchQueryTrimmed.length === 0 && (
                                     <p className="chats-me-page__state">Type a name.</p>
                                 )}
                                 {isSearchingGroupChatProfiles && <p className="chats-me-page__state">Searching users...</p>}
                                 {groupChatSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{groupChatSearchProfilesError}</p>}
-                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatVisibleSearchProfiles.length === 0 && (
+                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatSearchProfiles.length === 0 && (
                                     <p className="chats-me-page__state">No users found.</p>
                                 )}
-                                {groupChatVisibleSearchProfiles.map((result) => (
-                                    <button
-                                        className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
-                                        disabled={isCreatingGroupChat}
-                                        key={result.userUuid}
-                                        type="button"
-                                        onClick={() => toggleGroupChatInvitee(result)}
-                                    >
-                                        <UserAvatar
-                                            className="chats-me-page__avatar"
-                                            src={getProfileAvatarUrl(result)}
-                                            label={result.name}
-                                        />
-                                        <span className="chats-me-page__chat-preview">
-                                            <span className="chats-me-page__chat-name">{result.name}</span>
-                                        </span>
-                                    </button>
-                                ))}
+                                {groupChatSearchProfiles.map((result) => {
+                                    const isInviteeSelected = groupChatInviteeUserUuids.has(result.userUuid);
+
+                                    return (
+                                        <label
+                                            className={
+                                                [
+                                                    "chats-me-page__chat-button",
+                                                    "chats-me-page__chat-button--search-result",
+                                                    isInviteeSelected ? "chats-me-page__chat-button--selected" : "",
+                                                ].filter(Boolean).join(" ")
+                                            }
+                                            key={result.userUuid}
+                                        >
+                                            <input
+                                                checked={isInviteeSelected}
+                                                className="chats-me-page__group-checkbox"
+                                                disabled={isCreatingGroupChat}
+                                                type="checkbox"
+                                                onChange={() => toggleGroupChatInvitee(result)}
+                                            />
+                                            <UserAvatar
+                                                className="chats-me-page__avatar"
+                                                src={getProfileAvatarUrl(result)}
+                                                label={result.name}
+                                            />
+                                            <span className="chats-me-page__chat-preview">
+                                                <span className="chats-me-page__chat-name">{result.name}</span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
 
