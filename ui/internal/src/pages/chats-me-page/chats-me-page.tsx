@@ -90,6 +90,10 @@ export default function ChatsMePage() {
     const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
     const groupChatSearchQueryTrimmed = groupChatSearchQuery.trim();
     const groupChatInviteeUserUuids = new Set(groupChatInvitees.map((profile) => profile.userUuid));
+    const groupChatVisibleSearchProfiles = [
+        ...groupChatInvitees,
+        ...groupChatSearchProfiles.filter((profile) => !groupChatInviteeUserUuids.has(profile.userUuid)),
+    ];
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -1032,15 +1036,15 @@ export default function ChatsMePage() {
 
                         <div className="chats-me-page__group-dialog-content">
                             <div className="chats-me-page__group-results">
-                                {groupChatSearchQueryTrimmed.length === 0 && (
+                                {groupChatSearchQueryTrimmed.length === 0 && groupChatInvitees.length === 0 && (
                                     <p className="chats-me-page__state">Type a name.</p>
                                 )}
                                 {isSearchingGroupChatProfiles && <p className="chats-me-page__state">Searching users...</p>}
                                 {groupChatSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{groupChatSearchProfilesError}</p>}
-                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatSearchProfiles.length === 0 && (
+                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatVisibleSearchProfiles.length === 0 && (
                                     <p className="chats-me-page__state">No users found.</p>
                                 )}
-                                {groupChatSearchProfiles.map((result) => {
+                                {groupChatVisibleSearchProfiles.map((result) => {
                                     const isInviteeSelected = groupChatInviteeUserUuids.has(result.userUuid);
 
                                     return (
