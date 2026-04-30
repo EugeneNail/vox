@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     allowedHosts: ["vox-app.site"],
     host: "0.0.0.0",
+    hmr: false,
+    watch: null,
     port: 5173,
   },
 });
