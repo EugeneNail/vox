@@ -12,4 +12,5 @@ type ChatRepository interface {
 	FindAllByMemberUuid(ctx context.Context, memberUuid uuid.UUID) ([]Chat, error)
 	FindDirectByMemberUuids(ctx context.Context, firstMemberUuid uuid.UUID, secondMemberUuid uuid.UUID) (*Chat, error)
 	CreateWithMembers(ctx context.Context, chat Chat, members []ChatMember) error
+	SetRevision(ctx context.Context, chatUuid uuid.UUID, revision int64) error
 }

@@ -111,6 +111,12 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
+	// TODO: handle concurrent message creation because chat revision is a shared resource.
+	chat.Revision++
+	if err := handler.chatRepository.SetRevision(ctx, chat.Uuid, chat.Revision); err != nil {
+		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
+	}
+
 	if err := handler.messageCreatedPublisher.Publish(ctx, events.MessageCreated{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,

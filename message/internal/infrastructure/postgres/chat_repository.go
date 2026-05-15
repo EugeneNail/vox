@@ -187,3 +187,17 @@ func (repository *ChatRepository) CreateWithMembers(ctx context.Context, chat do
 
 	return nil
 }
+
+// SetRevision sets the chat revision to the provided value.
+func (repository *ChatRepository) SetRevision(ctx context.Context, chatUuid uuid.UUID, revision int64) error {
+	if _, err := repository.database.ExecContext(
+		ctx,
+		`UPDATE chats SET revision = $2 WHERE uuid = $1`,
+		chatUuid,
+		revision,
+	); err != nil {
+		return fmt.Errorf("setting revision %d for chat %q: %w", revision, chatUuid, err)
+	}
+
+	return nil
+}
