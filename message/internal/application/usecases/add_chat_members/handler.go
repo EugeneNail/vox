@@ -125,7 +125,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 			ChatUuid:         command.ChatUuid,
 			UserUuid:         memberUuid,
 			Role:             domain.ChatMemberRoleMember,
-			LastSeenRevision: 0,
+			LastSeenRevision: chat.Revision,
 			JoinedAt:         now,
 		})
 	}
