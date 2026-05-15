@@ -9,10 +9,11 @@ import (
 
 // Connection wraps a websocket connection with runtime metadata and write locking.
 type Connection struct {
-	uuid     uuid.UUID
-	userUuid uuid.UUID
-	socket   *gorillawebsocket.Conn
-	mutex    sync.Mutex
+	uuid       uuid.UUID
+	userUuid   uuid.UUID
+	loginToken string
+	socket     *gorillawebsocket.Conn
+	mutex      sync.Mutex
 }
 
 // Uuid returns the runtime identifier of the connection.
@@ -23,6 +24,11 @@ func (connection *Connection) Uuid() uuid.UUID {
 // UserUuid returns the authenticated user identifier attached to the connection.
 func (connection *Connection) UserUuid() uuid.UUID {
 	return connection.userUuid
+}
+
+// LoginToken returns the authenticated login token attached to the connection.
+func (connection *Connection) LoginToken() string {
+	return connection.loginToken
 }
 
 // ReadMessage reads the next websocket message.

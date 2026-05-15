@@ -21,11 +21,12 @@ func NewConnectionHub() *ConnectionHub {
 }
 
 // Register stores the websocket connection for future realtime delivery.
-func (hub *ConnectionHub) Register(socket *gorillawebsocket.Conn, userUuid uuid.UUID) *Connection {
+func (hub *ConnectionHub) Register(socket *gorillawebsocket.Conn, userUuid uuid.UUID, loginToken string) *Connection {
 	connection := &Connection{
-		uuid:     uuid.New(),
-		userUuid: userUuid,
-		socket:   socket,
+		uuid:       uuid.New(),
+		userUuid:   userUuid,
+		loginToken: loginToken,
+		socket:     socket,
 	}
 
 	hub.mutex.Lock()

@@ -1,27 +1,50 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 
 	"github.com/EugeneNail/vox/lib-common/authentication"
+	message_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/message"
 	websocket_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/websocket"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type OpenWebSocketHandler struct {
-	connectionHub     *websocket_infrastructure.ConnectionHub
-	connectionDropper *websocket_infrastructure.ConnectionDropper
+	connectionHub             *websocket_infrastructure.ConnectionHub
+	connectionDropper         *websocket_infrastructure.ConnectionDropper
+	subscriptionRegistry      *websocket_infrastructure.ChatSubscriptionRegistry
+	authorizeChatAccessClient *message_infrastructure.AuthorizeChatAccessClient
 }
 
-func NewOpenWebSocketHandler(connectionHub *websocket_infrastructure.ConnectionHub, connectionDropper *websocket_infrastructure.ConnectionDropper) *OpenWebSocketHandler {
+func NewOpenWebSocketHandler(
+	connectionHub *websocket_infrastructure.ConnectionHub,
+	connectionDropper *websocket_infrastructure.ConnectionDropper,
+	subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry,
+	authorizeChatAccessClient *message_infrastructure.AuthorizeChatAccessClient,
+) *OpenWebSocketHandler {
 	return &OpenWebSocketHandler{
-		connectionHub:     connectionHub,
-		connectionDropper: connectionDropper,
+		connectionHub:             connectionHub,
+		connectionDropper:         connectionDropper,
+		subscriptionRegistry:      subscriptionRegistry,
+		authorizeChatAccessClient: authorizeChatAccessClient,
 	}
+}
+
+type websocketCommand struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+type openChatCommandData struct {
+	ChatUuid uuid.UUID `json:"chatUuid"`
 }
 
 var openWebSocketUpgrader = websocket.Upgrader{
@@ -45,7 +68,7 @@ func (handler *OpenWebSocketHandler) Handle(writer http.ResponseWriter, request 
 		return
 	}
 
-	connection := handler.connectionHub.Register(socket, userUuid)
+	connection := handler.connectionHub.Register(socket, userUuid, token)
 	log.Printf("realtime websocket connected: user=%s connection=%s", userUuid, connection.Uuid())
 	defer func() {
 		log.Printf("realtime websocket disconnected: user=%s connection=%s", userUuid, connection.Uuid())
@@ -64,10 +87,50 @@ func (handler *OpenWebSocketHandler) Handle(writer http.ResponseWriter, request 
 	}
 
 	for {
-		if _, _, err := connection.ReadMessage(); err != nil {
+		_, payload, err := connection.ReadMessage()
+		if err != nil {
 			return
 		}
+
+		if err := handler.handleMessage(request.Context(), connection, payload); err != nil {
+			log.Printf("handling realtime websocket command for user '%s' connection '%s': %v", userUuid, connection.Uuid(), err)
+		}
 	}
+}
+
+func (handler *OpenWebSocketHandler) handleMessage(ctx context.Context, connection *websocket_infrastructure.Connection, payload []byte) error {
+	var command websocketCommand
+	if err := json.Unmarshal(payload, &command); err != nil {
+		return fmt.Errorf("unmarshalling websocket command: %w", err)
+	}
+
+	switch command.Type {
+	case "OpenChat":
+		return handler.handleOpenChatCommand(ctx, connection, command.Data)
+	case "UnsubscribeChat":
+		handler.subscriptionRegistry.Unsubscribe(connection.Uuid())
+		return nil
+	default:
+		return nil
+	}
+}
+
+func (handler *OpenWebSocketHandler) handleOpenChatCommand(ctx context.Context, connection *websocket_infrastructure.Connection, payload json.RawMessage) error {
+	var data openChatCommandData
+	if err := json.Unmarshal(payload, &data); err != nil {
+		return fmt.Errorf("unmarshalling open chat websocket command: %w", err)
+	}
+
+	if data.ChatUuid == uuid.Nil {
+		return errors.New("open chat websocket command requires chatUuid")
+	}
+
+	if err := handler.authorizeChatAccessClient.Authorize(ctx, data.ChatUuid, connection.LoginToken()); err != nil {
+		return fmt.Errorf("authorizing websocket chat access for chat %q: %w", data.ChatUuid, err)
+	}
+
+	handler.subscriptionRegistry.Subscribe(connection.Uuid(), data.ChatUuid)
+	return nil
 }
 
 func mustMarshal(value any) []byte {

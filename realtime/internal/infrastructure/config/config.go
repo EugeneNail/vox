@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	App   AppConfig
-	Redis RedisConfig
+	App     AppConfig
+	Redis   RedisConfig
+	Message MessageConfig
 }
 
 // AppConfig contains application runtime settings.
@@ -20,6 +21,11 @@ type AppConfig struct {
 type RedisConfig struct {
 	Host string
 	Port int
+}
+
+// MessageConfig contains internal message-service HTTP settings.
+type MessageConfig struct {
+	BaseURL string
 }
 
 // NewConfig reads application configuration from environment variables.
@@ -39,6 +45,11 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	messageBaseURL, err := readRequiredEnv("MESSAGE_BASE_URL")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		App: AppConfig{
 			Port: appPort,
@@ -46,6 +57,9 @@ func NewConfig() (*Config, error) {
 		Redis: RedisConfig{
 			Host: redisHost,
 			Port: redisPort,
+		},
+		Message: MessageConfig{
+			BaseURL: messageBaseURL,
 		},
 	}, nil
 }

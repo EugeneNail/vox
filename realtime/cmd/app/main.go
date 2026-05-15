@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/EugeneNail/vox/realtime/internal/infrastructure/config"
+	message_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/message"
 	redis_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/redis"
 	websocket_infrastructure "github.com/EugeneNail/vox/realtime/internal/infrastructure/websocket"
 	transport_http "github.com/EugeneNail/vox/realtime/internal/transport/http"
@@ -30,15 +31,20 @@ func main() {
 	connectionHub := websocket_infrastructure.NewConnectionHub()
 	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
+	authorizeChatAccessClient := message_infrastructure.NewAuthorizeChatAccessClient(configuration.Message.BaseURL)
 
 	// --- Section: HTTP transport ---
-	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(connectionHub, connectionDropper)
+	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(
+		connectionHub,
+		connectionDropper,
+		chatSubscriptionRegistry,
+		authorizeChatAccessClient,
+	)
 
 	// --- Section: Event delivery ---
 	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	userOpenedChatRedisConsumer := redis_infrastructure.NewUserOpenedChatConsumer(redisClient, connectionHub, chatSubscriptionRegistry)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
 	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, messageEditedSender.Send)
 	messageDeletedRedisConsumer := redis_infrastructure.NewMessageDeletedConsumer(redisClient, messageDeletedSender.Send)
@@ -47,7 +53,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	userOpenedChatRedisConsumer.ListenAndConsume(ctx)
 	messageCreatedRedisConsumer.ListenAndConsume(ctx)
 	messageEditedRedisConsumer.ListenAndConsume(ctx)
 	messageDeletedRedisConsumer.ListenAndConsume(ctx)
