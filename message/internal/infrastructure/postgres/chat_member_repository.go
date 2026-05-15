@@ -118,6 +118,29 @@ func (repository *ChatMemberRepository) CreateMany(ctx context.Context, members 
 	return nil
 }
 
+// SetLastSeenRevision sets the member's last seen revision to the provided value.
+func (repository *ChatMemberRepository) SetLastSeenRevision(ctx context.Context, chatUuid uuid.UUID, userUuid uuid.UUID, revision int64) error {
+	if _, err := repository.database.ExecContext(
+		ctx,
+		`UPDATE chat_members
+		SET last_seen_revision = $3
+		WHERE chat_uuid = $1 AND user_uuid = $2`,
+		chatUuid,
+		userUuid,
+		revision,
+	); err != nil {
+		return fmt.Errorf(
+			"updating last seen revision for member %q in chat %q to revision %d: %w",
+			userUuid,
+			chatUuid,
+			revision,
+			err,
+		)
+	}
+
+	return nil
+}
+
 // DeleteByChatUuidAndUserUuid removes a member from a chat in PostgreSQL.
 func (repository *ChatMemberRepository) DeleteByChatUuidAndUserUuid(ctx context.Context, chatUuid uuid.UUID, userUuid uuid.UUID) error {
 	if _, err := repository.database.ExecContext(

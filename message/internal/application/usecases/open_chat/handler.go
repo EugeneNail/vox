@@ -69,6 +69,20 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return ErrChatAccessDenied
 	}
 
+	if member.LastSeenRevision < chat.Revision {
+		member.LastSeenRevision = chat.Revision
+	}
+
+	if err := handler.chatMemberRepository.SetLastSeenRevision(ctx, command.ChatUuid, command.UserUuid, member.LastSeenRevision); err != nil {
+		return fmt.Errorf(
+			"updating last seen revision for member %q in chat %q to revision %d: %w",
+			command.UserUuid,
+			command.ChatUuid,
+			member.LastSeenRevision,
+			err,
+		)
+	}
+
 	if err := handler.userOpenedChatPublisher.Publish(ctx, events.UserOpenedChat{
 		UserUuid: command.UserUuid,
 		ChatUuid: command.ChatUuid,
