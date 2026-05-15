@@ -263,11 +263,28 @@ function clearMessageWebSocketReconnect() {
 }
 
 function subscribeChat(chatUuid: string) {
-    void chatUuid;
+    if (!messageWebSocket || messageWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+    }
+
+    messageWebSocket.send(JSON.stringify({
+        type: "OpenChat",
+        data: {
+            chatUuid,
+        },
+    }));
 }
 
 function unsubscribeChat(chatUuid: string) {
     void chatUuid;
+
+    if (!messageWebSocket || messageWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+    }
+
+    messageWebSocket.send(JSON.stringify({
+        type: "UnsubscribeChat",
+    }));
 }
 
 function messageCreatedListener(listener: MessageCreatedListener) {

@@ -60,7 +60,7 @@ async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>,
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { isConnected, messageCreatedListener, messageDeletedListener, messageEditedListener } = useMessageWebSocket();
+    const { isConnected, messageCreatedListener, messageDeletedListener, messageEditedListener, subscribeChat, unsubscribeChat } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -433,14 +433,21 @@ export default function ChatsMePage() {
     }, [apiClient, authenticatedUserUuid, addMembersSearchQuery, isAddMembersModalOpen]);
 
     useEffect(() => {
-        if (!selectedChatUuid || !isConnected) {
+        if (!isConnected) {
             return;
         }
 
-        void apiClient.post(`/api/v1/message/chats/${selectedChatUuid}/open`).catch((error) => {
-            console.error("opening chat view:", error);
-        });
-    }, [apiClient, isConnected, selectedChatUuid]);
+        if (!selectedChatUuid) {
+            unsubscribeChat("");
+            return;
+        }
+
+        subscribeChat(selectedChatUuid);
+
+        return () => {
+            unsubscribeChat(selectedChatUuid);
+        };
+    }, [isConnected, selectedChatUuid, subscribeChat, unsubscribeChat]);
 
     useEffect(() => {
         if (!selectedChatUuid) {
