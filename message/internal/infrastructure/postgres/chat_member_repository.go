@@ -24,7 +24,7 @@ func NewChatMemberRepository(database *sql.DB) *ChatMemberRepository {
 // FindByChatUuidAndUserUuid returns a chat member or nil when the user is not a member.
 func (repository *ChatMemberRepository) FindByChatUuidAndUserUuid(ctx context.Context, chatUuid uuid.UUID, userUuid uuid.UUID) (*domain.ChatMember, error) {
 	const query = `
-		SELECT chat_uuid, user_uuid, role, joined_at
+		SELECT chat_uuid, user_uuid, role, last_seen_revision, joined_at
 		FROM chat_members
 		WHERE chat_uuid = $1 AND user_uuid = $2
 	`
@@ -34,6 +34,7 @@ func (repository *ChatMemberRepository) FindByChatUuidAndUserUuid(ctx context.Co
 		&member.ChatUuid,
 		&member.UserUuid,
 		&member.Role,
+		&member.LastSeenRevision,
 		&member.JoinedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -49,7 +50,7 @@ func (repository *ChatMemberRepository) FindByChatUuidAndUserUuid(ctx context.Co
 // FindAllByChatUuid returns all members of a chat.
 func (repository *ChatMemberRepository) FindAllByChatUuid(ctx context.Context, chatUuid uuid.UUID) ([]domain.ChatMember, error) {
 	const query = `
-		SELECT chat_uuid, user_uuid, role, joined_at
+		SELECT chat_uuid, user_uuid, role, last_seen_revision, joined_at
 		FROM chat_members
 		WHERE chat_uuid = $1
 		ORDER BY joined_at ASC
@@ -68,6 +69,7 @@ func (repository *ChatMemberRepository) FindAllByChatUuid(ctx context.Context, c
 			&member.ChatUuid,
 			&member.UserUuid,
 			&member.Role,
+			&member.LastSeenRevision,
 			&member.JoinedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scanning member for chat %q: %w", chatUuid, err)
@@ -98,10 +100,11 @@ func (repository *ChatMemberRepository) CreateMany(ctx context.Context, members 
 	for _, member := range members {
 		if _, err := transaction.ExecContext(
 			ctx,
-			`INSERT INTO chat_members (chat_uuid, user_uuid, role, joined_at) VALUES ($1, $2, $3, $4)`,
+			`INSERT INTO chat_members (chat_uuid, user_uuid, role, last_seen_revision, joined_at) VALUES ($1, $2, $3, $4, $5)`,
 			member.ChatUuid,
 			member.UserUuid,
 			member.Role,
+			member.LastSeenRevision,
 			member.JoinedAt,
 		); err != nil {
 			return fmt.Errorf("creating member %q for chat %q: %w", member.UserUuid, member.ChatUuid, err)

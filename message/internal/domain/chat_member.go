@@ -16,8 +16,9 @@ const (
 
 // ChatMember represents a user's membership in a chat.
 type ChatMember struct {
-	ChatUuid uuid.UUID
-	UserUuid uuid.UUID
-	Role     ChatMemberRole
-	JoinedAt time.Time
+	ChatUuid         uuid.UUID
+	UserUuid         uuid.UUID
+	Role             ChatMemberRole
+	LastSeenRevision int64
+	JoinedAt         time.Time
 }

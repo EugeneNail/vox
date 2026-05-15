@@ -68,6 +68,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		Name:              command.Name,
 		Avatar:            command.Avatar,
 		ChatType:          domain.ChatTypeGroup,
+		Revision:          0,
 		CreatedByUserUuid: command.CreatorUuid,
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -75,18 +76,20 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 
 	members := make([]domain.ChatMember, 0, len(command.MemberUuids)+1)
 	members = append(members, domain.ChatMember{
-		ChatUuid: chat.Uuid,
-		UserUuid: command.CreatorUuid,
-		Role:     domain.ChatMemberRoleOwner,
-		JoinedAt: now,
+		ChatUuid:         chat.Uuid,
+		UserUuid:         command.CreatorUuid,
+		Role:             domain.ChatMemberRoleOwner,
+		LastSeenRevision: 0,
+		JoinedAt:         now,
 	})
 
 	for _, memberUuid := range command.MemberUuids {
 		members = append(members, domain.ChatMember{
-			ChatUuid: chat.Uuid,
-			UserUuid: memberUuid,
-			Role:     domain.ChatMemberRoleMember,
-			JoinedAt: now,
+			ChatUuid:         chat.Uuid,
+			UserUuid:         memberUuid,
+			Role:             domain.ChatMemberRoleMember,
+			LastSeenRevision: 0,
+			JoinedAt:         now,
 		})
 	}
 

@@ -122,10 +122,11 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		}
 
 		members = append(members, domain.ChatMember{
-			ChatUuid: command.ChatUuid,
-			UserUuid: memberUuid,
-			Role:     domain.ChatMemberRoleMember,
-			JoinedAt: now,
+			ChatUuid:         command.ChatUuid,
+			UserUuid:         memberUuid,
+			Role:             domain.ChatMemberRoleMember,
+			LastSeenRevision: 0,
+			JoinedAt:         now,
 		})
 	}
 

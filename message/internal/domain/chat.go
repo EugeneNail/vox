@@ -19,6 +19,7 @@ type Chat struct {
 	Name              *string
 	Avatar            *string
 	ChatType          ChatType
+	Revision          int64
 	CreatedByUserUuid uuid.UUID
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
