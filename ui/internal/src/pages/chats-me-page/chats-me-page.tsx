@@ -87,6 +87,7 @@ export default function ChatsMePage() {
     const localLastSeenRevisionByChatUuidRef = useRef<Record<string, number>>({});
     const selectedChatUuidRef = useRef<string | null>(null);
     const isSelectedChatScrolledToBottomRef = useRef(false);
+    const shouldAutoScrollSelectedChatOnNextMessageRef = useRef(false);
     const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -543,6 +544,13 @@ export default function ChatsMePage() {
             return;
         }
 
+        if (shouldAutoScrollSelectedChatOnNextMessageRef.current) {
+            scrollMessagesContainerToBottom(messagesContainerRef.current, messagesEndRef.current);
+            shouldAutoScrollSelectedChatOnNextMessageRef.current = false;
+            isSelectedChatScrolledToBottomRef.current = true;
+            return;
+        }
+
         isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
     }, [isMessagesLoading, messages.length, selectedChatUuid]);
 
@@ -554,6 +562,11 @@ export default function ChatsMePage() {
 
     useEffect(() => (
         messageCreatedListener((event) => {
+            const wasSelectedChatScrolledToBottom = (
+                event.chatUuid === selectedChatUuidRef.current
+                && isMessagesContainerScrolledToBottom(messagesContainerRef.current)
+            );
+
             setChats((currentChats) => currentChats.map((chat) => {
                 if (chat.uuid !== event.chatUuid) {
                     return chat;
@@ -565,7 +578,8 @@ export default function ChatsMePage() {
                 };
             }));
 
-            if (event.chatUuid === selectedChatUuidRef.current && isSelectedChatScrolledToBottomRef.current) {
+            if (wasSelectedChatScrolledToBottom) {
+                shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
                 updateLocalLastSeenRevision(event.chatUuid, event.revision);
             }
 
@@ -589,7 +603,7 @@ export default function ChatsMePage() {
                 ];
             });
 
-            if (isSelectedChatScrolledToBottomRef.current) {
+            if (wasSelectedChatScrolledToBottom) {
                 void syncChatLastSeenRevisionIfNeeded(event.chatUuid);
             }
         })
@@ -746,6 +760,10 @@ export default function ChatsMePage() {
     async function sendMessage(text: string, attachments: string[]) {
         if (!selectedChat || !authenticatedUserUuid) {
             return;
+        }
+
+        if (isMessagesContainerScrolledToBottom(messagesContainerRef.current)) {
+            shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
         }
 
         const pendingMessageUuid = `pending-${generatePendingMessageUuid()}`;
@@ -1865,6 +1883,14 @@ function isMessagesContainerScrolledToBottom(container: HTMLDivElement | null) {
     }
 
     return container.scrollHeight - container.scrollTop - container.clientHeight <= chatBottomThresholdPx;
+}
+
+function scrollMessagesContainerToBottom(container: HTMLDivElement | null, messagesEnd: HTMLDivElement | null) {
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+
+    messagesEnd?.scrollIntoView({ block: "end" });
 }
 
 function areLastSeenRevisionMapsEqual(left: Record<string, number>, right: Record<string, number>) {
