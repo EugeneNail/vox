@@ -43,9 +43,11 @@ func main() {
 
 	// --- Section: Event delivery ---
 	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	chatRevisionUpdatedSender := websocket_infrastructure.NewChatRevisionUpdatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
+	chatRevisionUpdatedRedisConsumer := redis_infrastructure.NewChatRevisionUpdatedConsumer(redisClient, chatRevisionUpdatedSender.Send)
 	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, messageEditedSender.Send)
 	messageDeletedRedisConsumer := redis_infrastructure.NewMessageDeletedConsumer(redisClient, messageDeletedSender.Send)
 
@@ -54,6 +56,7 @@ func main() {
 	defer cancel()
 
 	messageCreatedRedisConsumer.ListenAndConsume(ctx)
+	chatRevisionUpdatedRedisConsumer.ListenAndConsume(ctx)
 	messageEditedRedisConsumer.ListenAndConsume(ctx)
 	messageDeletedRedisConsumer.ListenAndConsume(ctx)
 
