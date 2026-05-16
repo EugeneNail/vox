@@ -79,6 +79,7 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 			Uuid:        message.Uuid,
 			ChatUuid:    message.ChatUuid,
 			UserUuid:    message.UserUuid,
+			Revision:    message.Revision,
 			Text:        message.Text,
 			Attachments: attachments,
 			CreatedAt:   message.CreatedAt,
