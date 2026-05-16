@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/EugeneNail/vox/lib-common/events"
 	"github.com/EugeneNail/vox/lib-common/validation"
 	"github.com/EugeneNail/vox/message/internal/domain"
 	"github.com/google/uuid"
@@ -15,8 +16,9 @@ var ErrChatAccessDenied = errors.New("chat access denied")
 
 // Handler sets the authenticated member's last seen revision in a chat.
 type Handler struct {
-	chatRepository       domain.ChatRepository
-	chatMemberRepository domain.ChatMemberRepository
+	chatRepository                   domain.ChatRepository
+	chatMemberRepository             domain.ChatMemberRepository
+	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher
 }
 
 // Command contains the input required to set the member's last seen revision.
@@ -27,10 +29,15 @@ type Command struct {
 }
 
 // NewHandler constructs a set_last_seen_revision handler with its dependencies.
-func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository) *Handler {
+func NewHandler(
+	chatRepository domain.ChatRepository,
+	chatMemberRepository domain.ChatMemberRepository,
+	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher,
+) *Handler {
 	return &Handler{
-		chatRepository:       chatRepository,
-		chatMemberRepository: chatMemberRepository,
+		chatRepository:                   chatRepository,
+		chatMemberRepository:             chatMemberRepository,
+		lastSeenRevisionUpdatedPublisher: lastSeenRevisionUpdatedPublisher,
 	}
 }
 
@@ -88,6 +95,19 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return fmt.Errorf(
 			"setting last seen revision %d for member %q in chat %q: %w",
 			member.LastSeenRevision,
+			command.UserUuid,
+			command.ChatUuid,
+			err,
+		)
+	}
+
+	if err := handler.lastSeenRevisionUpdatedPublisher.Publish(ctx, events.LastSeenRevisionUpdated{
+		ChatUuid:         command.ChatUuid,
+		UserUuid:         command.UserUuid,
+		LastSeenRevision: member.LastSeenRevision,
+	}); err != nil {
+		return fmt.Errorf(
+			"publishing last seen revision updated event for member %q in chat %q: %w",
 			command.UserUuid,
 			command.ChatUuid,
 			err,
