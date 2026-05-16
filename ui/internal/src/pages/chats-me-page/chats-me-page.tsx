@@ -125,6 +125,7 @@ export default function ChatsMePage() {
     const [isAddingMembers, setIsAddingMembers] = useState(false);
     const [isKickingMember, setIsKickingMember] = useState(false);
     const [localLastSeenRevisionByChatUuid, setLocalLastSeenRevisionByChatUuid] = useState<Record<string, number>>({});
+    const [chatMessagePieceByChatUuid, setChatMessagePieceByChatUuid] = useState<Record<string, string>>({});
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
@@ -610,6 +611,10 @@ export default function ChatsMePage() {
 
     useEffect(() => (
         chatRevisionUpdatedListener((event) => {
+            setChatMessagePieceByChatUuid((currentChatMessagePieceByChatUuid) => ({
+                ...currentChatMessagePieceByChatUuid,
+                [event.chatUuid]: event.messagePiece,
+            }));
             setChats((currentChats) => currentChats.map((chat) => (
                 chat.uuid === event.chatUuid
                     ? {
@@ -1192,6 +1197,11 @@ export default function ChatsMePage() {
                                                 </span>
                                             )}
                                         </span>
+                                        {chatMessagePieceByChatUuid[chat.uuid] && (
+                                            <span className="chats-me-page__chat-message-piece">
+                                                {chatMessagePieceByChatUuid[chat.uuid]}
+                                            </span>
+                                        )}
                                     </span>
                                 </NavLink>
                             ))}
