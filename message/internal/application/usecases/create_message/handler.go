@@ -28,6 +28,7 @@ type Handler struct {
 	chatRepository               domain.ChatRepository
 	chatMemberRepository         domain.ChatMemberRepository
 	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher
+	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher
 	messageCreatedPublisher      events.MessageCreatedPublisher
 }
 
@@ -45,6 +46,7 @@ func NewHandler(
 	chatRepository domain.ChatRepository,
 	chatMemberRepository domain.ChatMemberRepository,
 	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher,
+	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher,
 	messageCreatedPublisher events.MessageCreatedPublisher,
 ) *Handler {
 	return &Handler{
@@ -52,6 +54,7 @@ func NewHandler(
 		chatRepository:               chatRepository,
 		chatMemberRepository:         chatMemberRepository,
 		chatRevisionUpdatedPublisher: chatRevisionUpdatedPublisher,
+		lastSeenRevisionUpdatedPublisher: lastSeenRevisionUpdatedPublisher,
 		messageCreatedPublisher:      messageCreatedPublisher,
 	}
 }
@@ -126,6 +129,30 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	// so message creation and delivery remain the primary event ordering contract.
 	if err := handler.chatRepository.SetRevision(ctx, chat.Uuid, chat.Revision); err != nil {
 		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
+	}
+
+	if err := handler.chatMemberRepository.SetLastSeenRevision(ctx, chat.Uuid, command.UserUuid, chat.Revision); err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"setting last seen revision %d for message author %q in chat %q: %w",
+			chat.Revision,
+			command.UserUuid,
+			chat.Uuid,
+			err,
+		)
+	}
+
+	if err := handler.lastSeenRevisionUpdatedPublisher.Publish(ctx, events.LastSeenRevisionUpdated{
+		ChatUuid:         chat.Uuid,
+		UserUuid:         command.UserUuid,
+		LastSeenRevision: chat.Revision,
+	}); err != nil {
+		log.Printf(
+			"publishing last seen revision updated event for message author %q in chat %q revision %d: %v",
+			command.UserUuid,
+			chat.Uuid,
+			chat.Revision,
+			err,
+		)
 	}
 
 	members, err := handler.chatMemberRepository.FindAllByChatUuid(ctx, chat.Uuid)

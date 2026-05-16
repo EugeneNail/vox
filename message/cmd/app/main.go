@@ -61,7 +61,14 @@ func main() {
 	createGroupChatHandler := create_group_chat.NewHandler(chatRepository)
 	addChatMembersHandler := add_chat_members.NewHandler(chatRepository, chatMemberRepository)
 	kickChatMemberHandler := kick_chat_member.NewHandler(chatRepository, chatMemberRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, chatRevisionUpdatedPublisher, messageCreatedPublisher)
+	createMessageHandler := create_message.NewHandler(
+		messageRepository,
+		chatRepository,
+		chatMemberRepository,
+		chatRevisionUpdatedPublisher,
+		lastSeenRevisionUpdatedPublisher,
+		messageCreatedPublisher,
+	)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
