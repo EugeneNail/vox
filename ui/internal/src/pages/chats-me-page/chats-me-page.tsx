@@ -2,7 +2,7 @@ import { MouseEvent, useEffect, useLayoutEffect, useRef, useState, type CSSPrope
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
-import { ChatRevisionUpdatedEvent, MessageCreatedEvent, MessageEditedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import { MessageCreatedEvent, MessageEditedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
@@ -35,7 +35,6 @@ type ChatMessage = {
     uuid: string;
     chatUuid: string;
     userUuid: string;
-    revision: number;
     text: string;
     attachments: MessageAttachment[];
     createdAt: string;
@@ -49,15 +48,9 @@ type MessageContextMenu = {
     y: number;
 };
 
-type ChatRevisionPreview = {
-    revision: number;
-    messagePiece: string;
-};
-
 const linkPattern = /(https?:\/\/[^\s]+)/g;
 const fullLinkPattern = /^https?:\/\/[^\s]+$/;
 const messageThreadGapMs = 10 * 60 * 1000;
-const scrollBottomThresholdPx = 32;
 
 async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
     const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(query)}&limit=10`);
@@ -67,10 +60,9 @@ async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>,
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { isConnected, chatRevisionUpdatedListener, messageCreatedListener, messageDeletedListener, messageEditedListener, subscribeChat, unsubscribeChat } = useMessageWebSocket();
+    const { isConnected, messageCreatedListener, messageDeletedListener, messageEditedListener, subscribeChat, unsubscribeChat } = useMessageWebSocket();
     const { chatUuid } = useParams();
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
@@ -79,8 +71,6 @@ export default function ChatsMePage() {
     const [isMessagesLoading, setIsMessagesLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [messagesError, setMessagesError] = useState<string | null>(null);
-    const [chatRevisionPreviewsByChatUuid, setChatRevisionPreviewsByChatUuid] = useState<Record<string, ChatRevisionPreview>>({});
-    const [isMessagesPinnedToBottom, setIsMessagesPinnedToBottom] = useState(true);
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
     const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenu | null>(null);
     const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
@@ -503,57 +493,42 @@ export default function ChatsMePage() {
     }, [apiClient, selectedChatUuid]);
 
     useLayoutEffect(() => {
-        if (!selectedChatUuid || isMessagesLoading || messages.length === 0 || !isMessagesPinnedToBottom) {
+        if (!selectedChatUuid || isMessagesLoading || messages.length === 0) {
             return;
         }
 
         messagesEndRef.current?.scrollIntoView({ block: "end" });
-    }, [isMessagesLoading, isMessagesPinnedToBottom, messages.length, selectedChatUuid]);
+    }, [isMessagesLoading, messages.length, selectedChatUuid]);
 
     useEffect(() => {
         setEditingMessage(null);
         setMessageContextMenu(null);
         setMessagePendingDeletion(null);
-        setIsMessagesPinnedToBottom(true);
     }, [selectedChatUuid]);
 
     useEffect(() => (
-        chatRevisionUpdatedListener((event: ChatRevisionUpdatedEvent) => {
-            setChatRevisionPreviewsByChatUuid((currentPreviewsByChatUuid) => ({
-                ...currentPreviewsByChatUuid,
-                [event.chatUuid]: {
-                    revision: event.revision,
-                    messagePiece: event.messagePiece,
-                },
-            }));
-        })
-    ), [chatRevisionUpdatedListener]);
-
-    useEffect(() => (
         messageCreatedListener((event) => {
-            if (event.chatUuid === selectedChatUuid) {
-                if (event.userUuid !== authenticatedUserUuid) {
-                    void messageReceivedAudioRef.current?.play();
+            if (event.chatUuid !== selectedChatUuid) {
+                return;
+            }
+
+            if (event.userUuid !== authenticatedUserUuid) {
+                void messageReceivedAudioRef.current?.play();
+            }
+
+            setMessages((currentMessages) => {
+                if (currentMessages.some((message) => message.uuid === event.messageUuid && !message.isPending)) {
+                    return currentMessages;
                 }
 
-                setMessages((currentMessages) => {
-                    const confirmedMessage = messageCreatedEventToChatMessage(event);
-                    if (currentMessages.some((message) => message.uuid === event.messageUuid && !message.isPending)) {
-                        return currentMessages.map((message) => (
-                            message.uuid === event.messageUuid
-                                ? confirmedMessage
-                                : message
-                        ));
-                    }
-
-                    return [
-                        ...currentMessages,
-                        confirmedMessage,
-                    ];
-                });
-            }
+                const confirmedMessage = messageCreatedEventToChatMessage(event);
+                return [
+                    ...currentMessages,
+                    confirmedMessage,
+                ];
+            });
         })
-    ), [authenticatedUserUuid, messageCreatedListener, selectedChatUuid]);
+    ), [messageCreatedListener, selectedChatUuid]);
 
     useEffect(() => (
         messageEditedListener((event) => {
@@ -563,7 +538,7 @@ export default function ChatsMePage() {
 
             setMessages((currentMessages) => currentMessages.map((message) => (
                 message.uuid === event.messageUuid
-                    ? messageEditedEventToChatMessage(event, message.revision)
+                    ? messageEditedEventToChatMessage(event)
                     : message
             )));
         })
@@ -603,7 +578,6 @@ export default function ChatsMePage() {
     }, []);
 
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
-    const selectedChatRevisionPreview = selectedChatUuid ? chatRevisionPreviewsByChatUuid[selectedChatUuid] : null;
     const isSelectedChatGroup = selectedChat?.chatType === ChatType.Group;
     const isSelectedChatOwnedByAuthenticatedUser = selectedChat?.createdByUserUuid === authenticatedUserUuid;
     const canDeleteAnyMessage = isSelectedChatGroup && (
@@ -619,7 +593,6 @@ export default function ChatsMePage() {
                 && !addMembersInviteeUserUuids.has(profile.userUuid)
         )),
     ];
-    const shouldShowJumpToLatestButton = !isMessagesPinnedToBottom && selectedChatRevisionPreview !== null;
 
     async function submitMessage(text: string, attachments: string[]) {
         if (editingMessage) {
@@ -648,7 +621,6 @@ export default function ChatsMePage() {
                 uuid: pendingMessageUuid,
                 chatUuid: selectedChat.uuid,
                 userUuid: authenticatedUserUuid,
-                revision: 0,
                 text,
                 attachments: pendingAttachments,
                 createdAt,
@@ -871,21 +843,6 @@ export default function ChatsMePage() {
         setIsSearchingProfiles(false);
     }
 
-    function handleMessagesScroll() {
-        const container = messagesContainerRef.current;
-        if (!container) {
-            return;
-        }
-
-        const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-        setIsMessagesPinnedToBottom(distanceToBottom <= scrollBottomThresholdPx);
-    }
-
-    function scrollMessagesToLatest() {
-        messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-        setIsMessagesPinnedToBottom(true);
-    }
-
     return (
         <section className="chats-me-page">
             <aside className="chats-me-page__sidebar" aria-label="Chats">
@@ -982,19 +939,7 @@ export default function ChatsMePage() {
                                         src={getChatAvatarUrl(chat, authenticatedUserUuid, profilesByUserUuid)}
                                         label={getChatAvatarLabel(chat, authenticatedUserUuid, profilesByUserUuid)}
                                     />
-                                    <span className="chats-me-page__chat-preview">
-                                        <span className="chats-me-page__chat-title-row">
-                                            <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
-                                            {chatRevisionPreviewsByChatUuid[chat.uuid] && (
-                                                <span className="chats-me-page__chat-revision-badge" aria-label={`Revision ${chatRevisionPreviewsByChatUuid[chat.uuid].revision}`}>
-                                                    {chatRevisionPreviewsByChatUuid[chat.uuid].revision}
-                                                </span>
-                                            )}
-                                        </span>
-                                        {chatRevisionPreviewsByChatUuid[chat.uuid] && (
-                                            <span className="chats-me-page__chat-message-piece">{chatRevisionPreviewsByChatUuid[chat.uuid].messagePiece}</span>
-                                        )}
-                                    </span>
+                                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
                                 </NavLink>
                             ))}
                         </>
@@ -1010,13 +955,7 @@ export default function ChatsMePage() {
                             <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
                         </header>
 
-                        <div
-                            className="chats-me-page__messages"
-                            ref={messagesContainerRef}
-                            aria-live="polite"
-                            onContextMenu={(event) => event.preventDefault()}
-                            onScroll={handleMessagesScroll}
-                        >
+                        <div className="chats-me-page__messages" aria-live="polite" onContextMenu={(event) => event.preventDefault()}>
                             {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
                             {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
                             {!isMessagesLoading && !messagesError && messages.length === 0 && (
@@ -1085,17 +1024,6 @@ export default function ChatsMePage() {
                             })}
                             <div ref={messagesEndRef} className="chats-me-page__messages-end" aria-hidden="true" />
                         </div>
-
-                        {shouldShowJumpToLatestButton && selectedChatRevisionPreview && (
-                            <button
-                                className="chats-me-page__jump-to-latest-button"
-                                type="button"
-                                aria-label={`Jump to latest message, revision ${selectedChatRevisionPreview.revision}`}
-                                onClick={scrollMessagesToLatest}
-                            >
-                                {selectedChatRevisionPreview.revision}
-                            </button>
-                        )}
 
                         {messageContextMenu && (
                             <div
@@ -1654,7 +1582,6 @@ function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessa
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
-        revision: event.revision,
         text: event.text,
         attachments: event.attachments ?? [],
         createdAt: event.createdAt,
@@ -1687,12 +1614,11 @@ function confirmPendingMessage(currentMessages: ChatMessage[], pendingMessageUui
         : currentMessages;
 }
 
-function messageEditedEventToChatMessage(event: MessageEditedEvent, revision: number): ChatMessage {
+function messageEditedEventToChatMessage(event: MessageEditedEvent): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
-        revision,
         text: event.text,
         attachments: event.attachments ?? [],
         createdAt: event.createdAt,
