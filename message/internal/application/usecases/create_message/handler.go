@@ -122,18 +122,35 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
+	// TODO: move chat revision persistence and chat-revision-updated publication after message-created publication
+	// so message creation and delivery remain the primary event ordering contract.
 	if err := handler.chatRepository.SetRevision(ctx, chat.Uuid, chat.Revision); err != nil {
 		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
 	}
 
-	if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
-		ChatUuid: chat.Uuid,
-		UserUuid: message.UserUuid,
-		// TODO: rename messagePiece to messagePreview across the event contract.
-		MessagePiece: buildMessagePiece(message.Text),
-		Revision:     chat.Revision,
-	}); err != nil {
-		log.Printf("publishing chat revision updated event for chat %q revision %d: %v", chat.Uuid, chat.Revision, err)
+	members, err := handler.chatMemberRepository.FindAllByChatUuid(ctx, chat.Uuid)
+	if err != nil {
+		log.Printf("finding chat members for chat revision updated event in chat %q: %v", chat.Uuid, err)
+	} else {
+		// TODO: replace per-member chat-revision-updated publication with a bulk delivery strategy
+		// to avoid N+1 event fan-out at message creation time.
+		for _, currentMember := range members {
+			if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
+				ChatUuid: chat.Uuid,
+				UserUuid: currentMember.UserUuid,
+				// TODO: rename messagePiece to messagePreview across the event contract.
+				MessagePiece: buildMessagePiece(message.Text),
+				Revision:     chat.Revision,
+			}); err != nil {
+				log.Printf(
+					"publishing chat revision updated event for chat %q revision %d and user %q: %v",
+					chat.Uuid,
+					chat.Revision,
+					currentMember.UserUuid,
+					err,
+				)
+			}
+		}
 	}
 
 	if err := handler.messageCreatedPublisher.Publish(ctx, events.MessageCreated{
