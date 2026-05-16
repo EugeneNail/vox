@@ -8,23 +8,21 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// ChatRevisionUpdatedSender sends chat-revision-updated websocket events to chat subscribers.
+// ChatRevisionUpdatedSender sends chat-revision-updated websocket events to all active user connections.
 type ChatRevisionUpdatedSender struct {
-	connectionHub        *ConnectionHub
-	subscriptionRegistry *ChatSubscriptionRegistry
-	connectionDropper    *ConnectionDropper
+	connectionHub     *ConnectionHub
+	connectionDropper *ConnectionDropper
 }
 
 // NewChatRevisionUpdatedSender constructs a chat-revision-updated websocket sender.
-func NewChatRevisionUpdatedSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *ChatRevisionUpdatedSender {
+func NewChatRevisionUpdatedSender(connectionHub *ConnectionHub, connectionDropper *ConnectionDropper) *ChatRevisionUpdatedSender {
 	return &ChatRevisionUpdatedSender{
-		connectionHub:        connectionHub,
-		subscriptionRegistry: subscriptionRegistry,
-		connectionDropper:    connectionDropper,
+		connectionHub:     connectionHub,
+		connectionDropper: connectionDropper,
 	}
 }
 
-// Send sends a chat-revision-updated event to connections subscribed to the chat.
+// Send sends a chat-revision-updated event to all active websocket connections of the user.
 func (sender *ChatRevisionUpdatedSender) Send(ctx context.Context, event events.ChatRevisionUpdated) error {
 	select {
 	case <-ctx.Done():
@@ -40,14 +38,8 @@ func (sender *ChatRevisionUpdatedSender) Send(ctx context.Context, event events.
 		return fmt.Errorf("marshalling chat revision updated websocket event for chat %q: %w", event.ChatUuid, err)
 	}
 
-	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
-	for _, connectionUuid := range connectionUuids {
-		connection := sender.connectionHub.FindByUuid(connectionUuid)
-		if connection == nil {
-			sender.connectionDropper.Drop(connectionUuid)
-			continue
-		}
-
+	connections := sender.connectionHub.FindByUserUuid(event.UserUuid)
+	for _, connection := range connections {
 		if err := connection.WriteText(payload); err != nil {
 			sender.connectionDropper.Drop(connection.Uuid())
 			continue

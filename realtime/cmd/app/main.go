@@ -43,7 +43,7 @@ func main() {
 
 	// --- Section: Event delivery ---
 	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	chatRevisionUpdatedSender := websocket_infrastructure.NewChatRevisionUpdatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	chatRevisionUpdatedSender := websocket_infrastructure.NewChatRevisionUpdatedSender(connectionHub, connectionDropper)
 	lastSeenRevisionUpdatedSender := websocket_infrastructure.NewLastSeenRevisionUpdatedSender(connectionHub, connectionDropper)
 	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
 	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
