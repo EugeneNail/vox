@@ -51,6 +51,7 @@ func main() {
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient, configuration.Streams.MessageCreatedMaxLen)
 	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient, configuration.Streams.MessageEditedMaxLen)
 	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient, configuration.Streams.MessageDeletedMaxLen)
+	chatRevisionUpdatedPublisher := redis_infrastructure.NewChatRevisionUpdatedPublisher(redisClient, configuration.Streams.ChatRevisionUpdatedMaxLen)
 
 	// --- Section: Application use-cases ---
 	authorizeChatAccessHandler := authorize_chat_access.NewHandler(chatRepository, chatMemberRepository)
@@ -58,7 +59,7 @@ func main() {
 	createGroupChatHandler := create_group_chat.NewHandler(chatRepository)
 	addChatMembersHandler := add_chat_members.NewHandler(chatRepository, chatMemberRepository)
 	kickChatMemberHandler := kick_chat_member.NewHandler(chatRepository, chatMemberRepository)
-	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageCreatedPublisher)
+	createMessageHandler := create_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, chatRevisionUpdatedPublisher, messageCreatedPublisher)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)

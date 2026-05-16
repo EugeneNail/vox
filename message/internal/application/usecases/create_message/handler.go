@@ -24,10 +24,11 @@ var attachmentNamePattern = regexp.MustCompile(`^.+\.[a-z]{2,5}$`)
 
 // Handler creates messages through the create_message use-case.
 type Handler struct {
-	messageRepository       domain.MessageRepository
-	chatRepository          domain.ChatRepository
-	chatMemberRepository    domain.ChatMemberRepository
-	messageCreatedPublisher events.MessageCreatedPublisher
+	messageRepository            domain.MessageRepository
+	chatRepository               domain.ChatRepository
+	chatMemberRepository         domain.ChatMemberRepository
+	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher
+	messageCreatedPublisher      events.MessageCreatedPublisher
 }
 
 // Command contains the input required to create a message.
@@ -39,12 +40,19 @@ type Command struct {
 }
 
 // NewHandler constructs a create_message handler with its dependencies.
-func NewHandler(messageRepository domain.MessageRepository, chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageCreatedPublisher events.MessageCreatedPublisher) *Handler {
+func NewHandler(
+	messageRepository domain.MessageRepository,
+	chatRepository domain.ChatRepository,
+	chatMemberRepository domain.ChatMemberRepository,
+	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher,
+	messageCreatedPublisher events.MessageCreatedPublisher,
+) *Handler {
 	return &Handler{
-		messageRepository:       messageRepository,
-		chatRepository:          chatRepository,
-		chatMemberRepository:    chatMemberRepository,
-		messageCreatedPublisher: messageCreatedPublisher,
+		messageRepository:            messageRepository,
+		chatRepository:               chatRepository,
+		chatMemberRepository:         chatMemberRepository,
+		chatRevisionUpdatedPublisher: chatRevisionUpdatedPublisher,
+		messageCreatedPublisher:      messageCreatedPublisher,
 	}
 }
 
@@ -117,6 +125,16 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
 	}
 
+	if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
+		ChatUuid: chat.Uuid,
+		UserUuid: message.UserUuid,
+		// TODO: rename messagePiece to messagePreview across the event contract.
+		MessagePiece: buildMessagePiece(message.Text),
+		Revision:     chat.Revision,
+	}); err != nil {
+		log.Printf("publishing chat revision updated event for chat %q revision %d: %v", chat.Uuid, chat.Revision, err)
+	}
+
 	if err := handler.messageCreatedPublisher.Publish(ctx, events.MessageCreated{
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
@@ -130,6 +148,17 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	return message.Uuid, nil
+}
+
+func buildMessagePiece(text string) string {
+	const maxRunes = 48
+
+	runes := []rune(text)
+	if len(runes) <= maxRunes {
+		return text
+	}
+
+	return string(runes[:maxRunes]) + "..."
 }
 
 func buildTextRules(text string, allowEmpty bool) []rules.Rule {

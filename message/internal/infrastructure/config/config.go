@@ -36,9 +36,10 @@ type RedisConfig struct {
 
 // StreamsConfig contains Redis Streams retention settings.
 type StreamsConfig struct {
-	MessageCreatedMaxLen int64
-	MessageEditedMaxLen  int64
-	MessageDeletedMaxLen int64
+	MessageCreatedMaxLen      int64
+	MessageEditedMaxLen       int64
+	MessageDeletedMaxLen      int64
+	ChatRevisionUpdatedMaxLen int64
 }
 
 // NewConfig reads application configuration from environment variables.
@@ -103,6 +104,11 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	chatRevisionUpdatedMaxLen, err := readInt64Env("CHAT_REVISION_UPDATED_STREAM_MAX_LEN")
+	if err != nil {
+		return nil, err
+	}
+
 	configuration := &Config{
 		App: AppConfig{
 			Port: appPort,
@@ -120,9 +126,10 @@ func NewConfig() (*Config, error) {
 			Port: redisPort,
 		},
 		Streams: StreamsConfig{
-			MessageCreatedMaxLen: messageCreatedMaxLen,
-			MessageEditedMaxLen:  messageEditedMaxLen,
-			MessageDeletedMaxLen: messageDeletedMaxLen,
+			MessageCreatedMaxLen:      messageCreatedMaxLen,
+			MessageEditedMaxLen:       messageEditedMaxLen,
+			MessageDeletedMaxLen:      messageDeletedMaxLen,
+			ChatRevisionUpdatedMaxLen: chatRevisionUpdatedMaxLen,
 		},
 	}
 
