@@ -290,6 +290,34 @@
   display: grid
   min-width: 0
 
+.chats-me-page__chat-title-row
+  display: flex
+  align-items: center
+  gap: 8px
+  min-width: 0
+
+.chats-me-page__chat-revision-badge
+  display: inline-flex
+  flex: 0 0 auto
+  align-items: center
+  justify-content: center
+  min-width: 22px
+  height: 22px
+  padding: 0 7px
+  border-radius: 999px
+  background: #f0c5a9
+  color: #17110c
+  font-size: 11px
+  font-weight: 700
+  line-height: 1
+
+.chats-me-page__chat-message-piece
+  overflow: hidden
+  color: rgba(246, 239, 228, 0.54)
+  font-size: 12px
+  text-overflow: ellipsis
+  white-space: nowrap
+
 .chats-me-page__chat-button--search-result
   grid-template-columns: 20px 42px minmax(0, 1fr)
   gap: 12px
@@ -325,6 +353,7 @@
   padding: 0 28px 28px
 
 .chats-me-page__chat-shell
+  position: relative
   display: grid
   grid-template-rows: auto minmax(0, 1fr) auto
   gap: 14px
@@ -558,6 +587,30 @@
 
 .chats-me-page__messages-end
   min-height: 1px
+
+.chats-me-page__jump-to-latest-button
+  position: absolute
+  right: 36px
+  bottom: 104px
+  z-index: 5
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  min-width: 56px
+  height: 56px
+  padding: 0 12px
+  border: 0
+  border-radius: 999px
+  background: #f0c5a9
+  color: #17110c
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24)
+  cursor: pointer
+  font: inherit
+  font-size: 14px
+  font-weight: 700
+
+.chats-me-page__jump-to-latest-button:hover
+  background: #f3cfb7
 
 .chats-me-page__context-menu
   position: fixed

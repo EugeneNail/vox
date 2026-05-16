@@ -8,6 +8,7 @@ type MessageWebSocketContextValue = {
     isConnected: boolean;
     subscribeChat: (chatUuid: string) => void;
     unsubscribeChat: (chatUuid: string) => void;
+    chatRevisionUpdatedListener: (listener: ChatRevisionUpdatedListener) => () => void;
     messageCreatedListener: (listener: MessageCreatedListener) => () => void;
     messageEditedListener: (listener: MessageEditedListener) => () => void;
     messageDeletedListener: (listener: MessageDeletedListener) => () => void;
@@ -26,6 +27,7 @@ export type MessageCreatedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
+    revision: number;
     text: string;
     attachments: MessageAttachment[];
     createdAt: string;
@@ -48,6 +50,14 @@ export type MessageDeletedEvent = {
     userUuid: string;
 };
 
+export type ChatRevisionUpdatedEvent = {
+    chatUuid: string;
+    userUuid: string;
+    messagePiece: string;
+    revision: number;
+};
+
+type ChatRevisionUpdatedListener = (event: ChatRevisionUpdatedEvent) => void;
 type MessageCreatedListener = (event: MessageCreatedEvent) => void;
 type MessageEditedListener = (event: MessageEditedEvent) => void;
 type MessageDeletedListener = (event: MessageDeletedEvent) => void;
@@ -61,6 +71,7 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     isConnected: false,
     subscribeChat,
     unsubscribeChat,
+    chatRevisionUpdatedListener,
     messageCreatedListener,
     messageEditedListener,
     messageDeletedListener,
@@ -71,6 +82,7 @@ let messageWebSocketToken: string | null = null;
 let messageWebSocketReconnectTimeoutId: number | null = null;
 let messageWebSocketReconnectAttempt = 0;
 const messageCreatedListeners = new Set<MessageCreatedListener>();
+const chatRevisionUpdatedListeners = new Set<ChatRevisionUpdatedListener>();
 const messageEditedListeners = new Set<MessageEditedListener>();
 const messageDeletedListeners = new Set<MessageDeletedListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
@@ -158,6 +170,14 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                     });
                     return;
                 }
+
+                if (websocketEvent.type === "ChatRevisionUpdated") {
+                    chatRevisionUpdatedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as ChatRevisionUpdatedEvent);
+                    });
+                    console.log("message websocket:", websocketEvent);
+                    return;
+                }
             } catch {
                 // Keep logging raw messages for temporary connection probes such as "pong".
             }
@@ -175,7 +195,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, messageCreatedListener, messageEditedListener, messageDeletedListener }}>
+        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, chatRevisionUpdatedListener, messageCreatedListener, messageEditedListener, messageDeletedListener }}>
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -292,6 +312,14 @@ function messageCreatedListener(listener: MessageCreatedListener) {
 
     return () => {
         messageCreatedListeners.delete(listener);
+    };
+}
+
+function chatRevisionUpdatedListener(listener: ChatRevisionUpdatedListener) {
+    chatRevisionUpdatedListeners.add(listener);
+
+    return () => {
+        chatRevisionUpdatedListeners.delete(listener);
     };
 }
 
