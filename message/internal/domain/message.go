@@ -8,6 +8,7 @@ import (
 
 type Message struct {
 	Uuid      uuid.UUID
+	Revision  int64
 	Text      string
 	CreatedAt time.Time
 	UpdatedAt time.Time

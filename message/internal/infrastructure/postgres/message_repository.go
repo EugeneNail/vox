@@ -28,6 +28,7 @@ func (repository *MessageRepository) FindByUuid(ctx context.Context, messageUuid
 			m.uuid,
 			m.chat_uuid,
 			m.user_uuid,
+			m.revision,
 			m.text,
 			m.created_at,
 			m.updated_at,
@@ -55,7 +56,7 @@ func (repository *MessageRepository) FindByUuid(ctx context.Context, messageUuid
 func (repository *MessageRepository) FindLastByChatUuid(ctx context.Context, chatUuid uuid.UUID, length int) ([]domain.Message, error) {
 	const query = `
 		WITH latest_messages AS (
-			SELECT uuid, chat_uuid, user_uuid, text, created_at, updated_at
+			SELECT uuid, chat_uuid, user_uuid, revision, text, created_at, updated_at
 			FROM messages
 			WHERE chat_uuid = $1
 			ORDER BY created_at DESC
@@ -65,6 +66,7 @@ func (repository *MessageRepository) FindLastByChatUuid(ctx context.Context, cha
 			m.uuid,
 			m.chat_uuid,
 			m.user_uuid,
+			m.revision,
 			m.text,
 			m.created_at,
 			m.updated_at,
@@ -93,10 +95,11 @@ func (repository *MessageRepository) Create(ctx context.Context, message domain.
 
 	if _, err := transaction.ExecContext(
 		ctx,
-		`INSERT INTO messages (uuid, chat_uuid, user_uuid, text, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO messages (uuid, chat_uuid, user_uuid, revision, text, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		message.Uuid,
 		message.ChatUuid,
 		message.UserUuid,
+		message.Revision,
 		message.Text,
 		message.CreatedAt,
 		message.UpdatedAt,
@@ -218,6 +221,7 @@ func scanMessages(rows *sql.Rows, scope string) ([]domain.Message, error) {
 			&message.Uuid,
 			&message.ChatUuid,
 			&message.UserUuid,
+			&message.Revision,
 			&message.Text,
 			&message.CreatedAt,
 			&message.UpdatedAt,

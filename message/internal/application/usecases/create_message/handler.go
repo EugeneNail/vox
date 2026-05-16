@@ -105,10 +105,13 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	now := time.Now().UTC()
+	// TODO: handle concurrent message creation because chat revision is a shared resource.
+	chat.Revision++
 	message := domain.Message{
 		Uuid:        messageUuid,
 		ChatUuid:    command.ChatUuid,
 		UserUuid:    command.UserUuid,
+		Revision:    chat.Revision,
 		Text:        command.Text,
 		Attachments: attachments,
 		CreatedAt:   now,
@@ -119,8 +122,6 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	// TODO: handle concurrent message creation because chat revision is a shared resource.
-	chat.Revision++
 	if err := handler.chatRepository.SetRevision(ctx, chat.Uuid, chat.Revision); err != nil {
 		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
 	}
@@ -139,6 +140,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		MessageUuid: message.Uuid,
 		ChatUuid:    message.ChatUuid,
 		UserUuid:    message.UserUuid,
+		Revision:    message.Revision,
 		Text:        message.Text,
 		Attachments: toEventAttachments(message.Attachments),
 		CreatedAt:   message.CreatedAt,

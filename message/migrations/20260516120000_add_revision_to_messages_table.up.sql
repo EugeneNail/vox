@@ -1,0 +1,2 @@
+ALTER TABLE messages
+    ADD COLUMN revision BIGINT NOT NULL DEFAULT 0;
