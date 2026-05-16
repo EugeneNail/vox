@@ -1,8 +1,12 @@
 import { MouseEvent, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
-import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
+import { getAuthenticatedUserUuid, getLoginToken } from "../../auth/auth-tokens";
 import MessageComposer from "../../components/message-composer/message-composer";
-import { MessageCreatedEvent, MessageEditedEvent, useMessageWebSocket } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import {
+    MessageCreatedEvent,
+    MessageEditedEvent,
+    useMessageWebSocket,
+} from "../../contexts/message-web-socket-context/message-web-socket-context";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
@@ -13,9 +17,11 @@ type Chat = {
     name: string | null;
     avatar: string | null;
     chatType: ChatType;
+    revision: number;
     createdByUserUuid: string;
     memberUuids: string[];
     currentUserRole: ChatMemberRole;
+    currentUserLastSeenRevision: number;
     createdAt: string;
     updatedAt: string;
 };
@@ -51,6 +57,8 @@ type MessageContextMenu = {
 const linkPattern = /(https?:\/\/[^\s]+)/g;
 const fullLinkPattern = /^https?:\/\/[^\s]+$/;
 const messageThreadGapMs = 10 * 60 * 1000;
+const lastSeenRevisionSyncIntervalMs = 30_000;
+const chatBottomThresholdPx = 24;
 
 async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
     const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(query)}&limit=10`);
@@ -60,11 +68,26 @@ async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>,
 export default function ChatsMePage() {
     const apiClient = useApiClient();
     const navigate = useNavigate();
-    const { isConnected, messageCreatedListener, messageDeletedListener, messageEditedListener, subscribeChat, unsubscribeChat } = useMessageWebSocket();
+    const {
+        isConnected,
+        messageCreatedListener,
+        messageDeletedListener,
+        messageEditedListener,
+        chatRevisionUpdatedListener,
+        lastSeenRevisionUpdatedListener,
+        subscribeChat,
+        unsubscribeChat,
+    } = useMessageWebSocket();
     const { chatUuid } = useParams();
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const chatsRef = useRef<Chat[]>([]);
+    const localLastSeenRevisionByChatUuidRef = useRef<Record<string, number>>({});
+    const selectedChatUuidRef = useRef<string | null>(null);
+    const isSelectedChatScrolledToBottomRef = useRef(false);
+    const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +122,7 @@ export default function ChatsMePage() {
     const [addMembersInvitees, setAddMembersInvitees] = useState<PublicProfile[]>([]);
     const [isAddingMembers, setIsAddingMembers] = useState(false);
     const [isKickingMember, setIsKickingMember] = useState(false);
+    const [localLastSeenRevisionByChatUuid, setLocalLastSeenRevisionByChatUuid] = useState<Record<string, number>>({});
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
@@ -113,6 +137,27 @@ export default function ChatsMePage() {
         ...groupChatInvitees,
         ...groupChatSearchProfiles.filter((profile) => !groupChatInviteeUserUuids.has(profile.userUuid)),
     ];
+
+    useEffect(() => {
+        chatsRef.current = chats;
+
+        const nextLocalLastSeenRevisionByChatUuid: Record<string, number> = {};
+        chats.forEach((chat) => {
+            const currentLocalRevision = localLastSeenRevisionByChatUuidRef.current[chat.uuid] ?? 0;
+            nextLocalLastSeenRevisionByChatUuid[chat.uuid] = Math.max(currentLocalRevision, chat.currentUserLastSeenRevision);
+        });
+
+        localLastSeenRevisionByChatUuidRef.current = nextLocalLastSeenRevisionByChatUuid;
+        setLocalLastSeenRevisionByChatUuid((currentLocalLastSeenRevisionByChatUuid) => (
+            areLastSeenRevisionMapsEqual(currentLocalLastSeenRevisionByChatUuid, nextLocalLastSeenRevisionByChatUuid)
+                ? currentLocalLastSeenRevisionByChatUuid
+                : nextLocalLastSeenRevisionByChatUuid
+        ));
+    }, [chats]);
+
+    useEffect(() => {
+        selectedChatUuidRef.current = selectedChatUuid;
+    }, [selectedChatUuid]);
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -452,6 +497,7 @@ export default function ChatsMePage() {
     useEffect(() => {
         if (!selectedChatUuid) {
             setMessages([]);
+            isSelectedChatScrolledToBottomRef.current = false;
             return;
         }
 
@@ -497,7 +543,7 @@ export default function ChatsMePage() {
             return;
         }
 
-        messagesEndRef.current?.scrollIntoView({ block: "end" });
+        isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
     }, [isMessagesLoading, messages.length, selectedChatUuid]);
 
     useEffect(() => {
@@ -508,7 +554,22 @@ export default function ChatsMePage() {
 
     useEffect(() => (
         messageCreatedListener((event) => {
-            if (event.chatUuid !== selectedChatUuid) {
+            setChats((currentChats) => currentChats.map((chat) => {
+                if (chat.uuid !== event.chatUuid) {
+                    return chat;
+                }
+
+                return {
+                    ...chat,
+                    revision: Math.max(chat.revision, event.revision),
+                };
+            }));
+
+            if (event.chatUuid === selectedChatUuidRef.current && isSelectedChatScrolledToBottomRef.current) {
+                updateLocalLastSeenRevision(event.chatUuid, event.revision);
+            }
+
+            if (event.chatUuid !== selectedChatUuidRef.current) {
                 return;
             }
 
@@ -527,12 +588,29 @@ export default function ChatsMePage() {
                     confirmedMessage,
                 ];
             });
+
+            if (isSelectedChatScrolledToBottomRef.current) {
+                void syncChatLastSeenRevisionIfNeeded(event.chatUuid);
+            }
         })
-    ), [messageCreatedListener, selectedChatUuid]);
+    ), [authenticatedUserUuid, messageCreatedListener]);
+
+    useEffect(() => (
+        chatRevisionUpdatedListener((event) => {
+            setChats((currentChats) => currentChats.map((chat) => (
+                chat.uuid === event.chatUuid
+                    ? {
+                        ...chat,
+                        revision: Math.max(chat.revision, event.revision),
+                    }
+                    : chat
+            )));
+        })
+    ), [chatRevisionUpdatedListener]);
 
     useEffect(() => (
         messageEditedListener((event) => {
-            if (event.chatUuid !== selectedChatUuid) {
+            if (event.chatUuid !== selectedChatUuidRef.current) {
                 return;
             }
 
@@ -542,17 +620,79 @@ export default function ChatsMePage() {
                     : message
             )));
         })
-    ), [messageEditedListener, selectedChatUuid]);
+    ), [messageEditedListener]);
 
     useEffect(() => (
         messageDeletedListener((event) => {
-            if (event.chatUuid !== selectedChatUuid) {
+            if (event.chatUuid !== selectedChatUuidRef.current) {
                 return;
             }
 
             setMessages((currentMessages) => currentMessages.filter((message) => message.uuid !== event.messageUuid));
         })
-    ), [messageDeletedListener, selectedChatUuid]);
+    ), [messageDeletedListener]);
+
+    useEffect(() => (
+        lastSeenRevisionUpdatedListener((event) => {
+            if (event.userUuid !== authenticatedUserUuid) {
+                return;
+            }
+
+            updateLocalLastSeenRevision(event.chatUuid, event.lastSeenRevision);
+
+            setChats((currentChats) => currentChats.map((chat) => (
+                chat.uuid === event.chatUuid
+                    ? {
+                        ...chat,
+                        currentUserLastSeenRevision: event.lastSeenRevision,
+                    }
+                    : chat
+            )));
+
+            if (pendingLastSeenRevisionSyncByChatUuidRef.current[event.chatUuid] === event.lastSeenRevision) {
+                delete pendingLastSeenRevisionSyncByChatUuidRef.current[event.chatUuid];
+            }
+        })
+    ), [authenticatedUserUuid, lastSeenRevisionUpdatedListener]);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            const dirtyChats = getDirtyChats(chatsRef.current);
+            dirtyChats.forEach((chat) => {
+                void syncChatLastSeenRevisionIfNeeded(chat.uuid);
+            });
+        }, lastSeenRevisionSyncIntervalMs);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, []);
+
+    useEffect(() => {
+        function handlePageHide() {
+            syncDirtyChatsWithKeepalive();
+        }
+
+        function handleBeforeUnload() {
+            syncDirtyChatsWithKeepalive();
+        }
+
+        window.addEventListener("pagehide", handlePageHide);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("pagehide", handlePageHide);
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (selectedChatUuid) {
+                void syncChatLastSeenRevisionIfNeeded(selectedChatUuid);
+            }
+        };
+    }, [selectedChatUuid]);
 
     useEffect(() => {
         function handleWindowClick() {
@@ -843,6 +983,90 @@ export default function ChatsMePage() {
         setIsSearchingProfiles(false);
     }
 
+    function updateLocalLastSeenRevision(chatUuidToUpdate: string, revision: number) {
+        const nextRevision = Math.max(localLastSeenRevisionByChatUuidRef.current[chatUuidToUpdate] ?? 0, revision);
+        if (localLastSeenRevisionByChatUuidRef.current[chatUuidToUpdate] === nextRevision) {
+            return;
+        }
+
+        localLastSeenRevisionByChatUuidRef.current = {
+            ...localLastSeenRevisionByChatUuidRef.current,
+            [chatUuidToUpdate]: nextRevision,
+        };
+        setLocalLastSeenRevisionByChatUuid((currentLocalLastSeenRevisionByChatUuid) => ({
+            ...currentLocalLastSeenRevisionByChatUuid,
+            [chatUuidToUpdate]: nextRevision,
+        }));
+    }
+
+    function handleMessagesScroll() {
+        const isScrolledToBottom = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
+        isSelectedChatScrolledToBottomRef.current = isScrolledToBottom;
+
+        if (!isScrolledToBottom || !selectedChatUuidRef.current) {
+            return;
+        }
+
+        void syncChatLastSeenRevisionIfNeeded(selectedChatUuidRef.current);
+    }
+
+    function syncDirtyChatsWithKeepalive() {
+        const dirtyChats = getDirtyChats(chatsRef.current);
+        dirtyChats.forEach((chat) => {
+            void syncChatLastSeenRevisionIfNeeded(chat.uuid, { keepalive: true });
+        });
+    }
+
+    async function syncChatLastSeenRevisionIfNeeded(chatUuidToSync: string, options?: { keepalive?: boolean; }) {
+        const chat = chatsRef.current.find((item) => item.uuid === chatUuidToSync);
+        if (!chat) {
+            return;
+        }
+
+        const targetLastSeenRevision = getTargetLastSeenRevision(chat, chatUuidToSync, selectedChatUuidRef.current, isSelectedChatScrolledToBottomRef.current, localLastSeenRevisionByChatUuidRef.current);
+        if (targetLastSeenRevision <= chat.currentUserLastSeenRevision) {
+            return;
+        }
+
+        if (pendingLastSeenRevisionSyncByChatUuidRef.current[chatUuidToSync] === targetLastSeenRevision) {
+            return;
+        }
+
+        pendingLastSeenRevisionSyncByChatUuidRef.current[chatUuidToSync] = targetLastSeenRevision;
+
+        try {
+            await postLastSeenRevision(chatUuidToSync, targetLastSeenRevision, options);
+        } catch {
+            if (pendingLastSeenRevisionSyncByChatUuidRef.current[chatUuidToSync] === targetLastSeenRevision) {
+                delete pendingLastSeenRevisionSyncByChatUuidRef.current[chatUuidToSync];
+            }
+        }
+    }
+
+    async function postLastSeenRevision(chatUuidToSync: string, revision: number, options?: { keepalive?: boolean; }) {
+        if (options?.keepalive) {
+            const loginToken = getLoginToken();
+            if (!loginToken) {
+                return;
+            }
+
+            await fetch(`/api/v1/message/chats/${chatUuidToSync}/last-seen-revision`, {
+                method: "POST",
+                keepalive: true,
+                headers: {
+                    Authorization: `Bearer ${loginToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ revision }),
+            });
+            return;
+        }
+
+        await apiClient.post(`/api/v1/message/chats/${chatUuidToSync}/last-seen-revision`, {
+            revision,
+        });
+    }
+
     return (
         <section className="chats-me-page">
             <aside className="chats-me-page__sidebar" aria-label="Chats">
@@ -939,7 +1163,16 @@ export default function ChatsMePage() {
                                         src={getChatAvatarUrl(chat, authenticatedUserUuid, profilesByUserUuid)}
                                         label={getChatAvatarLabel(chat, authenticatedUserUuid, profilesByUserUuid)}
                                     />
-                                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
+                                    <span className="chats-me-page__chat-preview">
+                                        <span className="chats-me-page__chat-row">
+                                            <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
+                                            {getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid) > 0 && (
+                                                <span className="chats-me-page__chat-badge" aria-label={`${getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid)} unread events`}>
+                                                    {getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid)}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </span>
                                 </NavLink>
                             ))}
                         </>
@@ -955,7 +1188,13 @@ export default function ChatsMePage() {
                             <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
                         </header>
 
-                        <div className="chats-me-page__messages" aria-live="polite" onContextMenu={(event) => event.preventDefault()}>
+                        <div
+                            ref={messagesContainerRef}
+                            className="chats-me-page__messages"
+                            aria-live="polite"
+                            onContextMenu={(event) => event.preventDefault()}
+                            onScroll={handleMessagesScroll}
+                        >
                             {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
                             {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
                             {!isMessagesLoading && !messagesError && messages.length === 0 && (
@@ -1587,6 +1826,55 @@ function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessa
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
+}
+
+function getDirtyChats(chats: Chat[]) {
+    return chats.filter((chat) => chat.currentUserLastSeenRevision < chat.revision);
+}
+
+function getUnreadRevisionCount(chat: Chat, localLastSeenRevisionByChatUuid: Record<string, number>) {
+    const localLastSeenRevision = Math.max(
+        localLastSeenRevisionByChatUuid[chat.uuid] ?? 0,
+        chat.currentUserLastSeenRevision,
+    );
+
+    return Math.max(0, chat.revision - localLastSeenRevision);
+}
+
+function getTargetLastSeenRevision(
+    chat: Chat,
+    chatUuid: string,
+    selectedChatUuid: string | null,
+    isSelectedChatScrolledToBottom: boolean,
+    localLastSeenRevisionByChatUuid: Record<string, number>,
+) {
+    const localLastSeenRevision = Math.max(
+        localLastSeenRevisionByChatUuid[chatUuid] ?? 0,
+        chat.currentUserLastSeenRevision,
+    );
+    if (chatUuid === selectedChatUuid && isSelectedChatScrolledToBottom) {
+        return Math.max(localLastSeenRevision, chat.revision);
+    }
+
+    return localLastSeenRevision;
+}
+
+function isMessagesContainerScrolledToBottom(container: HTMLDivElement | null) {
+    if (!container) {
+        return false;
+    }
+
+    return container.scrollHeight - container.scrollTop - container.clientHeight <= chatBottomThresholdPx;
+}
+
+function areLastSeenRevisionMapsEqual(left: Record<string, number>, right: Record<string, number>) {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) {
+        return false;
+    }
+
+    return leftKeys.every((key) => left[key] === right[key]);
 }
 
 function confirmPendingMessage(currentMessages: ChatMessage[], pendingMessageUuid: string, confirmedMessageUuid: string) {

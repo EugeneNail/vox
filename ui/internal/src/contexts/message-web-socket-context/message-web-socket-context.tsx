@@ -11,6 +11,8 @@ type MessageWebSocketContextValue = {
     messageCreatedListener: (listener: MessageCreatedListener) => () => void;
     messageEditedListener: (listener: MessageEditedListener) => () => void;
     messageDeletedListener: (listener: MessageDeletedListener) => () => void;
+    chatRevisionUpdatedListener: (listener: ChatRevisionUpdatedListener) => () => void;
+    lastSeenRevisionUpdatedListener: (listener: LastSeenRevisionUpdatedListener) => () => void;
 };
 
 type MessageWebSocketProviderProps = {
@@ -26,10 +28,24 @@ export type MessageCreatedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
+    revision: number;
     text: string;
     attachments: MessageAttachment[];
     createdAt: string;
     updatedAt: string;
+};
+
+export type ChatRevisionUpdatedEvent = {
+    chatUuid: string;
+    userUuid: string;
+    messagePiece: string;
+    revision: number;
+};
+
+export type LastSeenRevisionUpdatedEvent = {
+    chatUuid: string;
+    userUuid: string;
+    lastSeenRevision: number;
 };
 
 export type MessageEditedEvent = {
@@ -51,6 +67,8 @@ export type MessageDeletedEvent = {
 type MessageCreatedListener = (event: MessageCreatedEvent) => void;
 type MessageEditedListener = (event: MessageEditedEvent) => void;
 type MessageDeletedListener = (event: MessageDeletedEvent) => void;
+type ChatRevisionUpdatedListener = (event: ChatRevisionUpdatedEvent) => void;
+type LastSeenRevisionUpdatedListener = (event: LastSeenRevisionUpdatedEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
     handleClose: () => void;
@@ -64,6 +82,8 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     messageCreatedListener,
     messageEditedListener,
     messageDeletedListener,
+    chatRevisionUpdatedListener,
+    lastSeenRevisionUpdatedListener,
 });
 
 let messageWebSocket: WebSocket | null = null;
@@ -73,6 +93,8 @@ let messageWebSocketReconnectAttempt = 0;
 const messageCreatedListeners = new Set<MessageCreatedListener>();
 const messageEditedListeners = new Set<MessageEditedListener>();
 const messageDeletedListeners = new Set<MessageDeletedListener>();
+const chatRevisionUpdatedListeners = new Set<ChatRevisionUpdatedListener>();
+const lastSeenRevisionUpdatedListeners = new Set<LastSeenRevisionUpdatedListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
 
@@ -158,6 +180,20 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                     });
                     return;
                 }
+
+                if (websocketEvent.type === "ChatRevisionUpdated") {
+                    chatRevisionUpdatedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as ChatRevisionUpdatedEvent);
+                    });
+                    return;
+                }
+
+                if (websocketEvent.type === "LastSeenRevisionUpdated") {
+                    lastSeenRevisionUpdatedListeners.forEach((listener) => {
+                        listener(websocketEvent.data as LastSeenRevisionUpdatedEvent);
+                    });
+                    return;
+                }
             } catch {
                 // Keep logging raw messages for temporary connection probes such as "pong".
             }
@@ -175,7 +211,17 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
     }, [loginToken]);
 
     return (
-        <MessageWebSocketContext.Provider value={{ isConnected, subscribeChat, unsubscribeChat, messageCreatedListener, messageEditedListener, messageDeletedListener }}>
+        <MessageWebSocketContext.Provider value={{
+            isConnected,
+            subscribeChat,
+            unsubscribeChat,
+            messageCreatedListener,
+            messageEditedListener,
+            messageDeletedListener,
+            chatRevisionUpdatedListener,
+            lastSeenRevisionUpdatedListener,
+        }}
+        >
             {children}
         </MessageWebSocketContext.Provider>
     );
@@ -308,5 +354,21 @@ function messageDeletedListener(listener: MessageDeletedListener) {
 
     return () => {
         messageDeletedListeners.delete(listener);
+    };
+}
+
+function chatRevisionUpdatedListener(listener: ChatRevisionUpdatedListener) {
+    chatRevisionUpdatedListeners.add(listener);
+
+    return () => {
+        chatRevisionUpdatedListeners.delete(listener);
+    };
+}
+
+function lastSeenRevisionUpdatedListener(listener: LastSeenRevisionUpdatedListener) {
+    lastSeenRevisionUpdatedListeners.add(listener);
+
+    return () => {
+        lastSeenRevisionUpdatedListeners.delete(listener);
     };
 }
