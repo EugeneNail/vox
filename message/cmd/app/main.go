@@ -16,6 +16,7 @@ import (
 	"github.com/EugeneNail/vox/message/internal/application/usecases/kick_chat_member"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chat_messages"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
+	"github.com/EugeneNail/vox/message/internal/application/usecases/set_last_seen_revision"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/config"
 	"github.com/EugeneNail/vox/message/internal/infrastructure/postgres"
 	redis_infrastructure "github.com/EugeneNail/vox/message/internal/infrastructure/redis"
@@ -64,6 +65,7 @@ func main() {
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
 	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
+	setLastSeenRevisionHandler := set_last_seen_revision.NewHandler(chatRepository, chatMemberRepository)
 
 	// --- Section: HTTP transport ---
 	authorizeChatAccessHttpHandler := transport_http.NewAuthorizeChatAccessHandler(authorizeChatAccessHandler)
@@ -76,6 +78,7 @@ func main() {
 	editMessageHttpHandler := transport_http.NewEditMessageHandler(editMessageHandler)
 	listChatMessagesHttpHandler := transport_http.NewListChatMessagesHandler(listChatMessagesHandler)
 	listChatsHttpHandler := transport_http.NewListChatsHandler(listChatsHandler)
+	setLastSeenRevisionHttpHandler := transport_http.NewSetLastSeenRevisionHandler(setLastSeenRevisionHandler)
 
 	// --- Section: HTTP routes ---
 	webServer := http.NewServeMux()
@@ -85,6 +88,7 @@ func main() {
 	webServer.HandleFunc("DELETE /api/v1/message/chats/{chatUuid}/members/{userUuid}", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(kickChatMemberHttpHandler.Handle)))
 	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/authorize-access", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(authorizeChatAccessHttpHandler.Handle)))
 	webServer.HandleFunc("GET    /api/v1/message/chats", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatsHttpHandler.Handle)))
+	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/last-seen-revision", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(256, middleware.WriteJsonResponse(setLastSeenRevisionHttpHandler.Handle))))
 	webServer.HandleFunc("POST   /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(createMessageHttpHandler.Handle))))
 	webServer.HandleFunc("GET    /api/v1/message/chats/{chatUuid}/messages", middleware.RequireAuthenticatedUser(middleware.WriteJsonResponse(listChatMessagesHttpHandler.Handle)))
 	webServer.HandleFunc("PUT    /api/v1/message/messages/{messageUuid}", middleware.RequireAuthenticatedUser(middleware.RejectLargeRequest(4096, middleware.WriteJsonResponse(editMessageHttpHandler.Handle))))
