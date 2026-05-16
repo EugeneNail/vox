@@ -12,6 +12,7 @@ type MessageCreated struct {
 	MessageUuid uuid.UUID    `json:"messageUuid"`
 	ChatUuid    uuid.UUID    `json:"chatUuid"`
 	UserUuid    uuid.UUID    `json:"userUuid"`
+	Revision    int64        `json:"revision"`
 	Text        string       `json:"text"`
 	Attachments []Attachment `json:"attachments"`
 	CreatedAt   time.Time    `json:"createdAt"`
