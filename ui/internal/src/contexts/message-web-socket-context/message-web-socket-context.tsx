@@ -182,6 +182,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                 }
 
                 if (websocketEvent.type === "ChatRevisionUpdated") {
+                    console.log("message websocket ChatRevisionUpdated:", websocketEvent.data);
                     chatRevisionUpdatedListeners.forEach((listener) => {
                         listener(websocketEvent.data as ChatRevisionUpdatedEvent);
                     });
