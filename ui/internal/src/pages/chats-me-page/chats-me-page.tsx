@@ -88,6 +88,7 @@ export default function ChatsMePage() {
     const selectedChatUuidRef = useRef<string | null>(null);
     const isSelectedChatScrolledToBottomRef = useRef(false);
     const shouldAutoScrollSelectedChatOnNextMessageRef = useRef(false);
+    const shouldSkipNextBottomScrollSyncRef = useRef(false);
     const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -545,6 +546,7 @@ export default function ChatsMePage() {
         }
 
         if (shouldAutoScrollSelectedChatOnNextMessageRef.current) {
+            shouldSkipNextBottomScrollSyncRef.current = true;
             scrollMessagesContainerToBottom(messagesContainerRef.current, messagesEndRef.current);
             shouldAutoScrollSelectedChatOnNextMessageRef.current = false;
             isSelectedChatScrolledToBottomRef.current = true;
@@ -603,9 +605,6 @@ export default function ChatsMePage() {
                 ];
             });
 
-            if (wasSelectedChatScrolledToBottom) {
-                void syncChatLastSeenRevisionIfNeeded(event.chatUuid);
-            }
         })
     ), [authenticatedUserUuid, messageCreatedListener]);
 
@@ -762,9 +761,7 @@ export default function ChatsMePage() {
             return;
         }
 
-        if (isMessagesContainerScrolledToBottom(messagesContainerRef.current)) {
-            shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
-        }
+        shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
 
         const pendingMessageUuid = `pending-${generatePendingMessageUuid()}`;
         const createdAt = new Date().toISOString();
@@ -1022,6 +1019,11 @@ export default function ChatsMePage() {
         isSelectedChatScrolledToBottomRef.current = isScrolledToBottom;
 
         if (!isScrolledToBottom || !selectedChatUuidRef.current) {
+            return;
+        }
+
+        if (shouldSkipNextBottomScrollSyncRef.current) {
+            shouldSkipNextBottomScrollSyncRef.current = false;
             return;
         }
 
