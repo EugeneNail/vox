@@ -37,8 +37,8 @@ export type MessageCreatedEvent = {
 
 export type ChatRevisionUpdatedEvent = {
     chatUuid: string;
-    userUuid: string;
-    messagePiece: string;
+    recipientUuids: string[];
+    preview: string;
     revision: number;
 };
 
