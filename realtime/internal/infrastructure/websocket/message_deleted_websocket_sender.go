@@ -8,23 +8,23 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// MessageDeletedWebSocketSender sends message-deleted commands to websocket connections selected by subscriptions.
+// MessageDeletedWebSocketSender sends message-deleted commands to connections with the chat currently open.
 type MessageDeletedWebSocketSender struct {
-	connectionHub        *ConnectionHub
-	subscriptionRegistry *ChatSubscriptionRegistry
-	connectionDropper    *ConnectionDropper
+	connectionHub     *ConnectionHub
+	openChatRegistry  *OpenChatRegistry
+	connectionDropper *ConnectionDropper
 }
 
 // NewMessageDeletedWebSocketSender constructs a message-deleted websocket sender.
-func NewMessageDeletedWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageDeletedWebSocketSender {
+func NewMessageDeletedWebSocketSender(connectionHub *ConnectionHub, openChatRegistry *OpenChatRegistry, connectionDropper *ConnectionDropper) *MessageDeletedWebSocketSender {
 	return &MessageDeletedWebSocketSender{
-		connectionHub:        connectionHub,
-		subscriptionRegistry: subscriptionRegistry,
-		connectionDropper:    connectionDropper,
+		connectionHub:     connectionHub,
+		openChatRegistry:  openChatRegistry,
+		connectionDropper: connectionDropper,
 	}
 }
 
-// Send sends a message-deleted command to connections subscribed to the message chat.
+// Send sends a message-deleted command to connections with the message chat currently open.
 func (sender *MessageDeletedWebSocketSender) Send(ctx context.Context, event events.MessageDeleted) error {
 	select {
 	case <-ctx.Done():
@@ -40,7 +40,7 @@ func (sender *MessageDeletedWebSocketSender) Send(ctx context.Context, event eve
 		return fmt.Errorf("marshalling message deleted websocket command for message %q: %w", event.MessageUuid, err)
 	}
 
-	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
+	connectionUuids := sender.openChatRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
 	for _, connectionUuid := range connectionUuids {
 		connection := sender.connectionHub.FindByUuid(connectionUuid)
 		if connection == nil {

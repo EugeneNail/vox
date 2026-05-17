@@ -20,20 +20,20 @@ import (
 type OpenWebSocketHandler struct {
 	connectionHub             *websocket_infrastructure.ConnectionHub
 	connectionDropper         *websocket_infrastructure.ConnectionDropper
-	subscriptionRegistry      *websocket_infrastructure.ChatSubscriptionRegistry
+	openChatRegistry          *websocket_infrastructure.OpenChatRegistry
 	authorizeChatAccessClient *message_infrastructure.AuthorizeChatAccessClient
 }
 
 func NewOpenWebSocketHandler(
 	connectionHub *websocket_infrastructure.ConnectionHub,
 	connectionDropper *websocket_infrastructure.ConnectionDropper,
-	subscriptionRegistry *websocket_infrastructure.ChatSubscriptionRegistry,
+	openChatRegistry *websocket_infrastructure.OpenChatRegistry,
 	authorizeChatAccessClient *message_infrastructure.AuthorizeChatAccessClient,
 ) *OpenWebSocketHandler {
 	return &OpenWebSocketHandler{
 		connectionHub:             connectionHub,
 		connectionDropper:         connectionDropper,
-		subscriptionRegistry:      subscriptionRegistry,
+		openChatRegistry:          openChatRegistry,
 		authorizeChatAccessClient: authorizeChatAccessClient,
 	}
 }
@@ -108,7 +108,7 @@ func (handler *OpenWebSocketHandler) handleMessage(ctx context.Context, connecti
 	case "OpenChat":
 		return handler.handleOpenChatCommand(ctx, connection, command.Data)
 	case "UnsubscribeChat":
-		handler.subscriptionRegistry.Unsubscribe(connection.Uuid())
+		handler.openChatRegistry.CloseChat(connection.Uuid())
 		return nil
 	default:
 		return nil
@@ -129,7 +129,7 @@ func (handler *OpenWebSocketHandler) handleOpenChatCommand(ctx context.Context, 
 		return fmt.Errorf("authorizing websocket chat access for chat %q: %w", data.ChatUuid, err)
 	}
 
-	handler.subscriptionRegistry.Subscribe(connection.Uuid(), data.ChatUuid)
+	handler.openChatRegistry.OpenChat(connection.Uuid(), data.ChatUuid)
 	return nil
 }
 

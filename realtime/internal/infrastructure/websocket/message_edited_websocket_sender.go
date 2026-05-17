@@ -8,23 +8,23 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// MessageEditedWebSocketSender sends message-edited commands to websocket connections selected by subscriptions.
+// MessageEditedWebSocketSender sends message-edited commands to connections with the chat currently open.
 type MessageEditedWebSocketSender struct {
-	connectionHub        *ConnectionHub
-	subscriptionRegistry *ChatSubscriptionRegistry
-	connectionDropper    *ConnectionDropper
+	connectionHub     *ConnectionHub
+	openChatRegistry  *OpenChatRegistry
+	connectionDropper *ConnectionDropper
 }
 
 // NewMessageEditedWebSocketSender constructs a message-edited websocket sender.
-func NewMessageEditedWebSocketSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageEditedWebSocketSender {
+func NewMessageEditedWebSocketSender(connectionHub *ConnectionHub, openChatRegistry *OpenChatRegistry, connectionDropper *ConnectionDropper) *MessageEditedWebSocketSender {
 	return &MessageEditedWebSocketSender{
-		connectionHub:        connectionHub,
-		subscriptionRegistry: subscriptionRegistry,
-		connectionDropper:    connectionDropper,
+		connectionHub:     connectionHub,
+		openChatRegistry:  openChatRegistry,
+		connectionDropper: connectionDropper,
 	}
 }
 
-// Send sends a message-edited command to connections subscribed to the message chat.
+// Send sends a message-edited command to connections with the message chat currently open.
 func (sender *MessageEditedWebSocketSender) Send(ctx context.Context, event events.MessageEdited) error {
 	select {
 	case <-ctx.Done():
@@ -40,7 +40,7 @@ func (sender *MessageEditedWebSocketSender) Send(ctx context.Context, event even
 		return fmt.Errorf("marshalling message edited websocket command for message %q: %w", event.MessageUuid, err)
 	}
 
-	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
+	connectionUuids := sender.openChatRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
 	for _, connectionUuid := range connectionUuids {
 		connection := sender.connectionHub.FindByUuid(connectionUuid)
 		if connection == nil {

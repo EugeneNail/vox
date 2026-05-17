@@ -29,24 +29,24 @@ func main() {
 
 	// --- Section: WebSocket runtime ---
 	connectionHub := websocket_infrastructure.NewConnectionHub()
-	chatSubscriptionRegistry := websocket_infrastructure.NewChatSubscriptionRegistry()
-	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, chatSubscriptionRegistry)
+	openChatRegistry := websocket_infrastructure.NewOpenChatRegistry()
+	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, openChatRegistry)
 	authorizeChatAccessClient := message_infrastructure.NewAuthorizeChatAccessClient(configuration.Message.BaseURL)
 
 	// --- Section: HTTP transport ---
 	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(
 		connectionHub,
 		connectionDropper,
-		chatSubscriptionRegistry,
+		openChatRegistry,
 		authorizeChatAccessClient,
 	)
 
 	// --- Section: Event delivery ---
-	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, openChatRegistry, connectionDropper)
 	chatRevisionUpdatedSender := websocket_infrastructure.NewChatRevisionUpdatedSender(connectionHub, connectionDropper)
 	lastSeenRevisionUpdatedSender := websocket_infrastructure.NewLastSeenRevisionUpdatedSender(connectionHub, connectionDropper)
-	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
-	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, chatSubscriptionRegistry, connectionDropper)
+	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, openChatRegistry, connectionDropper)
+	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, openChatRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
 	chatRevisionUpdatedRedisConsumer := redis_infrastructure.NewChatRevisionUpdatedConsumer(redisClient, chatRevisionUpdatedSender.Send)
 	lastSeenRevisionUpdatedRedisConsumer := redis_infrastructure.NewLastSeenRevisionUpdatedConsumer(redisClient, lastSeenRevisionUpdatedSender.Send)

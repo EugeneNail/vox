@@ -8,23 +8,23 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// MessageCreatedSender sends message-created websocket events to chat subscribers.
+// MessageCreatedSender sends message-created websocket events to connections with the chat currently open.
 type MessageCreatedSender struct {
-	connectionHub        *ConnectionHub
-	subscriptionRegistry *ChatSubscriptionRegistry
-	connectionDropper    *ConnectionDropper
+	connectionHub     *ConnectionHub
+	openChatRegistry  *OpenChatRegistry
+	connectionDropper *ConnectionDropper
 }
 
 // NewMessageCreatedSender constructs a message-created websocket sender.
-func NewMessageCreatedSender(connectionHub *ConnectionHub, subscriptionRegistry *ChatSubscriptionRegistry, connectionDropper *ConnectionDropper) *MessageCreatedSender {
+func NewMessageCreatedSender(connectionHub *ConnectionHub, openChatRegistry *OpenChatRegistry, connectionDropper *ConnectionDropper) *MessageCreatedSender {
 	return &MessageCreatedSender{
-		connectionHub:        connectionHub,
-		subscriptionRegistry: subscriptionRegistry,
-		connectionDropper:    connectionDropper,
+		connectionHub:     connectionHub,
+		openChatRegistry:  openChatRegistry,
+		connectionDropper: connectionDropper,
 	}
 }
 
-// Send sends a message-created event to connections subscribed to the chat.
+// Send sends a message-created event to connections with the chat currently open.
 func (sender *MessageCreatedSender) Send(ctx context.Context, event events.MessageCreated) error {
 	select {
 	case <-ctx.Done():
@@ -40,7 +40,7 @@ func (sender *MessageCreatedSender) Send(ctx context.Context, event events.Messa
 		return fmt.Errorf("marshalling message created websocket event for message %q: %w", event.MessageUuid, err)
 	}
 
-	connectionUuids := sender.subscriptionRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
+	connectionUuids := sender.openChatRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
 	for _, connectionUuid := range connectionUuids {
 		connection := sender.connectionHub.FindByUuid(connectionUuid)
 		if connection == nil {

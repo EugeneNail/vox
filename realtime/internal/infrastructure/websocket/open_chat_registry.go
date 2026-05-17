@@ -6,24 +6,24 @@ import (
 	"github.com/google/uuid"
 )
 
-// ChatSubscriptionRegistry stores the current runtime chat subscription for each connection.
-type ChatSubscriptionRegistry struct {
+// OpenChatRegistry stores the current runtime open chat for each connection.
+type OpenChatRegistry struct {
 	mutex                          sync.RWMutex
 	subscribedChatUuidByConnection map[uuid.UUID]uuid.UUID
 	connectionUuidsByChatUuid      map[uuid.UUID]map[uuid.UUID]struct{}
 }
 
-// NewChatSubscriptionRegistry constructs a chat subscription registry.
-func NewChatSubscriptionRegistry() *ChatSubscriptionRegistry {
-	return &ChatSubscriptionRegistry{
+// NewOpenChatRegistry constructs an open chat registry.
+func NewOpenChatRegistry() *OpenChatRegistry {
+	return &OpenChatRegistry{
 		subscribedChatUuidByConnection: make(map[uuid.UUID]uuid.UUID),
 		connectionUuidsByChatUuid:      make(map[uuid.UUID]map[uuid.UUID]struct{}),
 	}
 }
 
-// Subscribe stores the current chat subscription for the connection.
-func (registry *ChatSubscriptionRegistry) Subscribe(connectionUuid uuid.UUID, chatUuid uuid.UUID) {
-	registry.Unsubscribe(connectionUuid)
+// OpenChat stores the current open chat for the connection.
+func (registry *OpenChatRegistry) OpenChat(connectionUuid uuid.UUID, chatUuid uuid.UUID) {
+	registry.CloseChat(connectionUuid)
 
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
@@ -35,8 +35,8 @@ func (registry *ChatSubscriptionRegistry) Subscribe(connectionUuid uuid.UUID, ch
 	registry.subscribedChatUuidByConnection[connectionUuid] = chatUuid
 }
 
-// Unsubscribe removes the current chat subscription for the connection.
-func (registry *ChatSubscriptionRegistry) Unsubscribe(connectionUuid uuid.UUID) {
+// CloseChat removes the current open chat for the connection.
+func (registry *OpenChatRegistry) CloseChat(connectionUuid uuid.UUID) {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 
@@ -55,8 +55,8 @@ func (registry *ChatSubscriptionRegistry) Unsubscribe(connectionUuid uuid.UUID) 
 	delete(registry.subscribedChatUuidByConnection, connectionUuid)
 }
 
-// FindConnectionUuidsByChatUuid finds all runtime connections subscribed to the chat.
-func (registry *ChatSubscriptionRegistry) FindConnectionUuidsByChatUuid(chatUuid uuid.UUID) []uuid.UUID {
+// FindConnectionUuidsByChatUuid finds all runtime connections with the chat currently open.
+func (registry *OpenChatRegistry) FindConnectionUuidsByChatUuid(chatUuid uuid.UUID) []uuid.UUID {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 
