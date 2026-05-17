@@ -51,7 +51,6 @@ export function ChatsSidebar(props: ChatsSidebarProps) {
     return (
         <aside className="chats-me-page__sidebar" aria-label="Chats">
             <div className="chats-me-page__sidebar-header">
-                <p className="chats-me-page__eyebrow">Messages</p>
                 <div className="chats-me-page__sidebar-title-row">
                     <h1 className="chats-me-page__title">Chats</h1>
                     <button className="chats-me-page__create-group-button" type="button" onClick={openCreateGroupChatModal}>

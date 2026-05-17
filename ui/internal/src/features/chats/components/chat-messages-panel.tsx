@@ -8,7 +8,6 @@ import {
     MessageText,
     UserAvatar,
     formatMessageTime,
-    getChatTitle,
     getMessageAuthorAvatarLabel,
     getMessageAuthorAvatarUrl,
     getMessageAuthorName,
@@ -83,8 +82,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         return (
             <section className="chats-me-page__chat" aria-label="Chat">
                 <div className="chats-me-page__chat-placeholder">
-                    <p className="chats-me-page__eyebrow">No chat selected</p>
-                    <h2 className="chats-me-page__chat-title">Choose a chat</h2>
+                    <p className="chats-me-page__state">Choose a chat</p>
                 </div>
             </section>
         );
@@ -93,11 +91,6 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
     return (
         <section className="chats-me-page__chat" aria-label="Chat">
             <div className="chats-me-page__chat-shell">
-                <header className="chats-me-page__chat-header">
-                    <p className="chats-me-page__eyebrow">Selected chat</p>
-                    <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
-                </header>
-
                 <div
                     ref={messagesContainerRef}
                     className="chats-me-page__messages"
