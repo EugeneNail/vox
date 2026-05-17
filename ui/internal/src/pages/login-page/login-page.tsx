@@ -6,6 +6,7 @@ import { storeAuthTokens } from "../../auth/auth-tokens";
 import AuthFormCard from "../../components/auth-form-card/auth-form-card";
 import FormSubmitButton from "../../components/form-submit-button/form-submit-button";
 import FormTextField from "../../components/form-text-field/form-text-field";
+import { authenticateUser } from "../../features/auth/auth-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./login-page.sass";
 
@@ -15,11 +16,6 @@ type LoginForm = {
 };
 
 type LoginViolations = Partial<Record<keyof LoginForm, string>>;
-
-type AuthenticateResponse = {
-    loginToken: string;
-    refreshToken: string;
-};
 
 const initialForm: LoginForm = {
     email: "",
@@ -54,12 +50,8 @@ export default function LoginPage() {
         setViolations({});
 
         try {
-            const { data } = await apiClient.post<AuthenticateResponse>(
-                "/api/v1/auth/users/authenticate",
-                form,
-            );
-
-            storeAuthTokens(data);
+            const tokens = await authenticateUser(apiClient, form);
+            storeAuthTokens(tokens);
             navigate("/chats/@me", { replace: true });
         } catch (error) {
             const nextViolations = getApiViolations(error);

@@ -6,6 +6,7 @@ import { storeAuthTokens } from "../../auth/auth-tokens";
 import AuthFormCard from "../../components/auth-form-card/auth-form-card";
 import FormSubmitButton from "../../components/form-submit-button/form-submit-button";
 import FormTextField from "../../components/form-text-field/form-text-field";
+import { authenticateUser, registerUser } from "../../features/auth/auth-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import "./signup-page.sass";
 
@@ -17,11 +18,6 @@ type SignupForm = {
 };
 
 type SignupViolations = Partial<Record<keyof SignupForm, string>>;
-
-type AuthenticateResponse = {
-    loginToken: string;
-    refreshToken: string;
-};
 
 const initialForm: SignupForm = {
     name: "",
@@ -58,17 +54,13 @@ export default function SignupPage() {
         setViolations({});
 
         try {
-            await apiClient.post("/api/v1/auth/users", form);
+            await registerUser(apiClient, form);
+            const tokens = await authenticateUser(apiClient, {
+                email: form.email,
+                password: form.password,
+            });
 
-            const { data } = await apiClient.post<AuthenticateResponse>(
-                "/api/v1/auth/users/authenticate",
-                {
-                    email: form.email,
-                    password: form.password,
-                },
-            );
-
-            storeAuthTokens(data);
+            storeAuthTokens(tokens);
             navigate("/chats/@me", { replace: true });
         } catch (error) {
             const nextViolations = getApiViolations(error);

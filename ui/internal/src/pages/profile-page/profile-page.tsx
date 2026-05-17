@@ -4,15 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import FormSubmitButton from "../../components/form-submit-button/form-submit-button";
 import FormTextField from "../../components/form-text-field/form-text-field";
+import { uploadImageAttachment } from "../../features/attachments/attachments-api";
+import { loadProfilesBatch, updateOwnProfile } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageFile } from "../../messages/message-attachments";
+import { PublicProfile } from "../../profiles/profile-cache";
 import "./profile-page.sass";
-
-type PublicProfile = {
-    userUuid: string;
-    avatar: string | null;
-    name: string;
-};
 
 type SourceImage = {
     url: string;
@@ -84,14 +81,15 @@ export default function ProfilePage() {
         }
 
         let isMounted = true;
+        const currentAuthenticatedUserUuid = authenticatedUserUuid;
 
         async function loadProfile() {
             setIsLoading(true);
             setError(null);
 
             try {
-                const { data } = await apiClient.post<PublicProfile[]>("/api/v1/profile/profiles/batch", {
-                    userUuids: [authenticatedUserUuid],
+                const data = await loadProfilesBatch(apiClient, {
+                    userUuids: [currentAuthenticatedUserUuid],
                 });
 
                 if (!isMounted) {
@@ -443,7 +441,7 @@ export default function ProfilePage() {
                 setUploadedAvatarName(nextAvatarName);
             }
 
-            await apiClient.put("/api/v1/profile/profiles/me", {
+            await updateOwnProfile(apiClient, {
                 name: name.trim(),
                 ...(nextAvatarName ? { avatar: nextAvatarName } : {}),
             });
@@ -808,19 +806,7 @@ async function buildCroppedAvatarPreviewUrl(sourceImage: SourceImage, geometry: 
 }
 
 async function uploadAvatar(file: File) {
-    const formData = new FormData();
-    formData.append("file", file, file.name || "avatar.png");
-
-    const response = await fetch("/api/v1/attachments/images", {
-        method: "POST",
-        body: formData,
-    });
-
-    if (!response.ok) {
-        throw new Error(`upload failed with status ${response.status}`);
-    }
-
-    return response.json() as Promise<string>;
+    return uploadImageAttachment(file, "avatar.png");
 }
 
 function buildAvatarFileName() {

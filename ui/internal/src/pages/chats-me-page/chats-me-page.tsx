@@ -7,24 +7,27 @@ import {
     MessageEditedEvent,
     useMessageWebSocket,
 } from "../../contexts/message-web-socket-context/message-web-socket-context";
+import {
+    addChatMembers,
+    Chat as ApiChat,
+    ChatMessage as ApiChatMessage,
+    createDirectChat,
+    createGroupChat as createGroupChatRequest,
+    createMessage,
+    deleteMessage as deleteMessageRequest,
+    editMessage as editMessageRequest,
+    kickChatMember,
+    listChatMessages,
+    listChats,
+    setLastSeenRevision,
+} from "../../features/chats/chat-api";
+import { loadProfilesBatch, searchProfiles } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
 import "./chats-me-page.sass";
 
-type Chat = {
-    uuid: string;
-    name: string | null;
-    avatar: string | null;
-    chatType: ChatType;
-    revision: number;
-    createdByUserUuid: string;
-    memberUuids: string[];
-    currentUserRole: ChatMemberRole;
-    currentUserLastSeenRevision: number;
-    createdAt: string;
-    updatedAt: string;
-};
+type Chat = ApiChat;
 
 enum ChatType {
     Direct = 0,
@@ -37,17 +40,7 @@ enum ChatMemberRole {
     Member = "member",
 }
 
-type ChatMessage = {
-    uuid: string;
-    chatUuid: string;
-    userUuid: string;
-    revision: number;
-    text: string;
-    attachments: MessageAttachment[];
-    createdAt: string;
-    updatedAt: string;
-    isPending?: boolean;
-};
+type ChatMessage = ApiChatMessage;
 
 type MessageContextMenu = {
     message: ChatMessage;
@@ -62,7 +55,7 @@ const lastSeenRevisionSyncIntervalMs = 30_000;
 const chatBottomThresholdPx = 24;
 
 async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
-    const { data } = await apiClient.get<PublicProfile[]>(`/api/v1/profile/search?query=${encodeURIComponent(query)}&limit=10`);
+    const data = await searchProfiles(apiClient, query, 10);
     return data.filter((profile) => profile.userUuid !== authenticatedUserUuid);
 }
 
@@ -188,7 +181,7 @@ export default function ChatsMePage() {
 
         async function refreshStaleProfiles() {
             try {
-                const { data } = await apiClient.post<PublicProfile[]>("/api/v1/profile/profiles/batch", {
+                const data = await loadProfilesBatch(apiClient, {
                     userUuids: staleCachedUserUuids,
                 });
                 if (!isMounted || data.length === 0) {
@@ -217,7 +210,7 @@ export default function ChatsMePage() {
 
         async function loadChats() {
             try {
-                const { data } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+                const data = await listChats(apiClient);
                 if (!isMounted) {
                     return;
                 }
@@ -266,7 +259,7 @@ export default function ChatsMePage() {
 
         async function loadProfiles() {
             try {
-                const { data } = await apiClient.post<PublicProfile[]>("/api/v1/profile/profiles/batch", {
+                const data = await loadProfilesBatch(apiClient, {
                     userUuids: missingOrStaleUserUuids,
                 });
                 if (!isMounted || data.length === 0) {
@@ -511,9 +504,10 @@ export default function ChatsMePage() {
         }
 
         let isMounted = true;
+        const currentSelectedChatUuid = selectedChatUuid;
         const selectedChatLastSeenRevision = getSelectedChatLastSeenRevision(
-            chatsRef.current.find((chat) => chat.uuid === selectedChatUuid) ?? null,
-            selectedChatUuid,
+            chatsRef.current.find((chat) => chat.uuid === currentSelectedChatUuid) ?? null,
+            currentSelectedChatUuid,
             localLastSeenRevisionByChatUuidRef.current,
         );
         const requestRevision = Math.max(0, selectedChatLastSeenRevision - 100);
@@ -524,7 +518,7 @@ export default function ChatsMePage() {
             setMessagesError(null);
 
             try {
-                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/chats/${selectedChatUuid}/messages?revision=${requestRevision}`);
+                const data = await listChatMessages(apiClient, currentSelectedChatUuid, requestRevision);
                 if (!isMounted) {
                     return;
                 }
@@ -816,7 +810,7 @@ export default function ChatsMePage() {
         ]);
 
         try {
-            const { data: messageUuid } = await apiClient.post<string>(`/api/v1/message/chats/${selectedChat.uuid}/messages`, {
+            const messageUuid = await createMessage(apiClient, selectedChat.uuid, {
                 text,
                 attachments,
             });
@@ -829,7 +823,7 @@ export default function ChatsMePage() {
     }
 
     async function editMessage(message: ChatMessage, text: string, attachments: string[]) {
-        await apiClient.put<string>(`/api/v1/message/messages/${message.uuid}`, {
+        await editMessageRequest(apiClient, message.uuid, {
             text,
             attachments,
         });
@@ -840,7 +834,7 @@ export default function ChatsMePage() {
     async function deleteMessage(message: ChatMessage) {
         setIsDeletingMessage(true);
         try {
-            await apiClient.delete<string>(`/api/v1/message/messages/${message.uuid}`);
+            await deleteMessageRequest(apiClient, message.uuid);
             setMessagePendingDeletion(null);
             if (editingMessage?.uuid === message.uuid) {
                 setEditingMessage(null);
@@ -895,11 +889,11 @@ export default function ChatsMePage() {
                 [profile.userUuid]: profile,
             }));
 
-            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats/direct", {
+            const createdChatUuid = await createDirectChat(apiClient, {
                 interlocutorUuid: profile.userUuid,
             });
 
-            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            const nextChats = await listChats(apiClient);
             setChats(nextChats);
             clearSearch();
             navigate(`/chats/@me/${createdChatUuid}`);
@@ -942,12 +936,12 @@ export default function ChatsMePage() {
                 ...profilesByUserUuidFromProfiles(groupChatInvitees),
             }));
 
-            const { data: createdChatUuid } = await apiClient.post<string>("/api/v1/message/chats/group", {
+            const createdChatUuid = await createGroupChatRequest(apiClient, {
                 memberUuids: groupChatInvitees.map((profile) => profile.userUuid),
                 name: groupChatName.trim().length > 0 ? groupChatName.trim() : null,
             });
 
-            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            const nextChats = await listChats(apiClient);
             setChats(nextChats);
             closeCreateGroupChatModal();
             navigate(`/chats/@me/${createdChatUuid}`);
@@ -993,11 +987,11 @@ export default function ChatsMePage() {
                 ...profilesByUserUuidFromProfiles(addMembersInvitees),
             }));
 
-            await apiClient.post(`/api/v1/message/chats/${selectedChat.uuid}/members`, {
+            await addChatMembers(apiClient, selectedChat.uuid, {
                 memberUuids: addMembersInvitees.map((profile) => profile.userUuid),
             });
 
-            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            const nextChats = await listChats(apiClient);
             setChats(nextChats);
             closeAddMembersModal();
         } finally {
@@ -1012,8 +1006,8 @@ export default function ChatsMePage() {
 
         setIsKickingMember(true);
         try {
-            await apiClient.delete(`/api/v1/message/chats/${selectedChat.uuid}/members/${memberUuid}`);
-            const { data: nextChats } = await apiClient.get<Chat[]>("/api/v1/message/chats");
+            await kickChatMember(apiClient, selectedChat.uuid, memberUuid);
+            const nextChats = await listChats(apiClient);
             setChats(nextChats);
         } finally {
             setIsKickingMember(false);
@@ -1113,7 +1107,7 @@ export default function ChatsMePage() {
             return;
         }
 
-        await apiClient.post(`/api/v1/message/chats/${chatUuidToSync}/last-seen-revision`, {
+        await setLastSeenRevision(apiClient, chatUuidToSync, {
             revision,
         });
     }

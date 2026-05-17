@@ -2,7 +2,24 @@ import { createContext, ReactNode, useContext, useEffect, useState } from "react
 
 import { authTokensChangedEventName, getLoginToken } from "../../auth/auth-tokens";
 import { getValidLoginToken } from "../../auth/refresh-login-token";
-import { MessageAttachment } from "../../messages/message-attachments";
+import {
+    buildCloseChatCommand,
+    buildOpenChatCommand,
+    ChatRevisionUpdatedEvent,
+    LastSeenRevisionUpdatedEvent,
+    MessageCreatedEvent,
+    MessageDeletedEvent,
+    MessageEditedEvent,
+    parseMessageWebSocketEvent,
+} from "../../features/realtime/message-websocket-contracts";
+
+export type {
+    ChatRevisionUpdatedEvent,
+    LastSeenRevisionUpdatedEvent,
+    MessageCreatedEvent,
+    MessageDeletedEvent,
+    MessageEditedEvent,
+} from "../../features/realtime/message-websocket-contracts";
 
 type MessageWebSocketContextValue = {
     isConnected: boolean;
@@ -17,51 +34,6 @@ type MessageWebSocketContextValue = {
 
 type MessageWebSocketProviderProps = {
     children: ReactNode;
-};
-
-type MessageWebSocketEvent = {
-    type?: string;
-    data?: unknown;
-};
-
-export type MessageCreatedEvent = {
-    messageUuid: string;
-    chatUuid: string;
-    userUuid: string;
-    revision: number;
-    text: string;
-    attachments: MessageAttachment[];
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type ChatRevisionUpdatedEvent = {
-    chatUuid: string;
-    recipientUuids: string[];
-    preview: string;
-    revision: number;
-};
-
-export type LastSeenRevisionUpdatedEvent = {
-    chatUuid: string;
-    userUuid: string;
-    lastSeenRevision: number;
-};
-
-export type MessageEditedEvent = {
-    messageUuid: string;
-    chatUuid: string;
-    userUuid: string;
-    text: string;
-    attachments: MessageAttachment[];
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type MessageDeletedEvent = {
-    messageUuid: string;
-    chatUuid: string;
-    userUuid: string;
 };
 
 type MessageCreatedListener = (event: MessageCreatedEvent) => void;
@@ -159,7 +131,7 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
 
         function handleMessage(event: MessageEvent<string>) {
             try {
-                const websocketEvent = JSON.parse(event.data) as MessageWebSocketEvent;
+                const websocketEvent = parseMessageWebSocketEvent(event.data);
                 if (websocketEvent.type === "MessageCreated") {
                     messageCreatedListeners.forEach((listener) => {
                         listener(websocketEvent.data as MessageCreatedEvent);
@@ -314,12 +286,7 @@ function subscribeChat(chatUuid: string) {
         return;
     }
 
-    messageWebSocket.send(JSON.stringify({
-        type: "OpenChat",
-        data: {
-            chatUuid,
-        },
-    }));
+    messageWebSocket.send(buildOpenChatCommand(chatUuid));
 }
 
 function unsubscribeChat(chatUuid: string) {
@@ -329,9 +296,7 @@ function unsubscribeChat(chatUuid: string) {
         return;
     }
 
-    messageWebSocket.send(JSON.stringify({
-        type: "UnsubscribeChat",
-    }));
+    messageWebSocket.send(buildCloseChatCommand());
 }
 
 function messageCreatedListener(listener: MessageCreatedListener) {

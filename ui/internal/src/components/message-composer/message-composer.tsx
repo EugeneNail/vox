@@ -1,5 +1,6 @@
 import { ChangeEvent, ClipboardEvent, DragEvent, FormEvent, KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { uploadImageAttachment } from "../../features/attachments/attachments-api";
 import { buildAttachmentUrl, generateLocalAttachmentUuid, isImageAttachmentName, isImageFile, MessageAttachment } from "../../messages/message-attachments";
 import "./message-composer.sass";
 
@@ -459,19 +460,7 @@ function getAttachmentStatusMessage(attachments: ComposerAttachment[]) {
 }
 
 async function uploadAttachment(file: File) {
-    const formData = new FormData();
-    formData.append("file", file, file.name || "attachment");
-
-    const response = await fetch("/api/v1/attachments/images", {
-        method: "POST",
-        body: formData,
-    });
-
-    if (!response.ok) {
-        throw new Error(`upload failed with status ${response.status}`);
-    }
-
-    return response.json() as Promise<string>;
+    return uploadImageAttachment(file, "attachment");
 }
 
 function hasDraggedFiles(event: DragEvent<HTMLFormElement>) {
