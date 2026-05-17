@@ -1,4 +1,4 @@
-import { type RefObject } from "react";
+import { type MouseEvent, type RefObject } from "react";
 import { ChatListLink, SearchResultButton, type Chat } from "./chats-ui";
 import { type PublicProfile } from "../../../profiles/profile-cache";
 
@@ -21,6 +21,7 @@ type ChatsSidebarProps = {
     searchProfiles: PublicProfile[];
     searchProfilesError: string | null;
     searchQuery: string;
+    startResize: (event: MouseEvent<HTMLButtonElement>) => void;
     setIsSearchFocused: (value: boolean) => void;
     setSearchQuery: (value: string) => void;
 };
@@ -44,6 +45,7 @@ export function ChatsSidebar(props: ChatsSidebarProps) {
         searchProfiles,
         searchProfilesError,
         searchQuery,
+        startResize,
         setIsSearchFocused,
         setSearchQuery,
     } = props;
@@ -128,6 +130,12 @@ export function ChatsSidebar(props: ChatsSidebarProps) {
                     </>
                 )}
             </div>
+            <button
+                aria-label="Resize chats sidebar"
+                className="chats-me-page__sidebar-resize-handle"
+                type="button"
+                onMouseDown={startResize}
+            />
         </aside>
     );
 }

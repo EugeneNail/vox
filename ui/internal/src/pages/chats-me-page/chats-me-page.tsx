@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MouseEvent, type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid, getLoginToken } from "../../auth/auth-tokens";
 import {
@@ -49,6 +49,10 @@ enum ChatMemberRole {
 
 const lastSeenRevisionSyncIntervalMs = 30_000;
 const chatBottomThresholdPx = 24;
+const chatsSidebarWidthStorageKey = "vox.chats.sidebarWidth";
+const chatsSidebarMinWidthPx = 230;
+const chatsSidebarMaxWidthPx = 520;
+const chatsSidebarDefaultWidthPx = 350;
 
 async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
     const data = await searchProfiles(apiClient, query, 10);
@@ -81,6 +85,7 @@ export default function ChatsMePage() {
     const shouldAutoScrollSelectedChatOnNextMessageRef = useRef(false);
     const shouldSkipNextBottomScrollSyncRef = useRef(false);
     const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
+    const sidebarResizeStateRef = useRef<{ startX: number; startWidth: number; } | null>(null);
     const {
         chats,
         setChats,
@@ -118,6 +123,8 @@ export default function ChatsMePage() {
     const [localLastSeenRevisionByChatUuid, setLocalLastSeenRevisionByChatUuid] = useState<Record<string, number>>({});
     const [chatPreviewByChatUuid, setChatPreviewByChatUuid] = useState<Record<string, string>>({});
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
+    const [sidebarWidth, setSidebarWidth] = useState(() => loadChatsSidebarWidth());
+    const [isSidebarResizing, setIsSidebarResizing] = useState(false);
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
@@ -165,6 +172,10 @@ export default function ChatsMePage() {
     }, [selectedChatUuid]);
 
     useEffect(() => {
+        window.localStorage.setItem(chatsSidebarWidthStorageKey, String(sidebarWidth));
+    }, [sidebarWidth]);
+
+    useEffect(() => {
         const audio = new Audio("/message-received.mp3");
         audio.preload = "auto";
         messageReceivedAudioRef.current = audio;
@@ -175,6 +186,35 @@ export default function ChatsMePage() {
             messageReceivedAudioRef.current = null;
         };
     }, []);
+
+    useEffect(() => {
+        if (!isSidebarResizing) {
+            return;
+        }
+
+        function handleMouseMove(event: globalThis.MouseEvent) {
+            const resizeState = sidebarResizeStateRef.current;
+            if (!resizeState) {
+                return;
+            }
+
+            const widthDelta = event.clientX - resizeState.startX;
+            setSidebarWidth(clampChatsSidebarWidth(resizeState.startWidth + widthDelta));
+        }
+
+        function handleMouseUp() {
+            sidebarResizeStateRef.current = null;
+            setIsSidebarResizing(false);
+        }
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isSidebarResizing]);
 
     useEffect(() => {
         const staleCachedUserUuids = getStaleCachedUserUuids();
@@ -1038,8 +1078,21 @@ export default function ChatsMePage() {
         });
     }
 
+    function startSidebarResize(event: MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+
+        sidebarResizeStateRef.current = {
+            startX: event.clientX,
+            startWidth: sidebarWidth,
+        };
+        setIsSidebarResizing(true);
+    }
+
     return (
-        <section className="chats-me-page">
+        <section
+            className={isSidebarResizing ? "chats-me-page chats-me-page--resizing" : "chats-me-page"}
+            style={{ "--chats-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+        >
             <ChatsSidebar
                 authenticatedUserUuid={authenticatedUserUuid}
                 chatPreviewByChatUuid={chatPreviewByChatUuid}
@@ -1059,6 +1112,7 @@ export default function ChatsMePage() {
                 searchProfiles={searchProfiles}
                 searchProfilesError={searchProfilesError}
                 searchQuery={searchQuery}
+                startResize={startSidebarResize}
                 setIsSearchFocused={setIsSearchFocused}
                 setSearchQuery={setSearchQuery}
             />
@@ -1293,4 +1347,26 @@ function messageEditedEventToChatMessage(event: MessageEditedEvent, revision: nu
 
 function generatePendingMessageUuid() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function loadChatsSidebarWidth() {
+    if (typeof window === "undefined") {
+        return chatsSidebarDefaultWidthPx;
+    }
+
+    const rawValue = window.localStorage.getItem(chatsSidebarWidthStorageKey);
+    if (!rawValue) {
+        return chatsSidebarDefaultWidthPx;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (!Number.isFinite(parsedValue)) {
+        return chatsSidebarDefaultWidthPx;
+    }
+
+    return clampChatsSidebarWidth(parsedValue);
+}
+
+function clampChatsSidebarWidth(width: number) {
+    return Math.min(chatsSidebarMaxWidthPx, Math.max(chatsSidebarMinWidthPx, Math.round(width)));
 }

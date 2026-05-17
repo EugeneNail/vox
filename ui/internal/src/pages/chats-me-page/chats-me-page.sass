@@ -9,7 +9,7 @@
   --chats-page-accent: #4da6ff
   --chats-page-danger: #db5c5c
   display: grid
-  grid-template-columns: 350px minmax(0, 1fr) 400px
+  grid-template-columns: var(--chats-sidebar-width, 350px) minmax(0, 1fr) 400px
   gap: 0
   width: 100%
   height: 100%
@@ -28,11 +28,41 @@
   box-shadow: none
 
 .chats-me-page__sidebar
+  position: relative
   display: flex
   flex-direction: column
   gap: 0
   padding: 16px
   background: var(--chats-page-bg-mid)
+
+.chats-me-page--resizing
+  user-select: none
+  cursor: col-resize
+
+.chats-me-page__sidebar-resize-handle
+  position: absolute
+  top: 0
+  right: -4px
+  bottom: 0
+  width: 8px
+  padding: 0
+  border: 0
+  background: transparent
+  cursor: col-resize
+
+.chats-me-page__sidebar-resize-handle::after
+  content: ""
+  position: absolute
+  top: 0
+  right: 3px
+  bottom: 0
+  width: 2px
+  background: transparent
+  transition: background-color 120ms ease
+
+.chats-me-page__sidebar-resize-handle:hover::after,
+.chats-me-page--resizing .chats-me-page__sidebar-resize-handle::after
+  background: #3f8cff
 
 .chats-me-page__chat
   display: flex
@@ -806,7 +836,7 @@
 
 @media (max-width: 1180px)
   .chats-me-page
-    grid-template-columns: 350px minmax(0, 1fr)
+    grid-template-columns: var(--chats-sidebar-width, 350px) minmax(0, 1fr)
 
   .chats-me-page__details
     display: none
@@ -822,3 +852,6 @@
 
   .chats-me-page__chat
     min-height: 60dvh
+
+  .chats-me-page__sidebar-resize-handle
+    display: none
