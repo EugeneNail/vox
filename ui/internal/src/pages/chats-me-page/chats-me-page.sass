@@ -1,114 +1,129 @@
 .chats-me-page
   display: grid
-  grid-template-columns: minmax(220px, 22vw) minmax(0, 1fr) minmax(220px, 20vw)
-  height: 100dvh
+  grid-template-columns: minmax(280px, 24rem) minmax(0, 1fr) minmax(240px, 22rem)
+  gap: 0.85rem
+  height: 100%
   min-height: 0
-  overflow: hidden
-  background: linear-gradient(135deg, rgba(11, 17, 24, 0.96), rgba(18, 28, 41, 0.94))
+  padding: 0.4rem
+  color: var(--tg-color-text)
+  background: transparent
 
 .chats-me-page__sidebar,
+.chats-me-page__chat,
 .chats-me-page__details
   min-width: 0
   min-height: 0
-  border-color: rgba(255, 255, 255, 0.08)
-  background: rgba(5, 9, 14, 0.42)
+  border: 1px solid var(--tg-color-border)
+  border-radius: var(--tg-radius-xl)
+  background: rgba(255, 255, 255, 0.78)
+  box-shadow: var(--tg-shadow-soft)
+  backdrop-filter: blur(24px)
 
 .chats-me-page__sidebar
   display: flex
   flex-direction: column
-  gap: 20px
-  padding: 24px
-  border-right: 1px solid rgba(255, 255, 255, 0.08)
+  gap: 1rem
+  padding: 1rem
 
 .chats-me-page__details
-  border-left: 1px solid rgba(255, 255, 255, 0.08)
+  overflow: hidden
 
 .chats-me-page__details-shell
   display: flex
   flex-direction: column
-  gap: 14px
+  gap: 0.9rem
   height: 100%
   min-height: 0
-  padding: 24px
+  padding: 1rem
+
+.chats-me-page__details-shell--empty
+  justify-content: flex-start
 
 .chats-me-page__details-header
   display: flex
   align-items: center
   justify-content: space-between
-  gap: 12px
+  gap: 0.8rem
 
-.chats-me-page__details-action-button
+.chats-me-page__details-action-button,
+.chats-me-page__create-group-button
   display: inline-flex
   align-items: center
-  gap: 8px
-  padding: 8px 12px
-  border: 1px solid rgba(240, 197, 169, 0.22)
+  gap: 0.45rem
+  min-height: 2.5rem
+  padding: 0 0.9rem
+  border: 1px solid rgba(51, 144, 236, 0.16)
   border-radius: 999px
-  background: rgba(240, 197, 169, 0.08)
-  color: #f6efe4
-  cursor: pointer
+  background: rgba(255, 255, 255, 0.82)
+  color: var(--tg-color-accent)
   font: inherit
+  font-weight: 600
   white-space: nowrap
+  transition: transform var(--tg-transition-fast), background-color var(--tg-transition-fast), border-color var(--tg-transition-fast)
 
-.chats-me-page__details-action-button:hover
-  background: rgba(240, 197, 169, 0.14)
+.chats-me-page__details-action-button:hover,
+.chats-me-page__create-group-button:hover
+  transform: translateY(-1px)
+  border-color: rgba(51, 144, 236, 0.3)
+  background: rgba(232, 242, 253, 0.92)
 
-.chats-me-page__details-action-button-icon
-  font-size: 18px
-
-.chats-me-page__details-shell--empty
-  align-items: flex-start
-  justify-content: flex-start
+.chats-me-page__details-action-button-icon,
+.chats-me-page__create-group-button-icon
+  font-size: 1.05rem
 
 .chats-me-page__members
   display: flex
   flex: 1
   flex-direction: column
-  justify-content: flex-start
-  gap: 10px
+  gap: 0.45rem
   min-height: 0
   overflow-y: auto
-  scrollbar-color: rgba(246, 239, 228, 0.18) transparent
-  scrollbar-width: thin
 
 .chats-me-page__member
   display: grid
-  grid-template-columns: 40px minmax(0, 1fr) auto
+  grid-template-columns: 2.6rem minmax(0, 1fr) auto
   align-items: center
-  gap: 12px
-  min-height: 52px
-  padding: 8px 10px
-  border: 1px solid rgba(255, 255, 255, 0.08)
-  border-radius: 16px
-  background: rgba(255, 255, 255, 0.03)
+  gap: 0.7rem
+  min-height: 3.35rem
+  padding: 0.5rem 0.65rem
+  border-radius: var(--tg-radius-md)
+  background: rgba(244, 248, 252, 0.86)
 
-.chats-me-page__member-avatar
-  width: 40px
-  height: 40px
+.chats-me-page__member-avatar,
+.chats-me-page__avatar,
+.chats-me-page__message-avatar
   border-radius: 50%
   overflow: hidden
-  border: 1px solid rgba(255, 255, 255, 0.16)
-  background: #5b6471
-  box-sizing: border-box
-  color: #f8fafc
+  background: linear-gradient(180deg, #79a5cf, #5b87b2)
+  color: #fff
+  box-shadow: 0 10px 20px rgba(109, 140, 171, 0.18)
 
-.chats-me-page__member-avatar--placeholder
+.chats-me-page__member-avatar
+  width: 2.5rem
+  height: 2.5rem
+
+.chats-me-page__member-avatar--placeholder,
+.chats-me-page__avatar--placeholder,
+.chats-me-page__message-avatar--placeholder
   display: flex
   align-items: center
   justify-content: center
-  font-size: 13px
+  font-size: 0.8rem
   font-weight: 700
   letter-spacing: 0.04em
   text-transform: uppercase
 
-.chats-me-page__member-avatar--image
-  display: block
+.chats-me-page__member-avatar--image,
+.chats-me-page__avatar--image,
+.chats-me-page__message-avatar--image
+  width: 100%
+  height: 100%
   object-fit: cover
 
 .chats-me-page__member-name
   overflow: hidden
-  color: rgba(246, 239, 228, 0.88)
-  font-size: 14px
+  color: var(--tg-color-text)
+  font-size: 0.92rem
   text-overflow: ellipsis
   white-space: nowrap
 
@@ -116,107 +131,104 @@
   display: inline-flex
   align-items: center
   justify-content: center
-  width: 32px
-  height: 32px
+  width: 2rem
+  height: 2rem
   border: 0
   border-radius: 999px
-  background: rgba(255, 92, 72, 0.12)
-  color: #ff8c78
-  cursor: pointer
+  background: rgba(216, 92, 92, 0.12)
+  color: var(--tg-color-danger)
   font: inherit
 
 .chats-me-page__member-remove-button:hover
-  background: rgba(255, 92, 72, 0.2)
+  background: rgba(216, 92, 92, 0.18)
 
 .chats-me-page__member-remove-button:disabled
-  cursor: progress
-  opacity: 0.7
+  opacity: 0.65
 
 .chats-me-page__member-remove-button .material-symbols-rounded
-  font-size: 18px
+  font-size: 1rem
 
 .chats-me-page__sidebar-header
   display: grid
-  gap: 8px
+  gap: 0.55rem
 
 .chats-me-page__sidebar-title-row
   display: flex
   align-items: center
   justify-content: space-between
-  gap: 12px
+  gap: 0.8rem
 
-.chats-me-page__create-group-button
-  display: inline-flex
-  align-items: center
-  gap: 8px
-  padding: 8px 12px
-  border: 1px solid rgba(240, 197, 169, 0.22)
-  border-radius: 999px
-  background: rgba(240, 197, 169, 0.08)
-  color: #f6efe4
-  cursor: pointer
-  font: inherit
-  white-space: nowrap
-
-.chats-me-page__create-group-button:hover
-  background: rgba(240, 197, 169, 0.14)
-
-.chats-me-page__create-group-button-icon
-  font-size: 18px
-
-.chats-me-page__search
+.chats-me-page__search,
+.chats-me-page__group-search
   position: relative
   display: flex
   align-items: center
-  min-height: 44px
-  padding: 0 12px 0 40px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 14px
-  background: rgba(255, 255, 255, 0.04)
+  min-height: 2.9rem
+  padding: 0 0.8rem 0 2.5rem
+  border: 1px solid var(--tg-color-border)
+  border-radius: 999px
+  background: rgba(244, 248, 252, 0.88)
+  transition: border-color var(--tg-transition-fast), background-color var(--tg-transition-fast), box-shadow var(--tg-transition-fast)
 
-.chats-me-page__search:focus-within
-  border-color: rgba(240, 197, 169, 0.28)
-  background: rgba(240, 197, 169, 0.08)
+.chats-me-page__search:focus-within,
+.chats-me-page__group-search:focus-within
+  border-color: rgba(51, 144, 236, 0.34)
+  background: rgba(255, 255, 255, 0.94)
+  box-shadow: 0 0 0 4px rgba(51, 144, 236, 0.08)
 
-.chats-me-page__search-icon
+.chats-me-page__search-icon,
+.chats-me-page__group-search-icon
   position: absolute
-  left: 12px
-  color: rgba(246, 239, 228, 0.5)
-  font-size: 18px
+  left: 0.85rem
+  color: var(--tg-color-text-faint)
+  font-size: 1rem
 
-.chats-me-page__search-input
+.chats-me-page__search-input,
+.chats-me-page__group-search-input,
+.chats-me-page__group-field-input
   flex: 1
   width: 100%
   min-width: 0
   border: 0
   background: transparent
-  color: #f6efe4
+  color: var(--tg-color-text)
   font: inherit
   outline: 0
 
-.chats-me-page__search-input::placeholder
-  color: rgba(246, 239, 228, 0.42)
+.chats-me-page__group-field-input
+  min-height: 2.9rem
+  padding: 0 1rem
+  border: 1px solid var(--tg-color-border)
+  border-radius: var(--tg-radius-md)
+  background: rgba(255, 255, 255, 0.88)
 
-.chats-me-page__search-clear
+.chats-me-page__search-input::placeholder,
+.chats-me-page__group-search-input::placeholder,
+.chats-me-page__group-field-input::placeholder
+  color: var(--tg-color-text-faint)
+
+.chats-me-page__search-clear,
+.chats-me-page__group-search-clear
   display: inline-flex
   align-items: center
   justify-content: center
-  width: 28px
-  height: 28px
+  width: 1.85rem
+  height: 1.85rem
   border: 0
   border-radius: 999px
   background: transparent
-  color: rgba(246, 239, 228, 0.58)
-  cursor: pointer
+  color: var(--tg-color-text-faint)
 
-.chats-me-page__search-clear:hover
-  background: rgba(255, 255, 255, 0.08)
-  color: #f6efe4
+.chats-me-page__search-clear:hover,
+.chats-me-page__group-search-clear:hover
+  background: rgba(51, 144, 236, 0.08)
+  color: var(--tg-color-text)
 
 .chats-me-page__eyebrow
   margin: 0
-  color: #f0c5a9
-  font-size: 12px
+  color: var(--tg-color-accent)
+  font-size: 0.76rem
+  font-weight: 700
   letter-spacing: 0.18em
   text-transform: uppercase
 
@@ -225,102 +237,80 @@
   margin: 0
 
 .chats-me-page__title
-  font-size: 28px
+  font-size: 1.75rem
+  letter-spacing: -0.04em
 
 .chats-me-page__list
   display: grid
-  gap: 10px
+  gap: 0.35rem
   min-height: 0
   overflow-y: auto
-  scrollbar-color: rgba(246, 239, 228, 0.18) transparent
-  scrollbar-width: thin
 
 .chats-me-page__chat-button
   display: grid
-  grid-template-columns: 42px minmax(0, 1fr)
+  grid-template-columns: 2.9rem minmax(0, 1fr)
   align-items: center
-  gap: 12px
-  min-height: 58px
-  padding: 8px 10px
+  gap: 0.75rem
+  min-height: 4rem
+  padding: 0.6rem 0.65rem
   border: 1px solid transparent
-  border-radius: 18px
+  border-radius: var(--tg-radius-md)
   background: transparent
-  color: #f6efe4
-  cursor: pointer
+  color: var(--tg-color-text)
   font: inherit
   text-align: left
-  text-decoration: none
 
-.chats-me-page__chat-button:hover,
+.chats-me-page__chat-button:hover
+  background: rgba(244, 248, 252, 0.9)
+
 .chats-me-page__chat-button--active
-  border-color: rgba(240, 197, 169, 0.28)
-  background: rgba(240, 197, 169, 0.1)
+  background: linear-gradient(180deg, rgba(232, 242, 253, 0.98), rgba(255, 255, 255, 0.86))
+  border-color: rgba(51, 144, 236, 0.22)
 
 .chats-me-page__avatar
-  width: 42px
-  height: 42px
-  border-radius: 50%
-  overflow: hidden
-  border: 1px solid rgba(255, 255, 255, 0.16)
-  background: #5b6471
-  box-sizing: border-box
-  color: #f8fafc
-
-.chats-me-page__avatar--placeholder
-  display: flex
-  align-items: center
-  justify-content: center
-  font-size: 14px
-  font-weight: 700
-  letter-spacing: 0.04em
-  text-transform: uppercase
-
-.chats-me-page__avatar--image
-  display: block
-  object-fit: cover
+  width: 2.8rem
+  height: 2.8rem
 
 .chats-me-page__chat-name
   overflow: hidden
-  color: rgba(246, 239, 228, 0.86)
-  font-size: 14px
+  color: var(--tg-color-text)
+  font-size: 0.94rem
+  font-weight: 600
   text-overflow: ellipsis
   white-space: nowrap
 
 .chats-me-page__chat-preview
   display: grid
-  gap: 4px
+  gap: 0.18rem
   min-width: 0
 
 .chats-me-page__chat-row
   display: flex
   align-items: center
-  gap: 10px
+  gap: 0.5rem
   min-width: 0
 
 .chats-me-page__chat-badge
   flex: 0 0 auto
-  min-width: 24px
-  padding: 4px 8px
+  min-width: 1.55rem
+  padding: 0.22rem 0.5rem
   border-radius: 999px
-  background: #f0c5a9
-  color: #1b2531
-  font-size: 12px
+  background: linear-gradient(180deg, var(--tg-color-accent), var(--tg-color-accent-strong))
+  color: #fff
+  font-size: 0.72rem
   font-weight: 700
   line-height: 1
   text-align: center
 
 .chats-me-page__chat-message-piece
   overflow: hidden
-  color: rgba(246, 239, 228, 0.54)
-  font-size: 12px
+  color: var(--tg-color-text-soft)
+  font-size: 0.8rem
   text-overflow: ellipsis
   white-space: nowrap
 
 .chats-me-page__chat-button--search-result
-  grid-template-columns: 20px 42px minmax(0, 1fr)
-  gap: 12px
-  border: 1px solid transparent
-  cursor: pointer
+  grid-template-columns: 1.1rem 2.8rem minmax(0, 1fr)
   user-select: none
 
 .chats-me-page__chat-button--search-result .chats-me-page__avatar
@@ -330,203 +320,148 @@
   grid-column: 3 / 4
 
 .chats-me-page__group-checkbox
-  width: 18px
-  height: 18px
+  width: 1rem
+  height: 1rem
   margin: 0
-  accent-color: #f0c5a9
+  accent-color: var(--tg-color-accent)
   cursor: inherit
 
 .chats-me-page__chat-button--selected
-  border-color: rgba(240, 197, 169, 0.34)
-  background: rgba(240, 197, 169, 0.12)
-
-.chats-me-page__chat-button--search-result:disabled
-  cursor: progress
-  opacity: 0.72
+  border-color: rgba(51, 144, 236, 0.24)
+  background: rgba(232, 242, 253, 0.9)
 
 .chats-me-page__chat
   display: flex
   min-width: 0
   min-height: 0
-  padding: 0 28px 28px
+  padding: 0.5rem
 
 .chats-me-page__chat-shell
   display: grid
   grid-template-rows: auto minmax(0, 1fr) auto
-  gap: 14px
+  gap: 0.8rem
   width: 100%
   height: 100%
   min-height: 0
 
 .chats-me-page__chat-header
-  position: sticky
-  z-index: 2
-  top: 0
   display: grid
-  gap: 8px
-  margin-right: -28px
-  margin-left: -28px
-  padding: 6px 28px
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08)
-  background: rgba(13, 20, 29, 0.88)
+  gap: 0.3rem
+  padding: 0.5rem 0.65rem 0.75rem
+  border-bottom: 1px solid var(--tg-color-border)
 
 .chats-me-page__chat-placeholder
   display: grid
   align-content: center
   justify-items: center
-  gap: 12px
+  gap: 0.8rem
   width: 100%
   min-height: 0
-  border: 1px dashed rgba(255, 255, 255, 0.12)
-  border-radius: 28px
-  background: rgba(255, 255, 255, 0.03)
+  border-radius: var(--tg-radius-lg)
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(244, 248, 252, 0.9))
   text-align: center
 
 .chats-me-page__chat-title
   max-width: 72ch
   overflow-wrap: anywhere
-  font-size: clamp(20px, 2.5vw, 28px)
+  font-size: clamp(1.15rem, 2.5vw, 1.65rem)
+  letter-spacing: -0.03em
 
 .chats-me-page__chat-text,
 .chats-me-page__state
   margin: 0
-  color: rgba(246, 239, 228, 0.66)
+  color: var(--tg-color-text-soft)
 
 .chats-me-page__state--error
-  color: #ff9e89
+  color: var(--tg-color-danger)
 
 .chats-me-page__messages
   display: flex
   flex-direction: column
+  gap: 0.2rem
   min-height: 0
   overflow-y: auto
-  scrollbar-color: rgba(246, 239, 228, 0.18) transparent
-  scrollbar-width: thin
-
-.chats-me-page__list::-webkit-scrollbar,
-.chats-me-page__messages::-webkit-scrollbar
-  width: 8px
-
-.chats-me-page__list::-webkit-scrollbar-track,
-.chats-me-page__messages::-webkit-scrollbar-track
-  background: transparent
-
-.chats-me-page__list::-webkit-scrollbar-thumb,
-.chats-me-page__messages::-webkit-scrollbar-thumb
-  border-radius: 999px
-  background: rgba(246, 239, 228, 0.16)
-
-.chats-me-page__list::-webkit-scrollbar-thumb:hover,
-.chats-me-page__messages::-webkit-scrollbar-thumb:hover
-  background: rgba(246, 239, 228, 0.26)
+  padding: 0 0.5rem 0.5rem
 
 .chats-me-page__message
   display: grid
-  grid-template-columns: 44px minmax(0, 1fr) 64px
-  column-gap: 12px
+  grid-template-columns: 2.7rem minmax(0, 1fr) 3.5rem
+  column-gap: 0.75rem
   width: 100%
-  padding: 2px 10px 2px 0
-  border-radius: 12px
-  transition: background 0.3s ease
+  padding: 0.15rem 0.45rem 0.2rem 0
+  border-radius: var(--tg-radius-md)
+  transition: background-color var(--tg-transition-fast)
 
 .chats-me-page__message:hover
-  background: rgba(255, 255, 255, 0.035)
+  background: rgba(244, 248, 252, 0.82)
 
 .chats-me-page__message--editing
-  background: rgba(240, 197, 169, 0.1)
-
-.chats-me-page__message--editing:hover
-  background: rgba(240, 197, 169, 0.14)
+  background: rgba(232, 242, 253, 0.96)
 
 .chats-me-page__message--pending .chats-me-page__message-text,
 .chats-me-page__message--pending .chats-me-page__message-time
-  color: rgba(246, 239, 228, 0.36)
+  color: var(--tg-color-text-faint)
 
 .chats-me-page__message--thread-start
-  margin-top: 28px
-  padding-top: 6px
+  margin-top: 1rem
+  padding-top: 0.35rem
 
 .chats-me-page__message-avatar-cell
   display: flex
   justify-content: center
 
 .chats-me-page__message-avatar
-  width: 36px
-  height: 36px
-  border-radius: 50%
-  overflow: hidden
-  border: 1px solid rgba(255, 255, 255, 0.16)
-  background: #5b6471
-  box-sizing: border-box
-  color: #f8fafc
-
-.chats-me-page__message-avatar--placeholder
-  display: flex
-  align-items: center
-  justify-content: center
-  font-size: 12px
-  font-weight: 700
-  letter-spacing: 0.04em
-  text-transform: uppercase
-
-.chats-me-page__message-avatar--image
-  display: block
-  object-fit: cover
+  width: 2.3rem
+  height: 2.3rem
 
 .chats-me-page__message-body
   display: grid
-  gap: 4px
+  gap: 0.22rem
   min-width: 0
 
 .chats-me-page__message-attachments
   display: flex
   flex-wrap: wrap
-  gap: 8px
+  gap: 0.55rem
   min-width: 0
-  padding-top: 6px
+  padding-top: 0.3rem
 
 .chats-me-page__message-attachment
   display: inline-flex
   align-items: center
-  gap: 8px
+  gap: 0.5rem
   min-width: 0
-  border: 1px solid rgba(255, 255, 255, 0.08)
-  border-radius: 14px
-  background: rgba(255, 255, 255, 0.04)
-  color: inherit
-  text-decoration: none
+  border: 1px solid rgba(51, 144, 236, 0.1)
+  border-radius: var(--tg-radius-md)
+  background: rgba(255, 255, 255, 0.86)
 
 .chats-me-page__message-attachment--image
   overflow: hidden
   max-width: 62.5%
   max-height: 62.5vh
-  border-radius: 16px
+  border-radius: var(--tg-radius-md)
 
 .chats-me-page__message-attachment-image
-  display: block
   width: 100%
   height: auto
   max-height: 100%
   object-fit: contain
 
 .chats-me-page__message-attachment--document
-  padding: 10px 12px
+  padding: 0.7rem 0.8rem
 
 .chats-me-page__message-attachment-icon
   flex: 0 0 auto
-  color: #f0c5a9
-  font-size: 20px
+  color: var(--tg-color-accent)
+  font-size: 1.15rem
 
 .chats-me-page__message-attachment-name
   overflow: hidden
-  color: rgba(246, 239, 228, 0.88)
-  font-size: 13px
+  color: var(--tg-color-text)
+  font-size: 0.8rem
   text-overflow: ellipsis
   white-space: nowrap
   max-width: 24ch
-
-.chats-me-page__message-header
-  min-width: 0
 
 .chats-me-page__message-author,
 .chats-me-page__message-text,
@@ -535,9 +470,9 @@
 
 .chats-me-page__message-author
   overflow: hidden
-  color: rgba(240, 197, 169, 0.82)
-  font-size: 13px
-  font-weight: 650
+  color: var(--tg-color-accent)
+  font-size: 0.82rem
+  font-weight: 700
   text-overflow: ellipsis
   white-space: nowrap
 
@@ -545,36 +480,33 @@
   display: flex
   align-items: flex-start
   justify-content: flex-end
-  gap: 3px
-  padding-top: 1px
+  gap: 0.18rem
+  padding-top: 0.05rem
 
 .chats-me-page__message-time
-  color: rgba(246, 239, 228, 0.44)
-  font-size: 11px
+  color: var(--tg-color-text-faint)
+  font-size: 0.68rem
 
 .chats-me-page__message-delivery-icon
-  color: rgba(240, 197, 169, 0.92)
-  font-size: 14px
+  color: var(--tg-color-accent)
+  font-size: 0.84rem
   line-height: 1
 
 .chats-me-page__message:not(.chats-me-page__message--thread-start) .chats-me-page__message-status
-  padding-top: 4px
+  padding-top: 0.2rem
 
 .chats-me-page__message-text
-  color: rgba(246, 239, 228, 0.88)
-  line-height: 1.5
+  color: var(--tg-color-text)
+  line-height: 1.52
   overflow-wrap: anywhere
-  text-align: justify
-  text-align-last: left
   white-space: pre-wrap
 
 .chats-me-page__message-edited
-  color: rgba(246, 239, 228, 0.42)
-  font-size: 11px
+  color: var(--tg-color-text-faint)
+  font-size: 0.7rem
 
 .chats-me-page__message-link
-  color: #f0c5a9
-  text-decoration: none
+  color: var(--tg-color-accent)
 
 .chats-me-page__message-link:hover,
 .chats-me-page__message-link:focus-visible
@@ -588,44 +520,42 @@
 .chats-me-page__context-menu
   position: fixed
   z-index: 20
-  min-width: 160px
-  padding: 6px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 14px
-  background: rgba(5, 9, 14, 0.94)
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28)
+  min-width: 12rem
+  padding: 0.35rem
+  border: 1px solid var(--tg-color-border)
+  border-radius: var(--tg-radius-md)
+  background: rgba(255, 255, 255, 0.96)
+  box-shadow: var(--tg-shadow-surface)
 
 .chats-me-page__context-menu-button
   display: flex
   align-items: center
-  gap: 8px
+  gap: 0.55rem
   width: 100%
-  padding: 9px 10px
+  padding: 0.65rem 0.75rem
   border: 0
-  border-radius: 10px
+  border-radius: 0.75rem
   background: transparent
-  color: rgba(246, 239, 228, 0.9)
-  cursor: pointer
+  color: var(--tg-color-text)
   font: inherit
   text-align: left
 
 .chats-me-page__context-menu-button:hover
-  background: rgba(255, 255, 255, 0.06)
+  background: rgba(244, 248, 252, 0.92)
 
 .chats-me-page__context-menu-danger
-  margin-top: 6px
-  padding-top: 6px
-  border-top: 1px solid rgba(255, 255, 255, 0.1)
+  margin-top: 0.35rem
+  padding-top: 0.35rem
+  border-top: 1px solid var(--tg-color-border)
 
 .chats-me-page__context-menu-button--danger
-  color: rgba(255, 129, 108, 0.94)
+  color: var(--tg-color-danger)
 
 .chats-me-page__context-menu-button--danger:hover
-  background: rgba(255, 92, 72, 0.12)
-  color: #ff8c78
+  background: rgba(216, 92, 92, 0.08)
 
 .chats-me-page__context-menu-button .material-symbols-rounded
-  font-size: 18px
+  font-size: 1rem
 
 .chats-me-page__modal-backdrop
   position: fixed
@@ -633,40 +563,49 @@
   inset: 0
   display: grid
   place-items: center
-  padding: 24px
-  background: rgba(0, 0, 0, 0.58)
+  padding: 1.2rem
+  background: rgba(72, 98, 122, 0.34)
+  backdrop-filter: blur(10px)
+
+.chats-me-page__delete-dialog,
+.chats-me-page__group-dialog
+  display: grid
+  gap: 1rem
+  width: min(680px, 100%)
+  padding: 1.3rem
+  border: 1px solid var(--tg-color-border)
+  border-radius: var(--tg-radius-xl)
+  background: rgba(255, 255, 255, 0.96)
+  box-shadow: var(--tg-shadow-surface)
 
 .chats-me-page__delete-dialog
-  display: grid
-  gap: 18px
   width: min(520px, 100%)
-  padding: 22px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 22px
-  background: rgba(9, 14, 21, 0.98)
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44)
 
-.chats-me-page__delete-dialog-header
+.chats-me-page__delete-dialog-header,
+.chats-me-page__group-dialog-header
   display: grid
-  gap: 8px
+  gap: 0.45rem
 
-.chats-me-page__delete-dialog-title
+.chats-me-page__delete-dialog-title,
+.chats-me-page__group-dialog-title
   margin: 0
-  font-size: 22px
+  font-size: 1.45rem
+  letter-spacing: -0.03em
 
-.chats-me-page__delete-dialog-text
+.chats-me-page__delete-dialog-text,
+.chats-me-page__group-dialog-text
   margin: 0
-  color: rgba(246, 239, 228, 0.58)
-  font-size: 14px
+  color: var(--tg-color-text-soft)
+  font-size: 0.92rem
   line-height: 1.5
 
 .chats-me-page__delete-message-preview
   display: grid
-  grid-template-columns: 44px minmax(0, 1fr) 64px
-  column-gap: 18px
-  padding: 14px 12px
-  border-radius: 14px
-  background: linear-gradient(90deg, rgba(240, 197, 169, 0.08), rgba(255, 255, 255, 0.025))
+  grid-template-columns: 2.7rem minmax(0, 1fr) 3.5rem
+  column-gap: 0.8rem
+  padding: 0.95rem
+  border-radius: var(--tg-radius-md)
+  background: rgba(244, 248, 252, 0.88)
 
 .chats-me-page__delete-message-preview .chats-me-page__message-attachments
   grid-column: 2 / 3
@@ -677,193 +616,80 @@
   -webkit-box-orient: vertical
   -webkit-line-clamp: 2
 
-.chats-me-page__delete-dialog-actions
+.chats-me-page__delete-dialog-actions,
+.chats-me-page__group-dialog-actions
   display: grid
   grid-template-columns: repeat(2, minmax(0, 1fr))
-  gap: 10px
+  gap: 0.65rem
 
-.chats-me-page__delete-dialog-button
+.chats-me-page__delete-dialog-button,
+.chats-me-page__group-dialog-button
   width: 100%
-  padding: 10px 16px
-  border: 1px solid rgba(255, 255, 255, 0.12)
-  border-radius: 12px
-  background: rgba(255, 255, 255, 0.05)
-  color: rgba(246, 239, 228, 0.9)
-  cursor: pointer
+  min-height: 2.8rem
+  padding: 0 1rem
+  border: 1px solid var(--tg-color-border)
+  border-radius: 999px
+  background: rgba(244, 248, 252, 0.9)
+  color: var(--tg-color-text)
   font: inherit
+  font-weight: 600
 
-.chats-me-page__delete-dialog-button:hover
-  background: rgba(255, 255, 255, 0.08)
+.chats-me-page__delete-dialog-button:hover,
+.chats-me-page__group-dialog-button:hover
+  background: rgba(232, 242, 253, 0.92)
 
-.chats-me-page__delete-dialog-button:disabled
-  cursor: default
+.chats-me-page__delete-dialog-button:disabled,
+.chats-me-page__group-dialog-button:disabled
   opacity: 0.6
 
 .chats-me-page__delete-dialog-button--danger
-  border-color: rgba(255, 129, 108, 0.38)
-  background: rgba(255, 92, 72, 0.14)
-  color: #ff8c78
+  color: #fff
+  border-color: transparent
+  background: linear-gradient(180deg, #e06d6d, var(--tg-color-danger))
 
-.chats-me-page__delete-dialog-button--danger:hover
-  background: rgba(255, 92, 72, 0.22)
-
-.chats-me-page__group-dialog
-  display: grid
-  gap: 18px
-  width: min(680px, 100%)
-  padding: 22px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 22px
-  background: rgba(9, 14, 21, 0.98)
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44)
-
-.chats-me-page__group-dialog-header
-  display: grid
-  gap: 8px
-
-.chats-me-page__group-dialog-title
-  margin: 0
-  font-size: 22px
-
-.chats-me-page__group-dialog-text
-  margin: 0
-  color: rgba(246, 239, 228, 0.58)
-  font-size: 14px
-  line-height: 1.5
+.chats-me-page__group-dialog-button--primary
+  color: #fff
+  border-color: transparent
+  background: linear-gradient(180deg, var(--tg-color-accent), var(--tg-color-accent-strong))
 
 .chats-me-page__group-field
   display: grid
-  gap: 8px
+  gap: 0.45rem
 
 .chats-me-page__group-field-label
-  color: rgba(246, 239, 228, 0.7)
-  font-size: 13px
-  font-weight: 650
-  letter-spacing: 0.04em
+  color: var(--tg-color-text-soft)
+  font-size: 0.76rem
+  font-weight: 700
+  letter-spacing: 0.14em
   text-transform: uppercase
-
-.chats-me-page__group-field-input
-  width: 100%
-  min-width: 0
-  min-height: 44px
-  padding: 0 14px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 14px
-  background: rgba(255, 255, 255, 0.04)
-  color: #f6efe4
-  font: inherit
-  outline: 0
-
-.chats-me-page__group-field-input:focus
-  border-color: rgba(240, 197, 169, 0.28)
-  background: rgba(240, 197, 169, 0.08)
-
-.chats-me-page__group-field-input::placeholder
-  color: rgba(246, 239, 228, 0.42)
-
-.chats-me-page__group-search
-  position: relative
-  display: flex
-  align-items: center
-  min-height: 44px
-  padding: 0 12px 0 40px
-  border: 1px solid rgba(255, 255, 255, 0.1)
-  border-radius: 14px
-  background: rgba(255, 255, 255, 0.04)
-
-.chats-me-page__group-search:focus-within
-  border-color: rgba(240, 197, 169, 0.28)
-  background: rgba(240, 197, 169, 0.08)
-
-.chats-me-page__group-search-icon
-  position: absolute
-  left: 12px
-  color: rgba(246, 239, 228, 0.5)
-  font-size: 18px
-
-.chats-me-page__group-search-input
-  flex: 1
-  width: 100%
-  min-width: 0
-  border: 0
-  background: transparent
-  color: #f6efe4
-  font: inherit
-  outline: 0
-
-.chats-me-page__group-search-input::placeholder
-  color: rgba(246, 239, 228, 0.42)
-
-.chats-me-page__group-search-clear
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  width: 28px
-  height: 28px
-  border: 0
-  border-radius: 999px
-  background: transparent
-  color: rgba(246, 239, 228, 0.58)
-  cursor: pointer
-
-.chats-me-page__group-search-clear:hover
-  background: rgba(255, 255, 255, 0.08)
-  color: #f6efe4
 
 .chats-me-page__group-dialog-content
   display: grid
-  gap: 14px
+  gap: 0.8rem
   min-height: 0
 
 .chats-me-page__group-results
   display: grid
-  gap: 10px
+  gap: 0.4rem
   max-height: 280px
   min-height: 0
   overflow-y: auto
 
-.chats-me-page__group-dialog-actions
-  display: grid
-  grid-template-columns: repeat(2, minmax(0, 1fr))
-  gap: 10px
-
-.chats-me-page__group-dialog-button
-  width: 100%
-  padding: 10px 16px
-  border: 1px solid rgba(255, 255, 255, 0.12)
-  border-radius: 12px
-  background: rgba(255, 255, 255, 0.05)
-  color: rgba(246, 239, 228, 0.9)
-  cursor: pointer
-  font: inherit
-
-.chats-me-page__group-dialog-button:hover
-  background: rgba(255, 255, 255, 0.08)
-
-.chats-me-page__group-dialog-button:disabled
-  cursor: default
-  opacity: 0.6
-
-.chats-me-page__group-dialog-button--primary
-  border-color: rgba(240, 197, 169, 0.38)
-  background: rgba(240, 197, 169, 0.14)
-  color: #f6efe4
-
-.chats-me-page__group-dialog-button--primary:hover
-  background: rgba(240, 197, 169, 0.2)
-
-@media (max-width: 960px)
+@media (max-width: 1100px)
   .chats-me-page
-    grid-template-columns: minmax(180px, 32vw) minmax(0, 1fr)
+    grid-template-columns: minmax(260px, 22rem) minmax(0, 1fr)
 
   .chats-me-page__details
     display: none
 
-@media (max-width: 680px)
+@media (max-width: 760px)
   .chats-me-page
     grid-template-columns: 1fr
+    height: auto
+    min-height: 100%
 
   .chats-me-page__sidebar
-    max-height: 42dvh
-    border-right: 0
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08)
+    max-height: 40dvh
+
+  .chats-me-page__chat
+    min-height: 62dvh
