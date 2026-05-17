@@ -17,10 +17,11 @@ import {
     deleteMessage as deleteMessageRequest,
     editMessage as editMessageRequest,
     kickChatMember,
-    listChatMessages,
     listChats,
     setLastSeenRevision,
 } from "../../features/chats/chat-api";
+import { useChatsList } from "../../features/chats/hooks/use-chats-list";
+import { useSelectedChatMessages } from "../../features/chats/hooks/use-selected-chat-messages";
 import { loadProfilesBatch, searchProfiles } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
@@ -85,13 +86,12 @@ export default function ChatsMePage() {
     const shouldAutoScrollSelectedChatOnNextMessageRef = useRef(false);
     const shouldSkipNextBottomScrollSyncRef = useRef(false);
     const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
-    const targetVisibleRevisionRef = useRef<number | null>(null);
-    const [chats, setChats] = useState<Chat[]>([]);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isMessagesLoading, setIsMessagesLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [messagesError, setMessagesError] = useState<string | null>(null);
+    const {
+        chats,
+        setChats,
+        isLoading,
+        error,
+    } = useChatsList();
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
     const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenu | null>(null);
     const [messagePendingDeletion, setMessagePendingDeletion] = useState<ChatMessage | null>(null);
@@ -126,6 +126,18 @@ export default function ChatsMePage() {
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
+    const {
+        messages,
+        setMessages,
+        isMessagesLoading,
+        messagesError,
+        targetVisibleRevision,
+        setTargetVisibleRevision,
+    } = useSelectedChatMessages({
+        selectedChatUuid,
+        selectedChat,
+        localLastSeenRevisionByChatUuid,
+    });
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
     const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
     const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
@@ -199,37 +211,6 @@ export default function ChatsMePage() {
         }
 
         void refreshStaleProfiles();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [apiClient]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        async function loadChats() {
-            try {
-                const data = await listChats(apiClient);
-                if (!isMounted) {
-                    return;
-                }
-
-                setChats(data);
-            } catch {
-                if (!isMounted) {
-                    return;
-                }
-
-                setError("Could not load chats.");
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        loadChats();
 
         return () => {
             isMounted = false;
@@ -496,72 +477,24 @@ export default function ChatsMePage() {
 
     useEffect(() => {
         if (!selectedChatUuid) {
-            setMessages([]);
             isSelectedChatScrolledToBottomRef.current = false;
             messageElementByRevisionRef.current = {};
-            targetVisibleRevisionRef.current = null;
             return;
         }
-
-        let isMounted = true;
-        const currentSelectedChatUuid = selectedChatUuid;
-        const selectedChatLastSeenRevision = getSelectedChatLastSeenRevision(
-            chatsRef.current.find((chat) => chat.uuid === currentSelectedChatUuid) ?? null,
-            currentSelectedChatUuid,
-            localLastSeenRevisionByChatUuidRef.current,
-        );
-        const requestRevision = Math.max(0, selectedChatLastSeenRevision - 100);
-        targetVisibleRevisionRef.current = selectedChatLastSeenRevision;
-
-        async function loadMessages() {
-            setIsMessagesLoading(true);
-            setMessagesError(null);
-
-            try {
-                const data = await listChatMessages(apiClient, currentSelectedChatUuid, requestRevision);
-                if (!isMounted) {
-                    return;
-                }
-
-                messageElementByRevisionRef.current = {};
-                setMessages(data.map((message) => ({
-                    ...message,
-                    attachments: message.attachments ?? [],
-                })));
-            } catch {
-                if (!isMounted) {
-                    return;
-                }
-
-                setMessages([]);
-                setMessagesError("Could not load messages.");
-            } finally {
-                if (isMounted) {
-                    setIsMessagesLoading(false);
-                }
-            }
-        }
-
-        loadMessages();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [apiClient, selectedChat?.currentUserLastSeenRevision, selectedChatUuid]);
+    }, [selectedChatUuid, setMessages]);
 
     useLayoutEffect(() => {
         if (!selectedChatUuid || isMessagesLoading || messages.length === 0) {
             return;
         }
 
-        const targetVisibleRevision = targetVisibleRevisionRef.current;
         if (targetVisibleRevision !== null) {
             scrollMessagesContainerToRevision(
                 messagesContainerRef.current,
                 messageElementByRevisionRef.current,
                 findFirstVisibleRevision(messages, targetVisibleRevision),
             );
-            targetVisibleRevisionRef.current = null;
+            setTargetVisibleRevision(null);
             isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
             return;
         }
@@ -575,7 +508,7 @@ export default function ChatsMePage() {
         }
 
         isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
-    }, [isMessagesLoading, messages.length, selectedChatUuid]);
+    }, [isMessagesLoading, messages, selectedChatUuid, setTargetVisibleRevision, targetVisibleRevision]);
 
     useEffect(() => {
         setEditingMessage(null);
@@ -1880,17 +1813,6 @@ function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessa
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
-}
-
-function getSelectedChatLastSeenRevision(
-    chat: Chat | null,
-    chatUuid: string,
-    localLastSeenRevisionByChatUuid: Record<string, number>,
-) {
-    return Math.max(
-        localLastSeenRevisionByChatUuid[chatUuid] ?? 0,
-        chat?.currentUserLastSeenRevision ?? 0,
-    );
 }
 
 function getDirtyChats(chats: Chat[]) {

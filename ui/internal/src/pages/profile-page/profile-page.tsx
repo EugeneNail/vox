@@ -1,14 +1,12 @@
 import { AxiosError } from "axios";
 import { ChangeEvent, DragEvent, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAuthenticatedUserUuid } from "../../auth/auth-tokens";
 import FormSubmitButton from "../../components/form-submit-button/form-submit-button";
 import FormTextField from "../../components/form-text-field/form-text-field";
 import { uploadImageAttachment } from "../../features/attachments/attachments-api";
-import { loadProfilesBatch, updateOwnProfile } from "../../features/profile/profile-api";
+import { useOwnProfile } from "../../features/profile/hooks/use-own-profile";
+import { updateOwnProfile } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
 import { buildAttachmentUrl, isImageFile } from "../../messages/message-attachments";
-import { PublicProfile } from "../../profiles/profile-cache";
 import "./profile-page.sass";
 
 type SourceImage = {
@@ -41,7 +39,6 @@ const defaultCropSizeRatio = 0.72;
 const minimumCropSizeRatio = 0.2;
 export default function ProfilePage() {
     const apiClient = useApiClient();
-    const navigate = useNavigate();
     const dropzoneRef = useRef<HTMLDivElement | null>(null);
     const cropStageRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -49,8 +46,15 @@ export default function ProfilePage() {
     const dragDepthRef = useRef(0);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
     const cropInteractionRef = useRef<CropInteraction | null>(null);
-    const [profile, setProfile] = useState<PublicProfile | null>(null);
-    const [name, setName] = useState("");
+    const {
+        profile,
+        setProfile,
+        name,
+        setName,
+        isLoading,
+        error,
+        setError,
+    } = useOwnProfile();
     const [sourceImage, setSourceImage] = useState<SourceImage | null>(null);
     const [geometry, setGeometry] = useState<ImageGeometry | null>(null);
     const [cropRect, setCropRect] = useState<CropRect | null>(null);
@@ -58,70 +62,11 @@ export default function ProfilePage() {
     const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const [isSourceImageReady, setIsSourceImageReady] = useState(true);
-    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isDraggingFiles, setIsDraggingFiles] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [status, setStatus] = useState<string | null>(null);
-    const authenticatedUserUuid = getAuthenticatedUserUuid();
     const resolvedAvatarName = uploadedAvatarName ?? profile?.avatar ?? null;
     const canSave = !isLoading && !isSaving && Boolean(profile) && Boolean(name.trim()) && (!sourceImage || isSourceImageReady);
-
-    useEffect(() => {
-        if (authenticatedUserUuid) {
-            return;
-        }
-
-        navigate("/login", { replace: true });
-    }, [authenticatedUserUuid, navigate]);
-
-    useEffect(() => {
-        if (!authenticatedUserUuid) {
-            return;
-        }
-
-        let isMounted = true;
-        const currentAuthenticatedUserUuid = authenticatedUserUuid;
-
-        async function loadProfile() {
-            setIsLoading(true);
-            setError(null);
-
-            try {
-                const data = await loadProfilesBatch(apiClient, {
-                    userUuids: [currentAuthenticatedUserUuid],
-                });
-
-                if (!isMounted) {
-                    return;
-                }
-
-                const nextProfile = data[0] ?? null;
-                if (!nextProfile) {
-                    setError("Profile was not found.");
-                    return;
-                }
-
-                setProfile(nextProfile);
-                setName(nextProfile.name);
-                setIsSourceImageReady(true);
-            } catch {
-                if (isMounted) {
-                    setError("Could not load profile.");
-                }
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void loadProfile();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [apiClient, authenticatedUserUuid]);
 
     useEffect(() => {
         if (!sourceImage) {
