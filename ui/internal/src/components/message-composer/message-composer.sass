@@ -1,19 +1,20 @@
 .message-composer
   position: relative
   display: grid
-  grid-template-columns: 2.6rem minmax(0, 1fr) 2rem 2.7rem
-  align-items: start
-  gap: 0.75rem
-  width: 100%
-  padding: 0.6rem
-  border: 1px solid var(--tg-color-border)
+  grid-template-columns: 2.25rem minmax(0, 1fr) 1.75rem 2.25rem
+  align-items: center
+  gap: 0.55rem
+  width: 80%
+  min-height: 42px
+  margin: 0 auto 16px
+  padding: 0 0.65rem
+  border: 0
   border-radius: 1.7rem
-  background: rgba(255, 255, 255, 0.96)
-  box-shadow: 0 16px 36px rgba(103, 136, 168, 0.14)
+  background: #262626
+  box-shadow: none
 
 .message-composer--drag-active
-  border-color: rgba(51, 144, 236, 0.34)
-  background: rgba(232, 242, 253, 0.96)
+  background: #303030
 
 .message-composer__file-input
   position: absolute
@@ -30,25 +31,28 @@
   display: inline-flex
   align-items: center
   justify-content: center
-  width: 2.6rem
-  height: 2.6rem
-  margin-top: 0.1rem
+  width: 2.25rem
+  height: 2.25rem
+  margin-top: 0
   border: 0
   border-radius: 50%
   transition: transform var(--tg-transition-fast), background-color var(--tg-transition-fast), color var(--tg-transition-fast)
 
 .message-composer__attach-button
-  background: rgba(244, 248, 252, 0.92)
-  color: var(--tg-color-accent)
+  background: transparent
+  color: #b8b8b8
 
 .message-composer__send-button
-  background: linear-gradient(180deg, var(--tg-color-accent), var(--tg-color-accent-strong))
+  background: #3f8cff
   color: #fff
-  box-shadow: 0 12px 24px rgba(51, 144, 236, 0.22)
+  box-shadow: none
 
 .message-composer__attach-button:hover,
 .message-composer__send-button:hover
   transform: translateY(-1px)
+
+.message-composer__attach-button:hover
+  background: #303030
 
 .message-composer__attach-button .material-symbols-rounded,
 .message-composer__send-button .material-symbols-rounded,
@@ -59,13 +63,13 @@
   display: inline-flex
   align-items: center
   justify-content: center
-  width: 2rem
-  height: 2.6rem
-  margin-top: 0.1rem
+  width: 1.75rem
+  height: 2.25rem
+  margin-top: 0
   padding: 0
   border: 0
   background: transparent
-  color: var(--tg-color-text-faint)
+  color: #8a8a8a
 
 .message-composer__spellcheck-button:hover,
 .message-composer__spellcheck-button--active
@@ -74,8 +78,8 @@
 .message-composer__editing-divider
   grid-column: 1 / -1
   height: 1px
-  margin: -0.15rem -0.6rem 0
-  background: var(--tg-color-border)
+  margin: 0 -0.65rem
+  background: #343434
 
 .message-composer__attach-button:disabled,
 .message-composer__send-button:disabled
@@ -96,7 +100,7 @@
   padding: 0.1rem 0
 
 .message-composer__attachment-note
-  color: var(--tg-color-text-soft)
+  color: #a6a6a6
   font-size: 0.76rem
   line-height: 1.4
 
@@ -108,20 +112,20 @@
   width: 10rem
   min-width: 10rem
   padding: 0.45rem
-  border: 1px solid rgba(51, 144, 236, 0.12)
+  border: 1px solid #3a3a3a
   border-radius: var(--tg-radius-md)
-  background: rgba(244, 248, 252, 0.92)
+  background: #222222
 
 .message-composer__attachment-card--uploading
-  border-color: rgba(51, 144, 236, 0.24)
-  background: rgba(232, 242, 253, 0.96)
+  border-color: #4c86d8
+  background: #2a2f36
 
 .message-composer__attachment-preview-shell
   position: relative
   overflow: hidden
   border-radius: 0.8rem
   aspect-ratio: 16 / 10
-  background: rgba(255, 255, 255, 0.7)
+  background: #171717
 
 .message-composer__attachment-preview
   width: 100%
@@ -146,7 +150,7 @@
   min-height: 5.2rem
   padding: 0.75rem
   border-radius: 0.8rem
-  background: rgba(255, 255, 255, 0.72)
+  background: #171717
 
 .message-composer__attachment-document-icon
   color: var(--tg-color-accent)
@@ -154,7 +158,7 @@
 
 .message-composer__attachment-document-name
   overflow: hidden
-  color: var(--tg-color-text)
+  color: #f3f3f3
   font-size: 0.76rem
   line-height: 1.4
   text-overflow: ellipsis
@@ -194,7 +198,7 @@
   gap: 0.75rem
   min-width: 0
   padding: 0.75rem 0 0.65rem 0.4rem
-  color: var(--tg-color-accent)
+  color: #4da6ff
   font-size: 0.75rem
   line-height: 1.4
 
@@ -203,14 +207,14 @@
   gap: 0.15rem
   min-width: 0
   padding-left: 0.6rem
-  border-left: 3px solid var(--tg-color-accent)
+  border-left: 3px solid #4da6ff
 
 .message-composer__editing-label
   font-weight: 700
 
 .message-composer__editing-preview
   overflow: hidden
-  color: var(--tg-color-text-soft)
+  color: #a6a6a6
   text-overflow: ellipsis
   white-space: nowrap
 
@@ -224,10 +228,10 @@
   border: 0
   border-radius: 50%
   background: transparent
-  color: var(--tg-color-text-soft)
+  color: #a6a6a6
 
 .message-composer__cancel-edit-button:hover
-  background: rgba(244, 248, 252, 0.92)
+  background: #303030
 
 .message-composer__textarea-shell
   position: relative
@@ -236,11 +240,11 @@
 .message-composer__textarea
   width: 100%
   max-height: 220px
-  min-height: 2.8rem
-  padding: 0.65rem 0.1rem
+  min-height: 42px
+  padding: 0.55rem 0.1rem
   border: 0
   background: transparent
-  color: var(--tg-color-text)
+  color: #f3f3f3
   font: inherit
   line-height: 1.48
   resize: none
@@ -254,11 +258,11 @@
   display: none
 
 .message-composer__textarea::placeholder
-  color: var(--tg-color-text-faint)
+  color: #8a8a8a
 
 .message-composer__character-counter
   justify-self: end
-  color: var(--tg-color-text-faint)
+  color: #8a8a8a
   font-size: 0.68rem
   line-height: 1.4
 
