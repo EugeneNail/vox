@@ -12,7 +12,7 @@ export function buildAvatarPlaceholder(label: string): AvatarPlaceholder {
     return {
         initials,
         style: {
-            backgroundColor,
+            background: backgroundColor,
             color: "#f8fafc",
         },
     };
