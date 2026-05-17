@@ -1,0 +1,39 @@
+.ui-button
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 0.55rem
+  min-height: 2.9rem
+  padding: 0 1.2rem
+  border: 1px solid transparent
+  border-radius: 999px
+  font-size: 0.98rem
+  font-weight: 600
+  transition: transform var(--tg-transition-fast), box-shadow var(--tg-transition-fast), background-color var(--tg-transition-fast), color var(--tg-transition-fast), border-color var(--tg-transition-fast)
+
+.ui-button:hover:not(:disabled)
+  transform: translateY(-1px)
+
+.ui-button:disabled
+  cursor: default
+  opacity: 0.6
+
+.ui-button--primary
+  color: #fff
+  background: linear-gradient(180deg, var(--tg-color-accent), var(--tg-color-accent-strong))
+  box-shadow: 0 14px 26px rgba(51, 144, 236, 0.28)
+
+.ui-button--secondary
+  color: var(--tg-color-accent)
+  background: rgba(255, 255, 255, 0.88)
+  border-color: rgba(51, 144, 236, 0.16)
+
+.ui-button--ghost
+  color: var(--tg-color-text-soft)
+  background: transparent
+  border-color: var(--tg-color-border)
+
+.ui-button--danger
+  color: #fff
+  background: linear-gradient(180deg, #e06d6d, var(--tg-color-danger))
+  box-shadow: 0 14px 26px rgba(216, 92, 92, 0.22)

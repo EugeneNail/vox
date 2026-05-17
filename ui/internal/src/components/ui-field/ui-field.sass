@@ -1,0 +1,36 @@
+.ui-field
+  display: grid
+  gap: 0.48rem
+
+.ui-field__label
+  font-size: 0.84rem
+  font-weight: 700
+  color: var(--tg-color-text-soft)
+  letter-spacing: 0.01em
+  text-transform: uppercase
+
+.ui-field__input
+  width: 100%
+  min-height: 3rem
+  padding: 0 1rem
+  color: var(--tg-color-text)
+  background: rgba(255, 255, 255, 0.96)
+  border: 1px solid var(--tg-color-border)
+  border-radius: var(--tg-radius-md)
+  outline: none
+  transition: border-color var(--tg-transition-fast), box-shadow var(--tg-transition-fast), background-color var(--tg-transition-fast)
+
+.ui-field__input::placeholder
+  color: var(--tg-color-text-faint)
+
+.ui-field__input:focus
+  border-color: rgba(51, 144, 236, 0.5)
+  box-shadow: 0 0 0 4px rgba(51, 144, 236, 0.14)
+
+.ui-field__input--error
+  border-color: rgba(216, 92, 92, 0.44)
+  box-shadow: 0 0 0 4px rgba(216, 92, 92, 0.08)
+
+.ui-field__error
+  font-size: 0.84rem
+  color: var(--tg-color-danger)
