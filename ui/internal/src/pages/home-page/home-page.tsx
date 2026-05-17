@@ -1,24 +1,26 @@
 import { Link } from "react-router-dom";
+import UiButton from "../../components/ui-button/ui-button";
+import UiSurface from "../../components/ui-surface/ui-surface";
 import "./home-page.sass";
 
 export default function HomePage() {
     return (
         <main className="home-page">
-            <section className="home-page__panel">
+            <UiSurface className="home-page__panel" tone="accent">
                 <p className="home-page__eyebrow">Vox Platform</p>
-                <h1 className="home-page__title">Single entrypoint for voice, text and streaming.</h1>
+                <h1 className="home-page__title">Messaging, presence and media in one Telegram-inspired workspace.</h1>
                 <p className="home-page__text">
-                    UI microservice is mounted and ready for future product screens.
+                    The backend contract remains stable while the frontend is rebuilt around cleaner state boundaries and a lighter product language.
                 </p>
                 <div className="home-page__actions">
-                    <Link className="home-page__button" to="/login">
-                        Open login
+                    <Link to="/login">
+                        <UiButton>Open login</UiButton>
                     </Link>
-                    <Link className="home-page__button home-page__button--secondary" to="/signup">
-                        Create account
+                    <Link to="/signup">
+                        <UiButton variant="secondary">Create account</UiButton>
                     </Link>
                 </div>
-            </section>
+            </UiSurface>
         </main>
     );
 }

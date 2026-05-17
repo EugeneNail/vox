@@ -1,3 +1,4 @@
+import UiField from "../ui-field/ui-field";
 import "./form-text-field.sass";
 
 type FormTextFieldProps = {
@@ -22,18 +23,16 @@ export default function FormTextField({
     onChange,
 }: FormTextFieldProps) {
     return (
-        <label className="form-text-field">
-            <span className="form-text-field__label">{label}</span>
-            <input
-                className="form-text-field__input"
-                name={name}
-                type={type}
-                autoComplete={autoComplete}
-                placeholder={placeholder}
-                value={value}
-                onChange={onChange}
-            />
-            {error ? <span className="form-text-field__error">{error}</span> : null}
-        </label>
+        <UiField
+            autoComplete={autoComplete}
+            className="form-text-field__input"
+            error={error}
+            label={label}
+            name={name}
+            placeholder={placeholder}
+            type={type}
+            value={value}
+            onChange={onChange}
+        />
     );
 }

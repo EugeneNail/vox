@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import UiButton from "../ui-button/ui-button";
 import "./form-submit-button.sass";
 
 type FormSubmitButtonProps = {
@@ -8,8 +9,8 @@ type FormSubmitButtonProps = {
 
 export default function FormSubmitButton({ disabled, children }: FormSubmitButtonProps) {
     return (
-        <button className="form-submit-button" type="submit" disabled={disabled}>
+        <UiButton className="form-submit-button" disabled={disabled} type="submit" variant="primary">
             {children}
-        </button>
+        </UiButton>
     );
 }

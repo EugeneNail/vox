@@ -1,55 +1,40 @@
 .not-found-page
   display: flex
-  min-height: 100vh
-  padding: 32px
+  min-height: 100dvh
+  padding: 1.25rem
 
 .not-found-page__panel
-  width: min(640px, 100%)
+  width: min(700px, 100%)
   margin: auto
-  padding: 40px
-  border: 1px solid rgba(255, 255, 255, 0.08)
-  border-radius: 24px
-  background: rgba(11, 17, 24, 0.72)
-  backdrop-filter: blur(18px)
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35)
+  padding: 2.3rem
 
 .not-found-page__eyebrow
-  margin: 0 0 12px
-  color: #f0c5a9
-  font-size: 13px
-  letter-spacing: 0.2em
+  margin: 0 0 0.9rem
+  color: var(--tg-color-accent)
+  font-size: 0.8rem
+  font-weight: 700
+  letter-spacing: 0.18em
   text-transform: uppercase
 
 .not-found-page__title
   margin: 0
-  font-size: clamp(36px, 6vw, 64px)
-  line-height: 0.95
+  font-size: clamp(2.8rem, 6vw, 4.8rem)
+  line-height: 0.96
+  letter-spacing: -0.05em
 
 .not-found-page__text
-  margin: 20px 0 0
-  max-width: 40ch
-  color: rgba(246, 239, 228, 0.78)
-  font-size: 18px
+  margin: 1rem 0 0
+  max-width: 36ch
+  color: var(--tg-color-text-soft)
+  font-size: 1.02rem
   line-height: 1.6
 
 .not-found-page__actions
-  margin-top: 28px
-
-.not-found-page__button
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  min-height: 48px
-  padding: 0 18px
-  border-radius: 999px
-  background: #f0c5a9
-  color: #101722
-  font-size: 14px
-  font-weight: 600
+  margin-top: 1.8rem
 
 @media (max-width: 640px)
   .not-found-page
-    padding: 20px
+    padding: 0.75rem
 
   .not-found-page__panel
-    padding: 28px
+    padding: 1.4rem

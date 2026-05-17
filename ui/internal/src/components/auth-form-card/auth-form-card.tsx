@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import UiSurface from "../ui-surface/ui-surface";
 import "./auth-form-card.sass";
 
 type AuthFormCardProps = {
@@ -15,11 +16,11 @@ export default function AuthFormCard({
     children,
 }: AuthFormCardProps) {
     return (
-        <div className="auth-form-card">
+        <UiSurface className="auth-form-card" tone="accent">
             <p className="auth-form-card__eyebrow">{eyebrow}</p>
             <h1 className="auth-form-card__title">{title}</h1>
             <p className="auth-form-card__text">{text}</p>
             {children}
-        </div>
+        </UiSurface>
     );
 }
