@@ -1,0 +1,425 @@
+import { type CSSProperties, type ReactNode } from "react";
+import { NavLink } from "react-router-dom";
+import { type Chat as ApiChat, type ChatMessage as ApiChatMessage } from "../chat-api";
+import { buildAttachmentUrl, isImageAttachmentName, type MessageAttachment } from "../../../messages/message-attachments";
+import { type PublicProfile } from "../../../profiles/profile-cache";
+
+export type Chat = ApiChat;
+export type ChatMessage = ApiChatMessage;
+
+const linkPattern = /(https?:\/\/[^\s]+)/g;
+const fullLinkPattern = /^https?:\/\/[^\s]+$/;
+const messageThreadGapMs = 10 * 60 * 1000;
+
+export function UserAvatar({ className, src, label }: { className: string; src: string | null; label: string; }) {
+    if (src) {
+        return (
+            <img
+                className={`${className} ${className}--image`}
+                src={src}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+            />
+        );
+    }
+
+    const placeholder = getAvatarPlaceholder(label);
+
+    return (
+        <span
+            className={`${className} ${className}--placeholder`}
+            style={placeholder.style}
+            aria-hidden="true"
+        >
+            {placeholder.initials}
+        </span>
+    );
+}
+
+export function getProfileAvatarUrl(profile: PublicProfile | null | undefined) {
+    if (!profile?.avatar) {
+        return null;
+    }
+
+    return buildAttachmentUrl(profile.avatar);
+}
+
+export function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
+    if (chat.name) {
+        return chat.name;
+    }
+
+    if (chat.chatType !== 0) {
+        return chat.uuid;
+    }
+
+    const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+    if (!companionUuid) {
+        return chat.uuid;
+    }
+
+    return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
+}
+
+export function getChatAvatarUrl(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
+    if (chat.chatType === 0) {
+        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+        if (!companionUuid) {
+            return null;
+        }
+
+        return getProfileAvatarUrl(profilesByUserUuid[companionUuid] ?? null);
+    }
+
+    if (!chat.avatar) {
+        return null;
+    }
+
+    return buildAttachmentUrl(chat.avatar);
+}
+
+export function getChatAvatarLabel(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
+    if (chat.chatType === 0) {
+        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
+        if (!companionUuid) {
+            return chat.uuid;
+        }
+
+        return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
+    }
+
+    return getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid);
+}
+
+export function getChatMemberName(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return profilesByUserUuid[memberUuid]?.name ?? memberUuid;
+}
+
+export function getChatMemberAvatarUrl(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getProfileAvatarUrl(profilesByUserUuid[memberUuid] ?? null);
+}
+
+export function getChatMemberAvatarLabel(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getChatMemberName(memberUuid, profilesByUserUuid);
+}
+
+export function getMessageAuthorName(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return profilesByUserUuid[message.userUuid]?.name ?? message.userUuid;
+}
+
+export function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getProfileAvatarUrl(profilesByUserUuid[message.userUuid] ?? null);
+}
+
+export function getMessageAuthorAvatarLabel(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    return getMessageAuthorName(message, profilesByUserUuid);
+}
+
+export function getUnreadRevisionCount(chat: Chat, localLastSeenRevisionByChatUuid: Record<string, number>) {
+    const localLastSeenRevision = Math.max(
+        localLastSeenRevisionByChatUuid[chat.uuid] ?? 0,
+        chat.currentUserLastSeenRevision,
+    );
+
+    return Math.max(0, chat.revision - localLastSeenRevision);
+}
+
+export function getTargetLastSeenRevision(
+    chat: Chat,
+    chatUuid: string,
+    selectedChatUuid: string | null,
+    isSelectedChatScrolledToBottom: boolean,
+    localLastSeenRevisionByChatUuid: Record<string, number>,
+) {
+    const localLastSeenRevision = Math.max(
+        localLastSeenRevisionByChatUuid[chatUuid] ?? 0,
+        chat.currentUserLastSeenRevision,
+    );
+    if (chatUuid === selectedChatUuid && isSelectedChatScrolledToBottom) {
+        return Math.max(localLastSeenRevision, chat.revision);
+    }
+
+    return localLastSeenRevision;
+}
+
+export function formatMessageTime(date: string) {
+    return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        hour12: false,
+        hourCycle: "h23",
+        minute: "2-digit",
+    }).format(new Date(date));
+}
+
+export function isMessageThreadStart(message: ChatMessage, previousMessage?: ChatMessage) {
+    if (!previousMessage) {
+        return true;
+    }
+
+    if (previousMessage.userUuid !== message.userUuid) {
+        return true;
+    }
+
+    return new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime() >= messageThreadGapMs;
+}
+
+export function isMessageEdited(message: ChatMessage) {
+    return new Date(message.createdAt).getTime() !== new Date(message.updatedAt).getTime();
+}
+
+export function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUuid: string | null) {
+    return !message.isPending && message.userUuid === authenticatedUserUuid;
+}
+
+export function hasRenderableMessageText(text: string) {
+    return text.trim().length > 0;
+}
+
+export function renderMessageText(text: string) {
+    return text.split(linkPattern).map((part, index) => {
+        if (!fullLinkPattern.test(part)) {
+            return part;
+        }
+
+        return (
+            <a className="chats-me-page__message-link" href={part} key={`${part}-${index}`} target="_blank" rel="noreferrer">
+                {part}
+            </a>
+        );
+    });
+}
+
+export function MessageText({ message }: { message: ChatMessage; }) {
+    if (!hasRenderableMessageText(message.text)) {
+        return null;
+    }
+
+    return (
+        <p className="chats-me-page__message-text">
+            {renderMessageText(message.text)}
+            {isMessageEdited(message) && (
+                <span className="chats-me-page__message-edited"> (edited)</span>
+            )}
+        </p>
+    );
+}
+
+export function MessageAttachments({ attachments }: { attachments: MessageAttachment[]; }) {
+    if (attachments.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="chats-me-page__message-attachments" aria-label="Message attachments">
+            {attachments.map((attachment) => (
+                <MessageAttachmentView attachment={attachment} key={attachment.uuid} />
+            ))}
+        </div>
+    );
+}
+
+export function MessageAttachmentView({ attachment }: { attachment: MessageAttachment; }) {
+    if (isImageAttachmentName(attachment.name)) {
+        const url = buildAttachmentUrl(attachment.name);
+        return (
+            <a className="chats-me-page__message-attachment chats-me-page__message-attachment--image" href={url} target="_blank" rel="noreferrer">
+                <img className="chats-me-page__message-attachment-image" src={url} alt={attachment.name} />
+            </a>
+        );
+    }
+
+    return (
+        <a className="chats-me-page__message-attachment chats-me-page__message-attachment--document" href={buildAttachmentUrl(attachment.name)} target="_blank" rel="noreferrer">
+            <span className="material-symbols-rounded chats-me-page__message-attachment-icon" aria-hidden="true">description</span>
+            <span className="chats-me-page__message-attachment-name">{attachment.name}</span>
+        </a>
+    );
+}
+
+export function ModalBackdrop({
+    children,
+    onClick,
+}: {
+    children: ReactNode;
+    onClick?: () => void;
+}) {
+    return (
+        <div className="chats-me-page__modal-backdrop" role="presentation" onClick={onClick}>
+            {children}
+        </div>
+    );
+}
+
+export function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
+    return profiles.reduce<Record<string, PublicProfile>>((accumulator, profile) => {
+        accumulator[profile.userUuid] = profile;
+        return accumulator;
+    }, {});
+}
+
+export function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[], searchProfiles: PublicProfile[]) {
+    return Array.from(new Set([
+        ...chats.flatMap((chat) => chat.memberUuids),
+        ...messages.map((message) => message.userUuid),
+        ...searchProfiles.map((profile) => profile.userUuid),
+    ]));
+}
+
+function getAvatarPlaceholder(label: string) {
+    const initials = getAvatarInitials(label);
+    const backgroundColor = hashToAvatarColor(label);
+
+    return {
+        initials,
+        style: {
+            backgroundColor,
+            borderColor: "rgba(255, 255, 255, 0.16)",
+            color: "#f8fafc",
+        } satisfies CSSProperties,
+    };
+}
+
+function getAvatarInitials(label: string) {
+    const normalizedLabel = label.trim().replace(/\s+/g, " ");
+    if (normalizedLabel.length === 0) {
+        return "?";
+    }
+
+    const words = normalizedLabel.split(" ").filter(Boolean);
+    if (words.length >= 2) {
+        return `${firstAlphabeticCharacter(words[0])}${firstAlphabeticCharacter(words[1])}`.toUpperCase();
+    }
+
+    return normalizedLabel.slice(0, 2).toUpperCase();
+}
+
+function firstAlphabeticCharacter(value: string) {
+    const match = value.match(/[a-zа-я0-9]/i);
+    return match?.[0] ?? value[0] ?? "?";
+}
+
+function hashToAvatarColor(value: string) {
+    const normalizedValue = value.trim().toLowerCase();
+    let hash = 0;
+
+    for (let index = 0; index < normalizedValue.length; index += 1) {
+        hash = ((hash << 5) - hash + normalizedValue.charCodeAt(index)) | 0;
+    }
+
+    const hue = Math.abs(hash) % 360;
+    return hslToHex(hue, 0.56, 0.46);
+}
+
+function hslToHex(hue: number, saturation: number, lightness: number) {
+    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+    const hueSection = hue / 60;
+    const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
+    let red = 0;
+    let green = 0;
+    let blue = 0;
+
+    if (hueSection >= 0 && hueSection < 1) {
+        red = chroma;
+        green = secondary;
+    } else if (hueSection < 2) {
+        red = secondary;
+        green = chroma;
+    } else if (hueSection < 3) {
+        green = chroma;
+        blue = secondary;
+    } else if (hueSection < 4) {
+        green = secondary;
+        blue = chroma;
+    } else if (hueSection < 5) {
+        red = secondary;
+        blue = chroma;
+    } else {
+        red = chroma;
+        blue = secondary;
+    }
+
+    const matchValue = lightness - chroma / 2;
+    const toHexByte = (channel: number) => Math.round((channel + matchValue) * 255).toString(16).padStart(2, "0");
+
+    return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
+}
+
+export function SearchResultButton({
+    disabled,
+    onClick,
+    profile,
+}: {
+    disabled?: boolean;
+    onClick?: () => void;
+    profile: PublicProfile;
+}) {
+    return (
+        <button
+            className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
+            disabled={disabled}
+            type="button"
+            onClick={onClick}
+        >
+            <UserAvatar
+                className="chats-me-page__avatar"
+                src={getProfileAvatarUrl(profile)}
+                label={profile.name}
+            />
+            <span className="chats-me-page__chat-preview">
+                <span className="chats-me-page__chat-name">{profile.name}</span>
+            </span>
+        </button>
+    );
+}
+
+export function ChatListLink({
+    authenticatedUserUuid,
+    chat,
+    chatPreview,
+    localLastSeenRevisionByChatUuid,
+    profilesByUserUuid,
+}: {
+    authenticatedUserUuid: string | null;
+    chat: Chat;
+    chatPreview?: string;
+    localLastSeenRevisionByChatUuid: Record<string, number>;
+    profilesByUserUuid: Record<string, PublicProfile>;
+}) {
+    const unreadRevisionCount = getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid);
+
+    return (
+        <NavLink
+            className={
+                ({ isActive }) => (
+                    isActive
+                        ? "chats-me-page__chat-button chats-me-page__chat-button--active"
+                        : "chats-me-page__chat-button"
+                )
+            }
+            to={`/chats/@me/${chat.uuid}`}
+        >
+            <UserAvatar
+                className="chats-me-page__avatar"
+                src={getChatAvatarUrl(chat, authenticatedUserUuid, profilesByUserUuid)}
+                label={getChatAvatarLabel(chat, authenticatedUserUuid, profilesByUserUuid)}
+            />
+            <span className="chats-me-page__chat-preview">
+                <span className="chats-me-page__chat-row">
+                    <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
+                    {unreadRevisionCount > 0 && (
+                        <span className="chats-me-page__chat-badge" aria-label={`${unreadRevisionCount} unread events`}>
+                            {unreadRevisionCount}
+                        </span>
+                    )}
+                </span>
+                {chatPreview && (
+                    <span className="chats-me-page__chat-message-piece">
+                        {chatPreview}
+                    </span>
+                )}
+            </span>
+        </NavLink>
+    );
+}

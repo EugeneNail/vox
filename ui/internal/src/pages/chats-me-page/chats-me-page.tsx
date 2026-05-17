@@ -1,7 +1,6 @@
-import { MouseEvent, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { NavLink, useNavigate, useParams } from "react-router-dom";
+import { MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid, getLoginToken } from "../../auth/auth-tokens";
-import MessageComposer from "../../components/message-composer/message-composer";
 import {
     MessageCreatedEvent,
     MessageEditedEvent,
@@ -9,8 +8,6 @@ import {
 } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import {
     addChatMembers,
-    Chat as ApiChat,
-    ChatMessage as ApiChatMessage,
     createDirectChat,
     createGroupChat as createGroupChatRequest,
     createMessage,
@@ -22,13 +19,22 @@ import {
 } from "../../features/chats/chat-api";
 import { useChatsList } from "../../features/chats/hooks/use-chats-list";
 import { useSelectedChatMessages } from "../../features/chats/hooks/use-selected-chat-messages";
+import { ChatDetailsPanel } from "../../features/chats/components/chat-details-panel";
+import { ChatMessagesPanel, MessageContextMenu } from "../../features/chats/components/chat-messages-panel";
+import { ChatsSidebar } from "../../features/chats/components/chats-sidebar";
+import { DeleteMessageDialog } from "../../features/chats/components/delete-message-dialog";
+import { GroupMembersDialog } from "../../features/chats/components/group-members-dialog";
+import {
+    Chat,
+    ChatMessage,
+    collectReferencedUserUuids,
+    getTargetLastSeenRevision,
+    profilesByUserUuidFromProfiles,
+} from "../../features/chats/components/chats-ui";
 import { loadProfilesBatch, searchProfiles } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
-import { buildAttachmentUrl, isImageAttachmentName, MessageAttachment } from "../../messages/message-attachments";
 import { getCachedProfilesByUserUuids, getMissingOrStaleUserUuids, getStaleCachedUserUuids, PublicProfile, upsertProfiles } from "../../profiles/profile-cache";
 import "./chats-me-page.sass";
-
-type Chat = ApiChat;
 
 enum ChatType {
     Direct = 0,
@@ -41,17 +47,6 @@ enum ChatMemberRole {
     Member = "member",
 }
 
-type ChatMessage = ApiChatMessage;
-
-type MessageContextMenu = {
-    message: ChatMessage;
-    x: number;
-    y: number;
-};
-
-const linkPattern = /(https?:\/\/[^\s]+)/g;
-const fullLinkPattern = /^https?:\/\/[^\s]+$/;
-const messageThreadGapMs = 10 * 60 * 1000;
 const lastSeenRevisionSyncIntervalMs = 30_000;
 const chatBottomThresholdPx = 24;
 
@@ -140,9 +135,7 @@ export default function ChatsMePage() {
     });
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
     const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
-    const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
     const addMembersSearchInputRef = useRef<HTMLInputElement | null>(null);
-    const isAddMembersSearchActive = isAddMembersSearchFocused || addMembersSearchQuery.length > 0;
     const groupChatSearchQueryTrimmed = groupChatSearchQuery.trim();
     const groupChatInviteeUserUuids = new Set(groupChatInvitees.map((profile) => profile.userUuid));
     const groupChatVisibleSearchProfiles = [
@@ -1047,746 +1040,133 @@ export default function ChatsMePage() {
 
     return (
         <section className="chats-me-page">
-            <aside className="chats-me-page__sidebar" aria-label="Chats">
-                <div className="chats-me-page__sidebar-header">
-                    <p className="chats-me-page__eyebrow">Messages</p>
-                    <div className="chats-me-page__sidebar-title-row">
-                        <h1 className="chats-me-page__title">Chats</h1>
-                        <button className="chats-me-page__create-group-button" type="button" onClick={openCreateGroupChatModal}>
-                            <span className="material-symbols-rounded chats-me-page__create-group-button-icon" aria-hidden="true">group_add</span>
-                            Group
-                        </button>
-                    </div>
-                    <label className="chats-me-page__search">
-                        <span className="material-symbols-rounded chats-me-page__search-icon" aria-hidden="true">search</span>
-                        <input
-                            className="chats-me-page__search-input"
-                            type="text"
-                            name="search"
-                            placeholder="Search users"
-                            ref={searchInputRef}
-                            value={searchQuery}
-                            onChange={(event) => setSearchQuery(event.target.value)}
-                            onFocus={() => setIsSearchFocused(true)}
-                            onBlur={() => setIsSearchFocused(false)}
-                        />
-                        {isSearchActive && (
-                            <button
-                                className="chats-me-page__search-clear"
-                                type="button"
-                                onMouseDown={(event) => event.preventDefault()}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    clearSearch();
-                                }}
-                            >
-                                <span className="material-symbols-rounded" aria-hidden="true">close</span>
-                            </button>
-                        )}
-                    </label>
-                </div>
+            <ChatsSidebar
+                authenticatedUserUuid={authenticatedUserUuid}
+                chatPreviewByChatUuid={chatPreviewByChatUuid}
+                chats={chats}
+                clearSearch={clearSearch}
+                createPrivateChat={createPrivateChat}
+                error={error}
+                isCreatingChat={isCreatingChat}
+                isLoading={isLoading}
+                isSearchActive={isSearchActive}
+                isSearchFocused={isSearchFocused}
+                isSearchingProfiles={isSearchingProfiles}
+                localLastSeenRevisionByChatUuid={localLastSeenRevisionByChatUuid}
+                openCreateGroupChatModal={openCreateGroupChatModal}
+                profilesByUserUuid={profilesByUserUuid}
+                searchInputRef={searchInputRef}
+                searchProfiles={searchProfiles}
+                searchProfilesError={searchProfilesError}
+                searchQuery={searchQuery}
+                setIsSearchFocused={setIsSearchFocused}
+                setSearchQuery={setSearchQuery}
+            />
 
-                <div className="chats-me-page__list">
-                    {isSearchActive ? (
-                        <>
-                            {searchQuery.trim().length === 0 && (
-                                <p className="chats-me-page__state">Type a name.</p>
-                            )}
-                                {isSearchingProfiles && <p className="chats-me-page__state">Searching users...</p>}
-                                {searchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{searchProfilesError}</p>}
-                                {!isSearchingProfiles && !searchProfilesError && searchQuery.trim().length > 0 && searchProfiles.length === 0 && (
-                                    <p className="chats-me-page__state">No users found.</p>
-                                )}
-                            {searchProfiles.map((profile) => (
-                                <button
-                                    className="chats-me-page__chat-button chats-me-page__chat-button--search-result"
-                                    disabled={isCreatingChat}
-                                    key={profile.userUuid}
-                                    type="button"
-                                    onClick={() => void createPrivateChat(profile)}
-                                >
-                                    <UserAvatar
-                                        className="chats-me-page__avatar"
-                                        src={getProfileAvatarUrl(profile)}
-                                        label={profile.name}
-                                    />
-                                    <span className="chats-me-page__chat-preview">
-                                        <span className="chats-me-page__chat-name">{profile.name}</span>
-                                    </span>
-                                </button>
-                            ))}
-                        </>
-                    ) : (
-                        <>
-                            {isLoading && <p className="chats-me-page__state">Loading chats...</p>}
-                            {error && <p className="chats-me-page__state chats-me-page__state--error">{error}</p>}
-                            {!isLoading && !error && chats.length === 0 && (
-                                <p className="chats-me-page__state">No chats yet.</p>
-                            )}
-                            {chats.map((chat) => (
-                                <NavLink
-                                    className={
-                                        ({ isActive }) => (
-                                            isActive
-                                                ? "chats-me-page__chat-button chats-me-page__chat-button--active"
-                                                : "chats-me-page__chat-button"
-                                        )
-                                    }
-                                    key={chat.uuid}
-                                    to={`/chats/@me/${chat.uuid}`}
-                                >
-                                    <UserAvatar
-                                        className="chats-me-page__avatar"
-                                        src={getChatAvatarUrl(chat, authenticatedUserUuid, profilesByUserUuid)}
-                                        label={getChatAvatarLabel(chat, authenticatedUserUuid, profilesByUserUuid)}
-                                    />
-                                    <span className="chats-me-page__chat-preview">
-                                        <span className="chats-me-page__chat-row">
-                                            <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
-                                            {getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid) > 0 && (
-                                                <span className="chats-me-page__chat-badge" aria-label={`${getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid)} unread events`}>
-                                                    {getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid)}
-                                                </span>
-                                            )}
-                                        </span>
-                                        {chatPreviewByChatUuid[chat.uuid] && (
-                                            <span className="chats-me-page__chat-message-piece">
-                                                {chatPreviewByChatUuid[chat.uuid]}
-                                            </span>
-                                        )}
-                                    </span>
-                                </NavLink>
-                            ))}
-                        </>
-                    )}
-                </div>
-            </aside>
+            <ChatMessagesPanel
+                authenticatedUserUuid={authenticatedUserUuid}
+                canDeleteAnyMessage={canDeleteAnyMessage}
+                editingMessage={editingMessage}
+                handleMessageContextMenu={handleMessageContextMenu}
+                isKickingMember={isKickingMember}
+                isMessagesLoading={isMessagesLoading}
+                isSelectedChatGroup={isSelectedChatGroup}
+                isSelectedChatOwnedByAuthenticatedUser={isSelectedChatOwnedByAuthenticatedUser}
+                messageContextMenu={messageContextMenu}
+                messageElementByRevisionRef={messageElementByRevisionRef}
+                messages={messages}
+                messagesContainerRef={messagesContainerRef}
+                messagesEndRef={messagesEndRef}
+                messagesError={messagesError}
+                onCancelEdit={() => setEditingMessage(null)}
+                onCloseMessageContextMenu={() => setMessageContextMenu(null)}
+                onCopyMessageLink={copyMessageLink}
+                onCopyMessageText={copyMessageText}
+                onDeleteMessageRequest={(message) => setMessagePendingDeletion(message)}
+                onEditMessageRequest={setEditingMessage}
+                onKickMemberRequest={(memberUuid) => void kickMemberFromChat(memberUuid)}
+                onScroll={handleMessagesScroll}
+                onSubmit={submitMessage}
+                profilesByUserUuid={profilesByUserUuid}
+                selectedChat={selectedChat ?? null}
+            />
 
-            <section className="chats-me-page__chat" aria-label="Chat">
-                {selectedChat ? (
-                    <div className="chats-me-page__chat-shell">
-                        <header className="chats-me-page__chat-header">
-                            <p className="chats-me-page__eyebrow">Selected chat</p>
-                            <h2 className="chats-me-page__chat-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
-                        </header>
+            <ChatDetailsPanel
+                authenticatedUserUuid={authenticatedUserUuid}
+                isKickingMember={isKickingMember}
+                isSelectedChatGroup={isSelectedChatGroup}
+                isSelectedChatOwnedByAuthenticatedUser={isSelectedChatOwnedByAuthenticatedUser}
+                onKickMember={(memberUuid) => void kickMemberFromChat(memberUuid)}
+                onOpenAddMembersModal={openAddMembersModal}
+                profilesByUserUuid={profilesByUserUuid}
+                selectedChat={selectedChat ?? null}
+            />
 
-                        <div
-                            ref={messagesContainerRef}
-                            className="chats-me-page__messages"
-                            aria-live="polite"
-                            onContextMenu={(event) => event.preventDefault()}
-                            onScroll={handleMessagesScroll}
-                        >
-                            {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
-                            {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
-                            {!isMessagesLoading && !messagesError && messages.length === 0 && (
-                                <p className="chats-me-page__state">No messages yet.</p>
-                            )}
-                            {messages.map((message, index) => {
-                                const isThreadStart = isMessageThreadStart(message, messages[index - 1]);
+            <DeleteMessageDialog
+                isDeletingMessage={isDeletingMessage}
+                message={messagePendingDeletion}
+                onCancel={() => setMessagePendingDeletion(null)}
+                onConfirm={deleteMessage}
+                profilesByUserUuid={profilesByUserUuid}
+            />
 
-                                return (
-                                    <article
-                                        className={
-                                            [
-                                                "chats-me-page__message",
-                                                isThreadStart ? "chats-me-page__message--thread-start" : "",
-                                                message.isPending ? "chats-me-page__message--pending" : "",
-                                                editingMessage?.uuid === message.uuid ? "chats-me-page__message--editing" : "",
-                                            ].filter(Boolean).join(" ")
-                                        }
-                                        key={message.uuid}
-                                        ref={(element) => {
-                                            messageElementByRevisionRef.current[message.revision] = element;
-                                        }}
-                                        onContextMenu={(event) => handleMessageContextMenu(event, message)}
-                                    >
-                                        <div className="chats-me-page__message-avatar-cell">
-                                            {isThreadStart && (
-                                                <UserAvatar
-                                                    className="chats-me-page__message-avatar"
-                                                    src={getMessageAuthorAvatarUrl(message, profilesByUserUuid)}
-                                                    label={getMessageAuthorAvatarLabel(message, profilesByUserUuid)}
-                                                />
-                                            )}
-                                        </div>
-                                        <div className="chats-me-page__message-body">
-                                            {isThreadStart && (
-                                                <div className="chats-me-page__message-header">
-                                                    <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
-                                                </div>
-                                            )}
-                                            {hasRenderableMessageText(message.text) && (
-                                                <p className="chats-me-page__message-text">
-                                                    {renderMessageText(message.text)}
-                                                    {isMessageEdited(message) && (
-                                                        <span className="chats-me-page__message-edited"> (edited)</span>
-                                                    )}
-                                                </p>
-                                            )}
-                                            {message.attachments.length > 0 && (
-                                                <div className="chats-me-page__message-attachments" aria-label="Message attachments">
-                                                    {message.attachments.map((attachment) => (
-                                                        <MessageAttachmentView attachment={attachment} key={attachment.uuid} />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="chats-me-page__message-status">
-                                            {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
-                                                <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
-                                            )}
-                                            <time
-                                                className="chats-me-page__message-time"
-                                                dateTime={message.createdAt}
-                                            >
-                                                {formatMessageTime(message.createdAt)}
-                                            </time>
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                            <div ref={messagesEndRef} className="chats-me-page__messages-end" aria-hidden="true" />
-                        </div>
+            <GroupMembersDialog
+                actionText="Create group"
+                busyText="Creating..."
+                emptyStateText="No users found."
+                error={groupChatSearchProfilesError}
+                inputName="group-search"
+                inputPlaceholder="Search users"
+                invitees={groupChatInvitees}
+                isBusy={isCreatingGroupChat}
+                isFocused={isGroupChatSearchFocused}
+                isOpen={isCreateGroupChatModalOpen}
+                isSearching={isSearchingGroupChatProfiles}
+                name={groupChatName}
+                onClose={closeCreateGroupChatModal}
+                onConfirm={createGroupChat}
+                onFocusChange={setIsGroupChatSearchFocused}
+                onNameChange={setGroupChatName}
+                onQueryChange={setGroupChatSearchQuery}
+                onToggleInvitee={toggleGroupChatInvitee}
+                query={groupChatSearchQuery}
+                queryInputRef={groupChatSearchInputRef}
+                queryTrimmed={groupChatSearchQueryTrimmed}
+                secondaryText="Add people now or create the group first and invite later."
+                selectedUserUuids={groupChatInviteeUserUuids}
+                title="Create a group chat"
+                titleEyebrow="New group"
+                visibleProfiles={groupChatVisibleSearchProfiles}
+            />
 
-                        {messageContextMenu && (
-                            <div
-                                className="chats-me-page__context-menu"
-                                style={{
-                                    left: messageContextMenu.x,
-                                    top: messageContextMenu.y,
-                                }}
-                                onClick={(event) => event.stopPropagation()}
-                            >
-                                {messageContextMenu.message.userUuid === authenticatedUserUuid && (
-                                    <>
-                                        <button
-                                            className="chats-me-page__context-menu-button"
-                                            type="button"
-                                            onClick={() => {
-                                                setEditingMessage(messageContextMenu.message);
-                                                setMessageContextMenu(null);
-                                            }}
-                                        >
-                                            <span className="material-symbols-rounded" aria-hidden="true">edit</span>
-                                            Edit Message
-                                        </button>
-                                    </>
-                                )}
-                                <button
-                                    className="chats-me-page__context-menu-button"
-                                    type="button"
-                                    onClick={() => void copyMessageText(messageContextMenu.message)}
-                                >
-                                    <span className="material-symbols-rounded" aria-hidden="true">content_copy</span>
-                                    Copy text
-                                </button>
-                                <button
-                                    className="chats-me-page__context-menu-button"
-                                    type="button"
-                                    onClick={() => void copyMessageLink(messageContextMenu.message)}
-                                >
-                                    <span className="material-symbols-rounded" aria-hidden="true">link</span>
-                                    Copy Message Link
-                                </button>
-                                {(messageContextMenu.message.userUuid === authenticatedUserUuid || canDeleteAnyMessage || (isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && messageContextMenu.message.userUuid !== authenticatedUserUuid)) && (
-                                    <div className="chats-me-page__context-menu-danger">
-                                        {(messageContextMenu.message.userUuid === authenticatedUserUuid || canDeleteAnyMessage) && (
-                                            <button
-                                                className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
-                                                type="button"
-                                                onClick={() => {
-                                                    setMessagePendingDeletion(messageContextMenu.message);
-                                                    setMessageContextMenu(null);
-                                                }}
-                                            >
-                                                <span className="material-symbols-rounded" aria-hidden="true">delete</span>
-                                                Delete Message
-                                            </button>
-                                        )}
-                                        {isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && messageContextMenu.message.userUuid !== authenticatedUserUuid && (
-                                            <button
-                                                className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
-                                                type="button"
-                                                disabled={isKickingMember}
-                                                onClick={() => {
-                                                    const memberUuid = messageContextMenu.message.userUuid;
-                                                    setMessageContextMenu(null);
-                                                    void kickMemberFromChat(memberUuid);
-                                                }}
-                                            >
-                                                <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
-                                                Kick User
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <MessageComposer
-                            disabled={!authenticatedUserUuid}
-                            editingText={editingMessage?.text ?? null}
-                            editingAttachments={editingMessage?.attachments ?? []}
-                            onCancelEdit={() => setEditingMessage(null)}
-                            onSubmit={submitMessage}
-                        />
-                    </div>
-                ) : (
-                    <div className="chats-me-page__chat-placeholder">
-                        <p className="chats-me-page__eyebrow">No chat selected</p>
-                        <h2 className="chats-me-page__chat-title">Choose a chat</h2>
-                    </div>
-                )}
-            </section>
-
-            <aside className="chats-me-page__details" aria-label="Chat details">
-                {selectedChat ? (
-                    <div className="chats-me-page__details-shell">
-                        <div className="chats-me-page__details-header">
-                            <p className="chats-me-page__eyebrow">Members</p>
-                            {selectedChat.chatType === ChatType.Group && (
-                                <button className="chats-me-page__details-action-button" type="button" onClick={openAddMembersModal}>
-                                    <span className="material-symbols-rounded chats-me-page__details-action-button-icon" aria-hidden="true">person_add</span>
-                                    Add members
-                                </button>
-                            )}
-                        </div>
-                        <div className="chats-me-page__members" aria-label="Chat members">
-                            {selectedChat.memberUuids.map((memberUuid) => (
-                                <div className="chats-me-page__member" key={memberUuid}>
-                                    <UserAvatar
-                                        className="chats-me-page__member-avatar"
-                                        src={getChatMemberAvatarUrl(memberUuid, profilesByUserUuid)}
-                                        label={getChatMemberAvatarLabel(memberUuid, profilesByUserUuid)}
-                                    />
-                                    <span className="chats-me-page__member-name">
-                                        {getChatMemberName(memberUuid, profilesByUserUuid)}
-                                    </span>
-                                    {isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && memberUuid !== authenticatedUserUuid && (
-                                        <button
-                                            className="chats-me-page__member-remove-button"
-                                            type="button"
-                                            disabled={isKickingMember}
-                                            title="Remove member"
-                                            aria-label={`Remove member ${getChatMemberName(memberUuid, profilesByUserUuid)}`}
-                                            onClick={() => void kickMemberFromChat(memberUuid)}
-                                        >
-                                            <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="chats-me-page__details-shell chats-me-page__details-shell--empty">
-                        <p className="chats-me-page__eyebrow">Members</p>
-                        <p className="chats-me-page__state">Choose a chat to see members.</p>
-                    </div>
-                )}
-            </aside>
-
-            {messagePendingDeletion && (
-                <div className="chats-me-page__modal-backdrop" role="presentation">
-                    <section className="chats-me-page__delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
-                        <div className="chats-me-page__delete-dialog-header">
-                            <h2 className="chats-me-page__delete-dialog-title" id="delete-message-title">Delete Message</h2>
-                            <p className="chats-me-page__delete-dialog-text">Are you sure you want to delete this message?</p>
-                        </div>
-
-                        <article className="chats-me-page__delete-message-preview">
-                            <div className="chats-me-page__message-avatar-cell">
-                                <UserAvatar
-                                    className="chats-me-page__message-avatar"
-                                    src={getMessageAuthorAvatarUrl(messagePendingDeletion, profilesByUserUuid)}
-                                    label={getMessageAuthorAvatarLabel(messagePendingDeletion, profilesByUserUuid)}
-                                />
-                            </div>
-                            <div className="chats-me-page__message-body">
-                                <div className="chats-me-page__message-header">
-                                    <p className="chats-me-page__message-author">{getMessageAuthorName(messagePendingDeletion, profilesByUserUuid)}</p>
-                                </div>
-                                {hasRenderableMessageText(messagePendingDeletion.text) && (
-                                    <p className="chats-me-page__message-text">
-                                        {renderMessageText(messagePendingDeletion.text)}
-                                        {isMessageEdited(messagePendingDeletion) && (
-                                            <span className="chats-me-page__message-edited"> (edited)</span>
-                                        )}
-                                    </p>
-                                )}
-                                {messagePendingDeletion.attachments.length > 0 && (
-                                    <div className="chats-me-page__message-attachments" aria-label="Message attachments">
-                                        {messagePendingDeletion.attachments.map((attachment) => (
-                                            <MessageAttachmentView attachment={attachment} key={attachment.uuid} />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="chats-me-page__message-status">
-                                <time
-                                    className="chats-me-page__message-time"
-                                    dateTime={messagePendingDeletion.createdAt}
-                                >
-                                    {formatMessageTime(messagePendingDeletion.createdAt)}
-                                </time>
-                            </div>
-                        </article>
-
-                        <div className="chats-me-page__delete-dialog-actions">
-                            <button className="chats-me-page__delete-dialog-button" type="button" disabled={isDeletingMessage} onClick={() => setMessagePendingDeletion(null)}>
-                                Cancel
-                            </button>
-                            <button className="chats-me-page__delete-dialog-button chats-me-page__delete-dialog-button--danger" type="button" disabled={isDeletingMessage} onClick={() => void deleteMessage(messagePendingDeletion)}>
-                                Delete
-                            </button>
-                        </div>
-                    </section>
-                </div>
-            )}
-
-            {isCreateGroupChatModalOpen && (
-                <div className="chats-me-page__modal-backdrop" role="presentation" onClick={closeCreateGroupChatModal}>
-                    <section
-                        className="chats-me-page__group-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="create-group-title"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="chats-me-page__group-dialog-header">
-                            <div>
-                                <p className="chats-me-page__eyebrow">New group</p>
-                                <h2 className="chats-me-page__group-dialog-title" id="create-group-title">Create a group chat</h2>
-                            </div>
-                            <p className="chats-me-page__group-dialog-text">
-                                Add people now or create the group first and invite later.
-                            </p>
-                        </div>
-
-                        <label className="chats-me-page__group-field">
-                            <span className="chats-me-page__group-field-label">Chat name</span>
-                            <input
-                                className="chats-me-page__group-field-input"
-                                type="text"
-                                name="group-name"
-                                placeholder="Project team"
-                                value={groupChatName}
-                                onChange={(event) => setGroupChatName(event.target.value)}
-                            />
-                        </label>
-
-                        <label className="chats-me-page__group-search">
-                            <span className="material-symbols-rounded chats-me-page__group-search-icon" aria-hidden="true">search</span>
-                            <input
-                                className="chats-me-page__group-search-input"
-                                type="text"
-                                name="group-search"
-                                placeholder="Search users"
-                                ref={groupChatSearchInputRef}
-                                value={groupChatSearchQuery}
-                                onChange={(event) => setGroupChatSearchQuery(event.target.value)}
-                                onFocus={() => setIsGroupChatSearchFocused(true)}
-                                onBlur={() => setIsGroupChatSearchFocused(false)}
-                            />
-                            {isGroupChatSearchActive && (
-                                <button
-                                    className="chats-me-page__group-search-clear"
-                                    type="button"
-                                    onMouseDown={(event) => event.preventDefault()}
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        setGroupChatSearchQuery("");
-                                    }}
-                                >
-                                    <span className="material-symbols-rounded" aria-hidden="true">close</span>
-                                </button>
-                            )}
-                        </label>
-
-                        <div className="chats-me-page__group-dialog-content">
-                            <div className="chats-me-page__group-results">
-                                {groupChatSearchQueryTrimmed.length === 0 && groupChatInvitees.length === 0 && (
-                                    <p className="chats-me-page__state">Type a name.</p>
-                                )}
-                                {isSearchingGroupChatProfiles && <p className="chats-me-page__state">Searching users...</p>}
-                                {groupChatSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{groupChatSearchProfilesError}</p>}
-                                {!isSearchingGroupChatProfiles && !groupChatSearchProfilesError && groupChatSearchQueryTrimmed.length > 0 && groupChatVisibleSearchProfiles.length === 0 && (
-                                    <p className="chats-me-page__state">No users found.</p>
-                                )}
-                                {groupChatVisibleSearchProfiles.map((result) => {
-                                    const isInviteeSelected = groupChatInviteeUserUuids.has(result.userUuid);
-
-                                    return (
-                                        <label
-                                            className={
-                                                [
-                                                    "chats-me-page__chat-button",
-                                                    "chats-me-page__chat-button--search-result",
-                                                    isInviteeSelected ? "chats-me-page__chat-button--selected" : "",
-                                                ].filter(Boolean).join(" ")
-                                            }
-                                            key={result.userUuid}
-                                        >
-                                            <input
-                                                checked={isInviteeSelected}
-                                                className="chats-me-page__group-checkbox"
-                                                disabled={isCreatingGroupChat}
-                                                type="checkbox"
-                                                onChange={() => toggleGroupChatInvitee(result)}
-                                            />
-                                            <UserAvatar
-                                                className="chats-me-page__avatar"
-                                                src={getProfileAvatarUrl(result)}
-                                                label={result.name}
-                                            />
-                                            <span className="chats-me-page__chat-preview">
-                                                <span className="chats-me-page__chat-name">{result.name}</span>
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="chats-me-page__group-dialog-actions">
-                            <button className="chats-me-page__group-dialog-button" type="button" disabled={isCreatingGroupChat} onClick={closeCreateGroupChatModal}>
-                                Cancel
-                            </button>
-                            <button className="chats-me-page__group-dialog-button chats-me-page__group-dialog-button--primary" type="button" disabled={isCreatingGroupChat} onClick={() => void createGroupChat()}>
-                                {isCreatingGroupChat ? "Creating..." : "Create group"}
-                            </button>
-                        </div>
-                    </section>
-                </div>
-            )}
-
-            {isAddMembersModalOpen && selectedChat && (
-                <div className="chats-me-page__modal-backdrop" role="presentation" onClick={closeAddMembersModal}>
-                    <section
-                        className="chats-me-page__group-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="add-members-title"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="chats-me-page__group-dialog-header">
-                            <div>
-                                <p className="chats-me-page__eyebrow">Group members</p>
-                                <h2 className="chats-me-page__group-dialog-title" id="add-members-title">Add members</h2>
-                            </div>
-                            <p className="chats-me-page__group-dialog-text">
-                                Pick users to add to this chat. Already selected users stay visible until you uncheck them.
-                            </p>
-                        </div>
-
-                        <label className="chats-me-page__group-search">
-                            <span className="material-symbols-rounded chats-me-page__group-search-icon" aria-hidden="true">search</span>
-                            <input
-                                className="chats-me-page__group-search-input"
-                                type="text"
-                                name="members-search"
-                                placeholder="Search users"
-                                ref={addMembersSearchInputRef}
-                                value={addMembersSearchQuery}
-                                onChange={(event) => setAddMembersSearchQuery(event.target.value)}
-                                onFocus={() => setIsAddMembersSearchFocused(true)}
-                                onBlur={() => setIsAddMembersSearchFocused(false)}
-                            />
-                            {isAddMembersSearchActive && (
-                                <button
-                                    className="chats-me-page__group-search-clear"
-                                    type="button"
-                                    onMouseDown={(event) => event.preventDefault()}
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        setAddMembersSearchQuery("");
-                                    }}
-                                >
-                                    <span className="material-symbols-rounded" aria-hidden="true">close</span>
-                                </button>
-                            )}
-                        </label>
-
-                        <div className="chats-me-page__group-dialog-content">
-                            <div className="chats-me-page__group-results">
-                                {addMembersSearchQuery.trim().length === 0 && addMembersInvitees.length === 0 && (
-                                    <p className="chats-me-page__state">Type a name.</p>
-                                )}
-                                {isSearchingAddMembersProfiles && <p className="chats-me-page__state">Searching users...</p>}
-                                {addMembersSearchProfilesError && <p className="chats-me-page__state chats-me-page__state--error">{addMembersSearchProfilesError}</p>}
-                                {!isSearchingAddMembersProfiles && !addMembersSearchProfilesError && addMembersSearchQuery.trim().length > 0 && addMembersVisibleSearchProfiles.length === 0 && (
-                                    <p className="chats-me-page__state">No users found.</p>
-                                )}
-                                {addMembersVisibleSearchProfiles.map((result) => {
-                                    const isInviteeSelected = addMembersInviteeUserUuids.has(result.userUuid);
-
-                                    return (
-                                        <label
-                                            className={
-                                                [
-                                                    "chats-me-page__chat-button",
-                                                    "chats-me-page__chat-button--search-result",
-                                                    isInviteeSelected ? "chats-me-page__chat-button--selected" : "",
-                                                ].filter(Boolean).join(" ")
-                                            }
-                                            key={result.userUuid}
-                                        >
-                                            <input
-                                                checked={isInviteeSelected}
-                                                className="chats-me-page__group-checkbox"
-                                                disabled={isAddingMembers}
-                                                type="checkbox"
-                                                onChange={() => toggleAddMembersInvitee(result)}
-                                            />
-                                            <UserAvatar
-                                                className="chats-me-page__avatar"
-                                                src={getProfileAvatarUrl(result)}
-                                                label={result.name}
-                                            />
-                                            <span className="chats-me-page__chat-preview">
-                                                <span className="chats-me-page__chat-name">{result.name}</span>
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="chats-me-page__group-dialog-actions">
-                            <button className="chats-me-page__group-dialog-button" type="button" disabled={isAddingMembers} onClick={closeAddMembersModal}>
-                                Cancel
-                            </button>
-                            <button className="chats-me-page__group-dialog-button chats-me-page__group-dialog-button--primary" type="button" disabled={isAddingMembers || addMembersInvitees.length === 0} onClick={() => void addMembersToChat()}>
-                                {isAddingMembers ? "Adding..." : "Add members"}
-                            </button>
-                        </div>
-                    </section>
-                </div>
-            )}
+            <GroupMembersDialog
+                actionText="Add members"
+                busyText="Adding..."
+                emptyStateText="No users found."
+                error={addMembersSearchProfilesError}
+                inputName="members-search"
+                inputPlaceholder="Search users"
+                invitees={addMembersInvitees}
+                isBusy={isAddingMembers}
+                isFocused={isAddMembersSearchFocused}
+                isOpen={isAddMembersModalOpen && Boolean(selectedChat)}
+                isSearching={isSearchingAddMembersProfiles}
+                onClose={closeAddMembersModal}
+                onConfirm={addMembersToChat}
+                onFocusChange={setIsAddMembersSearchFocused}
+                onQueryChange={setAddMembersSearchQuery}
+                onToggleInvitee={toggleAddMembersInvitee}
+                query={addMembersSearchQuery}
+                queryInputRef={addMembersSearchInputRef}
+                queryTrimmed={addMembersSearchQuery.trim()}
+                secondaryText="Pick users to add to this chat. Already selected users stay visible until you uncheck them."
+                selectedUserUuids={addMembersInviteeUserUuids}
+                title="Add members"
+                titleEyebrow="Group members"
+                visibleProfiles={addMembersVisibleSearchProfiles}
+            />
         </section>
     );
-}
-
-function getChatTitle(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
-    if (chat.name) {
-        return chat.name;
-    }
-
-    if (chat.chatType !== ChatType.Direct) {
-        return chat.uuid;
-    }
-
-    const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
-    if (!companionUuid) {
-        return chat.uuid;
-    }
-
-    return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
-}
-
-function getChatAvatarUrl(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
-    if (chat.chatType === ChatType.Direct) {
-        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
-        if (!companionUuid) {
-            return null;
-        }
-
-        return getProfileAvatarUrl(profilesByUserUuid[companionUuid] ?? null);
-    }
-
-    if (!chat.avatar) {
-        return null;
-    }
-
-    return buildAttachmentUrl(chat.avatar);
-}
-
-function getChatAvatarLabel(chat: Chat, authenticatedUserUuid: string | null, profilesByUserUuid: Record<string, PublicProfile>) {
-    if (chat.chatType === ChatType.Direct) {
-        const companionUuid = chat.memberUuids.find((memberUuid) => memberUuid !== authenticatedUserUuid);
-        if (!companionUuid) {
-            return chat.uuid;
-        }
-
-        return profilesByUserUuid[companionUuid]?.name ?? companionUuid;
-    }
-
-    return getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid);
-}
-
-function formatMessageTime(date: string) {
-    return new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        hour12: false,
-        hourCycle: "h23",
-        minute: "2-digit",
-    }).format(new Date(date));
-}
-
-function isMessageThreadStart(message: ChatMessage, previousMessage?: ChatMessage) {
-    if (!previousMessage) {
-        return true;
-    }
-
-    if (previousMessage.userUuid !== message.userUuid) {
-        return true;
-    }
-
-    return new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime() >= messageThreadGapMs;
-}
-
-function isMessageEdited(message: ChatMessage) {
-    return new Date(message.createdAt).getTime() !== new Date(message.updatedAt).getTime();
-}
-
-function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUuid: string | null) {
-    return !message.isPending && message.userUuid === authenticatedUserUuid;
-}
-
-function getMessageAuthorName(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
-    return profilesByUserUuid[message.userUuid]?.name ?? message.userUuid;
-}
-
-function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
-    return getProfileAvatarUrl(profilesByUserUuid[message.userUuid] ?? null);
-}
-
-function getMessageAuthorAvatarLabel(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
-    return getMessageAuthorName(message, profilesByUserUuid);
-}
-
-function getChatMemberName(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
-    return profilesByUserUuid[memberUuid]?.name ?? memberUuid;
-}
-
-function getChatMemberAvatarUrl(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
-    return getProfileAvatarUrl(profilesByUserUuid[memberUuid] ?? null);
-}
-
-function getChatMemberAvatarLabel(memberUuid: string, profilesByUserUuid: Record<string, PublicProfile>) {
-    return getChatMemberName(memberUuid, profilesByUserUuid);
-}
-
-function renderMessageText(text: string) {
-    return text.split(linkPattern).map((part, index) => {
-        if (!fullLinkPattern.test(part)) {
-            return part;
-        }
-
-        return (
-            <a className="chats-me-page__message-link" href={part} key={`${part}-${index}`} target="_blank" rel="noreferrer">
-                {part}
-            </a>
-        );
-    });
-}
-
-function hasRenderableMessageText(text: string) {
-    return text.trim().length > 0;
 }
 
 function copyTextWithFallback(text: string) {
@@ -1817,33 +1197,6 @@ function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessa
 
 function getDirtyChats(chats: Chat[]) {
     return chats.filter((chat) => chat.currentUserLastSeenRevision < chat.revision);
-}
-
-function getUnreadRevisionCount(chat: Chat, localLastSeenRevisionByChatUuid: Record<string, number>) {
-    const localLastSeenRevision = Math.max(
-        localLastSeenRevisionByChatUuid[chat.uuid] ?? 0,
-        chat.currentUserLastSeenRevision,
-    );
-
-    return Math.max(0, chat.revision - localLastSeenRevision);
-}
-
-function getTargetLastSeenRevision(
-    chat: Chat,
-    chatUuid: string,
-    selectedChatUuid: string | null,
-    isSelectedChatScrolledToBottom: boolean,
-    localLastSeenRevisionByChatUuid: Record<string, number>,
-) {
-    const localLastSeenRevision = Math.max(
-        localLastSeenRevisionByChatUuid[chatUuid] ?? 0,
-        chat.currentUserLastSeenRevision,
-    );
-    if (chatUuid === selectedChatUuid && isSelectedChatScrolledToBottom) {
-        return Math.max(localLastSeenRevision, chat.revision);
-    }
-
-    return localLastSeenRevision;
 }
 
 function isMessagesContainerScrolledToBottom(container: HTMLDivElement | null) {
@@ -1936,153 +1289,6 @@ function messageEditedEventToChatMessage(event: MessageEditedEvent, revision: nu
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
-}
-
-function MessageAttachmentView({ attachment }: { attachment: MessageAttachment; }) {
-    if (isImageAttachmentName(attachment.name)) {
-        const url = buildAttachmentUrl(attachment.name);
-        return (
-            <a className="chats-me-page__message-attachment chats-me-page__message-attachment--image" href={url} target="_blank" rel="noreferrer">
-                <img className="chats-me-page__message-attachment-image" src={url} alt={attachment.name} />
-            </a>
-        );
-    }
-
-    return (
-        <a className="chats-me-page__message-attachment chats-me-page__message-attachment--document" href={buildAttachmentUrl(attachment.name)} target="_blank" rel="noreferrer">
-            <span className="material-symbols-rounded chats-me-page__message-attachment-icon" aria-hidden="true">description</span>
-            <span className="chats-me-page__message-attachment-name">{attachment.name}</span>
-        </a>
-    );
-}
-
-function getProfileAvatarUrl(profile: PublicProfile | null | undefined) {
-    if (!profile?.avatar) {
-        return null;
-    }
-
-    return buildAttachmentUrl(profile.avatar);
-}
-
-function UserAvatar({ className, src, label }: { className: string; src: string | null; label: string; }) {
-    if (src) {
-        return (
-            <img
-                className={`${className} ${className}--image`}
-                src={src}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
-            />
-        );
-    }
-
-    const placeholder = getAvatarPlaceholder(label);
-
-    return (
-        <span
-            className={`${className} ${className}--placeholder`}
-            style={placeholder.style}
-            aria-hidden="true"
-        >
-            {placeholder.initials}
-        </span>
-    );
-}
-
-function getAvatarPlaceholder(label: string) {
-    const initials = getAvatarInitials(label);
-    const backgroundColor = hashToAvatarColor(label);
-
-    return {
-        initials,
-        style: {
-            backgroundColor,
-            borderColor: "rgba(255, 255, 255, 0.16)",
-            color: "#f8fafc",
-        } satisfies CSSProperties,
-    };
-}
-
-function getAvatarInitials(label: string) {
-    const normalizedLabel = label.trim().replace(/\s+/g, " ");
-    if (normalizedLabel.length === 0) {
-        return "?";
-    }
-
-    const words = normalizedLabel.split(" ").filter(Boolean);
-    if (words.length >= 2) {
-        return `${firstAlphabeticCharacter(words[0])}${firstAlphabeticCharacter(words[1])}`.toUpperCase();
-    }
-
-    return normalizedLabel.slice(0, 2).toUpperCase();
-}
-
-function firstAlphabeticCharacter(value: string) {
-    const match = value.match(/[a-zа-я0-9]/i);
-    return match?.[0] ?? value[0] ?? "?";
-}
-
-function hashToAvatarColor(value: string) {
-    const normalizedValue = value.trim().toLowerCase();
-    let hash = 0;
-
-    for (let index = 0; index < normalizedValue.length; index += 1) {
-        hash = ((hash << 5) - hash + normalizedValue.charCodeAt(index)) | 0;
-    }
-
-    const hue = Math.abs(hash) % 360;
-    return hslToHex(hue, 0.56, 0.46);
-}
-
-function hslToHex(hue: number, saturation: number, lightness: number) {
-    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-    const hueSection = hue / 60;
-    const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-
-    if (hueSection >= 0 && hueSection < 1) {
-        red = chroma;
-        green = secondary;
-    } else if (hueSection < 2) {
-        red = secondary;
-        green = chroma;
-    } else if (hueSection < 3) {
-        green = chroma;
-        blue = secondary;
-    } else if (hueSection < 4) {
-        green = secondary;
-        blue = chroma;
-    } else if (hueSection < 5) {
-        red = secondary;
-        blue = chroma;
-    } else {
-        red = chroma;
-        blue = secondary;
-    }
-
-    const matchValue = lightness - chroma / 2;
-    const toHexByte = (channel: number) => Math.round((channel + matchValue) * 255).toString(16).padStart(2, "0");
-
-    return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
-}
-
-function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
-    return profiles.reduce<Record<string, PublicProfile>>((accumulator, profile) => {
-        accumulator[profile.userUuid] = profile;
-        return accumulator;
-    }, {});
-}
-
-function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[], searchProfiles: PublicProfile[]) {
-    return Array.from(new Set([
-        ...chats.flatMap((chat) => chat.memberUuids),
-        ...messages.map((message) => message.userUuid),
-        ...searchProfiles.map((profile) => profile.userUuid),
-    ]));
 }
 
 function generatePendingMessageUuid() {
