@@ -8,10 +8,10 @@ import (
 
 // ChatRevisionUpdated describes that a chat revision advanced after a new message was created.
 type ChatRevisionUpdated struct {
-	ChatUuid     uuid.UUID `json:"chatUuid"`
-	UserUuid     uuid.UUID `json:"userUuid"`
-	MessagePiece string    `json:"messagePiece"`
-	Revision     int64     `json:"revision"`
+	ChatUuid       uuid.UUID   `json:"chatUuid"`
+	RecipientUuids []uuid.UUID `json:"recipientUuids"`
+	Preview        string      `json:"preview"`
+	Revision       int64       `json:"revision"`
 }
 
 // ChatRevisionUpdatedPublisher publishes chat-revision-updated events.
