@@ -8,6 +8,8 @@ import {
     MessageText,
     UserAvatar,
     formatMessageTime,
+    getMessageAuthorFirstName,
+    hasRenderableMessageText,
     getMessageAuthorAvatarLabel,
     getMessageAuthorAvatarUrl,
     getMessageAuthorName,
@@ -256,6 +258,25 @@ function MessageRow({
     const shouldShowBubbleHeader = messageViewMode === "bubble" && isThreadStart;
     const shouldShowBubbleAvatar = messageViewMode === "bubble" && isThreadEnd;
     const shouldShowPlainAvatar = messageViewMode === "plain" && isThreadStart;
+    const hasMessageText = hasRenderableMessageText(message.text);
+    const isEditedMessage = isMessageEdited(message);
+    const hasDeliveryMark = isOwnConfirmedMessage(message, authenticatedUserUuid);
+    const bubbleInlineMeta = (
+        <span className="chats-me-page__message-inline-meta">
+            {isEditedMessage && (
+                <span className="chats-me-page__message-edited-meta">edited</span>
+            )}
+            <time
+                className="chats-me-page__message-time"
+                dateTime={message.createdAt}
+            >
+                {formatMessageTime(message.createdAt)}
+            </time>
+            {hasDeliveryMark && (
+                <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+            )}
+        </span>
+    );
 
     return (
         <article
@@ -287,30 +308,25 @@ function MessageRow({
             <div className="chats-me-page__message-content">
                 {messageViewMode === "bubble" ? (
                     <>
-                        {shouldShowBubbleHeader && (
-                            <div className="chats-me-page__message-header">
-                                <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
-                            </div>
-                        )}
                         <div className="chats-me-page__message-bubble">
+                            {shouldShowBubbleHeader && !isOwnMessage && (
+                                <div className="chats-me-page__message-header chats-me-page__message-header--bubble">
+                                    <p className="chats-me-page__message-author">{getMessageAuthorFirstName(message, profilesByUserUuid)}</p>
+                                </div>
+                            )}
                             <div className="chats-me-page__message-body">
-                                <MessageText message={message} showEditedInline={false} />
+                                <MessageText
+                                    message={message}
+                                    showEditedInline={false}
+                                    trailingMeta={hasMessageText ? bubbleInlineMeta : null}
+                                />
                                 <MessageAttachments attachments={message.attachments} />
                             </div>
-                            <div className="chats-me-page__message-status">
-                                {isMessageEdited(message) && (
-                                    <span className="chats-me-page__message-edited-meta">edited</span>
-                                )}
-                                <time
-                                    className="chats-me-page__message-time"
-                                    dateTime={message.createdAt}
-                                >
-                                    {formatMessageTime(message.createdAt)}
-                                </time>
-                                {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
-                                    <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
-                                )}
-                            </div>
+                            {!hasMessageText && (
+                                <div className="chats-me-page__message-status">
+                                    {bubbleInlineMeta}
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (

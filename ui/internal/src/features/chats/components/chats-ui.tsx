@@ -110,6 +110,12 @@ export function getMessageAuthorName(message: ChatMessage, profilesByUserUuid: R
     return profilesByUserUuid[message.userUuid]?.name ?? message.userUuid;
 }
 
+export function getMessageAuthorFirstName(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
+    const fullName = getMessageAuthorName(message, profilesByUserUuid).trim();
+    const [firstWord] = fullName.split(/\s+/);
+    return firstWord || fullName;
+}
+
 export function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
     return getProfileAvatarUrl(profilesByUserUuid[message.userUuid] ?? null);
 }
@@ -192,14 +198,23 @@ export function renderMessageText(text: string) {
     });
 }
 
-export function MessageText({ message, showEditedInline = true }: { message: ChatMessage; showEditedInline?: boolean; }) {
+export function MessageText({
+    message,
+    showEditedInline = true,
+    trailingMeta = null,
+}: {
+    message: ChatMessage;
+    showEditedInline?: boolean;
+    trailingMeta?: ReactNode;
+}) {
     if (!hasRenderableMessageText(message.text)) {
         return null;
     }
 
     return (
-        <p className="chats-me-page__message-text">
+        <p className={trailingMeta ? "chats-me-page__message-text chats-me-page__message-text--with-meta" : "chats-me-page__message-text"}>
             {renderMessageText(message.text)}
+            {trailingMeta}
             {showEditedInline && isMessageEdited(message) && (
                 <span className="chats-me-page__message-edited"> (edited)</span>
             )}
