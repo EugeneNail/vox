@@ -192,7 +192,7 @@ export function renderMessageText(text: string) {
     });
 }
 
-export function MessageText({ message }: { message: ChatMessage; }) {
+export function MessageText({ message, showEditedInline = true }: { message: ChatMessage; showEditedInline?: boolean; }) {
     if (!hasRenderableMessageText(message.text)) {
         return null;
     }
@@ -200,7 +200,7 @@ export function MessageText({ message }: { message: ChatMessage; }) {
     return (
         <p className="chats-me-page__message-text">
             {renderMessageText(message.text)}
-            {isMessageEdited(message) && (
+            {showEditedInline && isMessageEdited(message) && (
                 <span className="chats-me-page__message-edited"> (edited)</span>
             )}
         </p>

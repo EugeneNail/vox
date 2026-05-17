@@ -11,6 +11,7 @@ import {
     getMessageAuthorAvatarLabel,
     getMessageAuthorAvatarUrl,
     getMessageAuthorName,
+    isMessageEdited,
     isMessageThreadStart,
     isOwnConfirmedMessage,
 } from "./chats-ui";
@@ -20,6 +21,8 @@ export type MessageContextMenu = {
     x: number;
     y: number;
 };
+
+export type ChatMessageViewMode = "bubble" | "plain";
 
 type ChatMessagesPanelProps = {
     authenticatedUserUuid: string | null;
@@ -31,6 +34,7 @@ type ChatMessagesPanelProps = {
     isSelectedChatGroup: boolean;
     isSelectedChatOwnedByAuthenticatedUser: boolean;
     messageContextMenu: MessageContextMenu | null;
+    messageViewMode: ChatMessageViewMode;
     messageElementByRevisionRef: RefObject<Record<number, HTMLElement | null>>;
     messages: ChatMessage[];
     messagesContainerRef: RefObject<HTMLDivElement | null>;
@@ -47,6 +51,7 @@ type ChatMessagesPanelProps = {
     onSubmit: (text: string, attachments: string[]) => Promise<void>;
     profilesByUserUuid: Record<string, PublicProfile>;
     selectedChat: Chat | null;
+    setMessageViewMode: (mode: ChatMessageViewMode) => void;
 };
 
 export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
@@ -60,6 +65,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         isSelectedChatGroup,
         isSelectedChatOwnedByAuthenticatedUser,
         messageContextMenu,
+        messageViewMode,
         messageElementByRevisionRef,
         messages,
         messagesContainerRef,
@@ -76,6 +82,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         onSubmit,
         profilesByUserUuid,
         selectedChat,
+        setMessageViewMode,
     } = props;
 
     if (!selectedChat) {
@@ -90,14 +97,32 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
 
     return (
         <section className="chats-me-page__chat" aria-label="Chat">
-            <div className="chats-me-page__chat-shell">
+            <div className={`chats-me-page__chat-shell chats-me-page__chat-shell--${messageViewMode}`}>
                 <div
                     ref={messagesContainerRef}
-                    className="chats-me-page__messages"
+                    className={`chats-me-page__messages chats-me-page__messages--${messageViewMode}`}
                     aria-live="polite"
                     onContextMenu={(event) => event.preventDefault()}
                     onScroll={onScroll}
                 >
+                    <div className="chats-me-page__messages-toolbar">
+                        <div className="chats-me-page__message-view-switcher" aria-label="Message view mode">
+                            <button
+                                className={messageViewMode === "bubble" ? "chats-me-page__message-view-button chats-me-page__message-view-button--active" : "chats-me-page__message-view-button"}
+                                type="button"
+                                onClick={() => setMessageViewMode("bubble")}
+                            >
+                                Bubbles
+                            </button>
+                            <button
+                                className={messageViewMode === "plain" ? "chats-me-page__message-view-button chats-me-page__message-view-button--active" : "chats-me-page__message-view-button"}
+                                type="button"
+                                onClick={() => setMessageViewMode("plain")}
+                            >
+                                Plain
+                            </button>
+                        </div>
+                    </div>
                     {isMessagesLoading && <p className="chats-me-page__state">Loading messages...</p>}
                     {messagesError && <p className="chats-me-page__state chats-me-page__state--error">{messagesError}</p>}
                     {!isMessagesLoading && !messagesError && messages.length === 0 && (
@@ -109,7 +134,9 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
                             editingMessageUuid={editingMessage?.uuid ?? null}
                             key={message.uuid}
                             message={message}
+                            messageViewMode={messageViewMode}
                             messageElementByRevisionRef={messageElementByRevisionRef}
+                            nextMessage={messages[index + 1]}
                             previousMessage={messages[index - 1]}
                             profilesByUserUuid={profilesByUserUuid}
                             onContextMenu={handleMessageContextMenu}
@@ -206,7 +233,9 @@ function MessageRow({
     authenticatedUserUuid,
     editingMessageUuid,
     message,
+    messageViewMode,
     messageElementByRevisionRef,
+    nextMessage,
     previousMessage,
     profilesByUserUuid,
     onContextMenu,
@@ -214,19 +243,29 @@ function MessageRow({
     authenticatedUserUuid: string | null;
     editingMessageUuid: string | null;
     message: ChatMessage;
+    messageViewMode: ChatMessageViewMode;
     messageElementByRevisionRef: RefObject<Record<number, HTMLElement | null>>;
+    nextMessage?: ChatMessage;
     previousMessage?: ChatMessage;
     profilesByUserUuid: Record<string, PublicProfile>;
     onContextMenu: (event: React.MouseEvent<HTMLElement>, message: ChatMessage) => void;
 }) {
+    const isOwnMessage = message.userUuid === authenticatedUserUuid;
     const isThreadStart = isMessageThreadStart(message, previousMessage);
+    const isThreadEnd = !nextMessage || isMessageThreadStart(nextMessage, message);
+    const shouldShowBubbleHeader = messageViewMode === "bubble" && isThreadStart;
+    const shouldShowBubbleAvatar = messageViewMode === "bubble" && isThreadEnd;
+    const shouldShowPlainAvatar = messageViewMode === "plain" && isThreadStart;
 
     return (
         <article
             className={
                 [
                     "chats-me-page__message",
+                    `chats-me-page__message--${messageViewMode}`,
+                    isOwnMessage ? "chats-me-page__message--own" : "chats-me-page__message--foreign",
                     isThreadStart ? "chats-me-page__message--thread-start" : "",
+                    isThreadEnd ? "chats-me-page__message--thread-end" : "",
                     message.isPending ? "chats-me-page__message--pending" : "",
                     editingMessageUuid === message.uuid ? "chats-me-page__message--editing" : "",
                 ].filter(Boolean).join(" ")
@@ -237,7 +276,7 @@ function MessageRow({
             onContextMenu={(event) => onContextMenu(event, message)}
         >
             <div className="chats-me-page__message-avatar-cell">
-                {isThreadStart && (
+                {(shouldShowBubbleAvatar || shouldShowPlainAvatar) && (
                     <UserAvatar
                         className="chats-me-page__message-avatar"
                         src={getMessageAuthorAvatarUrl(message, profilesByUserUuid)}
@@ -245,25 +284,59 @@ function MessageRow({
                     />
                 )}
             </div>
-            <div className="chats-me-page__message-body">
-                {isThreadStart && (
-                    <div className="chats-me-page__message-header">
-                        <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
-                    </div>
+            <div className="chats-me-page__message-content">
+                {messageViewMode === "bubble" ? (
+                    <>
+                        {shouldShowBubbleHeader && (
+                            <div className="chats-me-page__message-header">
+                                <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
+                            </div>
+                        )}
+                        <div className="chats-me-page__message-bubble">
+                            <div className="chats-me-page__message-body">
+                                <MessageText message={message} showEditedInline={false} />
+                                <MessageAttachments attachments={message.attachments} />
+                            </div>
+                            <div className="chats-me-page__message-status">
+                                {isMessageEdited(message) && (
+                                    <span className="chats-me-page__message-edited-meta">edited</span>
+                                )}
+                                <time
+                                    className="chats-me-page__message-time"
+                                    dateTime={message.createdAt}
+                                >
+                                    {formatMessageTime(message.createdAt)}
+                                </time>
+                                {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
+                                    <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {isThreadStart && (
+                            <div className="chats-me-page__message-header chats-me-page__message-header--plain">
+                                <p className="chats-me-page__message-author">{getMessageAuthorName(message, profilesByUserUuid)}</p>
+                                <div className="chats-me-page__message-header-meta">
+                                    <time
+                                        className="chats-me-page__message-time"
+                                        dateTime={message.createdAt}
+                                    >
+                                        {formatMessageTime(message.createdAt)}
+                                    </time>
+                                    {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
+                                        <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <div className="chats-me-page__message-body chats-me-page__message-body--plain">
+                            <MessageText message={message} showEditedInline />
+                            <MessageAttachments attachments={message.attachments} />
+                        </div>
+                    </>
                 )}
-                <MessageText message={message} />
-                <MessageAttachments attachments={message.attachments} />
-            </div>
-            <div className="chats-me-page__message-status">
-                {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
-                    <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
-                )}
-                <time
-                    className="chats-me-page__message-time"
-                    dateTime={message.createdAt}
-                >
-                    {formatMessageTime(message.createdAt)}
-                </time>
             </div>
         </article>
     );

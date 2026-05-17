@@ -20,7 +20,7 @@ import {
 import { useChatsList } from "../../features/chats/hooks/use-chats-list";
 import { useSelectedChatMessages } from "../../features/chats/hooks/use-selected-chat-messages";
 import { ChatDetailsPanel } from "../../features/chats/components/chat-details-panel";
-import { ChatMessagesPanel, MessageContextMenu } from "../../features/chats/components/chat-messages-panel";
+import { ChatMessagesPanel, type ChatMessageViewMode, MessageContextMenu } from "../../features/chats/components/chat-messages-panel";
 import { ChatsSidebar } from "../../features/chats/components/chats-sidebar";
 import { DeleteMessageDialog } from "../../features/chats/components/delete-message-dialog";
 import { GroupMembersDialog } from "../../features/chats/components/group-members-dialog";
@@ -50,6 +50,7 @@ enum ChatMemberRole {
 const lastSeenRevisionSyncIntervalMs = 30_000;
 const chatBottomThresholdPx = 24;
 const chatsSidebarWidthStorageKey = "vox.chats.sidebarWidth";
+const chatMessageViewModeStorageKey = "vox.chats.messageViewMode";
 const chatsSidebarMinWidthPx = 230;
 const chatsSidebarMaxWidthPx = 520;
 const chatsSidebarDefaultWidthPx = 350;
@@ -125,6 +126,7 @@ export default function ChatsMePage() {
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const [sidebarWidth, setSidebarWidth] = useState(() => loadChatsSidebarWidth());
     const [isSidebarResizing, setIsSidebarResizing] = useState(false);
+    const [messageViewMode, setMessageViewMode] = useState<ChatMessageViewMode>(() => loadChatMessageViewMode());
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
@@ -174,6 +176,10 @@ export default function ChatsMePage() {
     useEffect(() => {
         window.localStorage.setItem(chatsSidebarWidthStorageKey, String(sidebarWidth));
     }, [sidebarWidth]);
+
+    useEffect(() => {
+        window.localStorage.setItem(chatMessageViewModeStorageKey, messageViewMode);
+    }, [messageViewMode]);
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -1127,6 +1133,7 @@ export default function ChatsMePage() {
                 isSelectedChatGroup={isSelectedChatGroup}
                 isSelectedChatOwnedByAuthenticatedUser={isSelectedChatOwnedByAuthenticatedUser}
                 messageContextMenu={messageContextMenu}
+                messageViewMode={messageViewMode}
                 messageElementByRevisionRef={messageElementByRevisionRef}
                 messages={messages}
                 messagesContainerRef={messagesContainerRef}
@@ -1143,6 +1150,7 @@ export default function ChatsMePage() {
                 onSubmit={submitMessage}
                 profilesByUserUuid={profilesByUserUuid}
                 selectedChat={selectedChat ?? null}
+                setMessageViewMode={setMessageViewMode}
             />
 
             <ChatDetailsPanel
@@ -1369,4 +1377,13 @@ function loadChatsSidebarWidth() {
 
 function clampChatsSidebarWidth(width: number) {
     return Math.min(chatsSidebarMaxWidthPx, Math.max(chatsSidebarMinWidthPx, Math.round(width)));
+}
+
+function loadChatMessageViewMode(): ChatMessageViewMode {
+    if (typeof window === "undefined") {
+        return "bubble";
+    }
+
+    const rawValue = window.localStorage.getItem(chatMessageViewModeStorageKey);
+    return rawValue === "plain" ? "plain" : "bubble";
 }
