@@ -6,6 +6,7 @@ import { uploadImageAttachment } from "../../features/attachments/attachments-ap
 import { useOwnProfile } from "../../features/profile/hooks/use-own-profile";
 import { updateOwnProfile } from "../../features/profile/profile-api";
 import { useApiClient } from "../../hooks/use-api-client";
+import { buildAvatarPlaceholder } from "../../lib/avatar-placeholder";
 import { buildAttachmentUrl, isImageFile } from "../../messages/message-attachments";
 import "./profile-page.sass";
 
@@ -610,14 +611,14 @@ function AvatarCircle({
     name,
     size,
 }: AvatarCircleProps) {
-    const letter = name.trim().slice(0, 1).toUpperCase() || "U";
+    const placeholder = buildAvatarPlaceholder(name);
 
     return (
         <div className="profile-page__avatar" style={{ width: size, height: size, borderRadius: size / 2 }}>
             {avatarUrl ? (
                 <img className="profile-page__avatar-image" src={avatarUrl} alt="" aria-hidden="true" draggable={false} />
             ) : (
-                <span className="profile-page__avatar-placeholder">{letter}</span>
+                <span className="profile-page__avatar-placeholder" style={placeholder.style}>{placeholder.initials}</span>
             )}
         </div>
     );

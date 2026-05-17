@@ -1,8 +1,9 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { type Chat as ApiChat, type ChatMessage as ApiChatMessage } from "../chat-api";
 import { buildAttachmentUrl, isImageAttachmentName, type MessageAttachment } from "../../../messages/message-attachments";
 import { type PublicProfile } from "../../../profiles/profile-cache";
+import { buildAvatarPlaceholder } from "../../../lib/avatar-placeholder";
 
 export type Chat = ApiChat;
 export type ChatMessage = ApiChatMessage;
@@ -25,7 +26,7 @@ export function UserAvatar({ className, src, label }: { className: string; src: 
         );
     }
 
-    const placeholder = getAvatarPlaceholder(label);
+    const placeholder = buildAvatarPlaceholder(label);
 
     return (
         <span
@@ -265,85 +266,6 @@ export function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[
         ...messages.map((message) => message.userUuid),
         ...searchProfiles.map((profile) => profile.userUuid),
     ]));
-}
-
-function getAvatarPlaceholder(label: string) {
-    const initials = getAvatarInitials(label);
-    const backgroundColor = hashToAvatarColor(label);
-
-    return {
-        initials,
-        style: {
-            backgroundColor,
-            borderColor: "rgba(255, 255, 255, 0.16)",
-            color: "#f8fafc",
-        } satisfies CSSProperties,
-    };
-}
-
-function getAvatarInitials(label: string) {
-    const normalizedLabel = label.trim().replace(/\s+/g, " ");
-    if (normalizedLabel.length === 0) {
-        return "?";
-    }
-
-    const words = normalizedLabel.split(" ").filter(Boolean);
-    if (words.length >= 2) {
-        return `${firstAlphabeticCharacter(words[0])}${firstAlphabeticCharacter(words[1])}`.toUpperCase();
-    }
-
-    return normalizedLabel.slice(0, 2).toUpperCase();
-}
-
-function firstAlphabeticCharacter(value: string) {
-    const match = value.match(/[a-zа-я0-9]/i);
-    return match?.[0] ?? value[0] ?? "?";
-}
-
-function hashToAvatarColor(value: string) {
-    const normalizedValue = value.trim().toLowerCase();
-    let hash = 0;
-
-    for (let index = 0; index < normalizedValue.length; index += 1) {
-        hash = ((hash << 5) - hash + normalizedValue.charCodeAt(index)) | 0;
-    }
-
-    const hue = Math.abs(hash) % 360;
-    return hslToHex(hue, 0.56, 0.46);
-}
-
-function hslToHex(hue: number, saturation: number, lightness: number) {
-    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-    const hueSection = hue / 60;
-    const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-
-    if (hueSection >= 0 && hueSection < 1) {
-        red = chroma;
-        green = secondary;
-    } else if (hueSection < 2) {
-        red = secondary;
-        green = chroma;
-    } else if (hueSection < 3) {
-        green = chroma;
-        blue = secondary;
-    } else if (hueSection < 4) {
-        green = secondary;
-        blue = chroma;
-    } else if (hueSection < 5) {
-        red = secondary;
-        blue = chroma;
-    } else {
-        red = chroma;
-        blue = secondary;
-    }
-
-    const matchValue = lightness - chroma / 2;
-    const toHexByte = (channel: number) => Math.round((channel + matchValue) * 255).toString(16).padStart(2, "0");
-
-    return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
 }
 
 export function SearchResultButton({
