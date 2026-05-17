@@ -52,34 +52,33 @@ func (repository *MessageRepository) FindByUuid(ctx context.Context, messageUuid
 	return &messages[0], nil
 }
 
-// FindLastByChatUuid returns the latest messages from the given chat.
-func (repository *MessageRepository) FindLastByChatUuid(ctx context.Context, chatUuid uuid.UUID, length int) ([]domain.Message, error) {
+// ListFromRevision returns chat messages with revision greater than or equal to the provided revision.
+func (repository *MessageRepository) ListFromRevision(ctx context.Context, chatUuid uuid.UUID, revision int64) ([]domain.Message, error) {
 	const query = `
-		WITH latest_messages AS (
+		WITH scoped_messages AS (
 			SELECT uuid, chat_uuid, user_uuid, revision, text, created_at, updated_at
 			FROM messages
-			WHERE chat_uuid = $1
-			ORDER BY created_at DESC
-			LIMIT $2
+			WHERE chat_uuid = $1 AND revision >= $2
+			ORDER BY revision ASC
 		)
 		SELECT
-			m.uuid,
-			m.chat_uuid,
-			m.user_uuid,
-			m.revision,
-			m.text,
-			m.created_at,
-			m.updated_at,
-			a.uuid,
-			a.name
-		FROM latest_messages m
-		LEFT JOIN attachments a ON a.message_uuid = m.uuid
-		ORDER BY m.created_at DESC, a.uuid
+			scoped_messages.uuid,
+			scoped_messages.chat_uuid,
+			scoped_messages.user_uuid,
+			scoped_messages.revision,
+			scoped_messages.text,
+			scoped_messages.created_at,
+			scoped_messages.updated_at,
+			attachments.uuid,
+			attachments.name
+		FROM scoped_messages
+		LEFT JOIN attachments ON attachments.message_uuid = scoped_messages.uuid
+		ORDER BY scoped_messages.revision ASC, attachments.uuid
 	`
 
-	messages, err := repository.findMessages(ctx, query, "messages by chat uuid", chatUuid, length)
+	messages, err := repository.findMessages(ctx, query, "messages by chat uuid from revision", chatUuid, revision)
 	if err != nil {
-		return nil, fmt.Errorf("finding last messages by chat uuid %q with length %d: %w", chatUuid, length, err)
+		return nil, fmt.Errorf("listing messages by chat uuid %q from revision %d: %w", chatUuid, revision, err)
 	}
 
 	return messages, nil
@@ -199,6 +198,7 @@ func (repository *MessageRepository) Delete(ctx context.Context, messageUuid uui
 }
 
 func (repository *MessageRepository) findMessages(ctx context.Context, query string, scope string, args ...any) ([]domain.Message, error) {
+	// TODO: remove this thin wrapper and call scanMessages directly from repository methods.
 	rows, err := repository.database.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("finding %s: %w", scope, err)

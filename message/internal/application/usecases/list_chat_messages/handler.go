@@ -6,15 +6,12 @@ import (
 	"fmt"
 
 	"github.com/EugeneNail/vox/lib-common/validation"
-	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
 	"github.com/google/uuid"
 )
 
 var ErrChatNotFound = errors.New("chat not found")
 var ErrChatAccessDenied = errors.New("chat access denied")
-
-const maxChatMessagesLength = 250
 
 // Handler lists chat messages through the list_chat_messages use-case.
 type Handler struct {
@@ -27,7 +24,7 @@ type Handler struct {
 type Query struct {
 	ChatUuid uuid.UUID
 	UserUuid uuid.UUID
-	Length   int
+	Revision int64
 }
 
 // NewHandler constructs a list_chat_messages handler with its dependencies.
@@ -39,21 +36,23 @@ func NewHandler(messageRepository domain.MessageRepository, chatRepository domai
 	}
 }
 
-// Handle returns latest messages from a chat available to the user.
+// Handle returns chat messages with revision greater than or equal to the requested revision.
 func (handler *Handler) Handle(ctx context.Context, query Query) ([]domain.Message, error) {
-	validator := validation.NewValidator(map[string]any{
-		"length": query.Length,
-	}, map[string][]rules.Rule{
-		"length": {rules.Required(), rules.Min(1), rules.Max(maxChatMessagesLength)},
-	})
+	validationError := validation.NewError()
+	if query.ChatUuid == uuid.Nil {
+		validationError.AddViolation("chatUuid", "Required")
+	}
 
-	if err := validator.Validate(); err != nil {
-		var validationError validation.Error
-		if errors.As(err, &validationError) {
-			return nil, validationError
-		}
+	if query.UserUuid == uuid.Nil {
+		validationError.AddViolation("userUuid", "Required")
+	}
 
-		return nil, fmt.Errorf("validating list chat messages query: %w", err)
+	if query.Revision < 0 {
+		validationError.AddViolation("revision", "Must be greater than or equal to zero")
+	}
+
+	if len(validationError.Violations()) > 0 {
+		return nil, validationError
 	}
 
 	chat, err := handler.chatRepository.FindByUuid(ctx, query.ChatUuid)
@@ -74,9 +73,18 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]domain.Messa
 		return nil, ErrChatAccessDenied
 	}
 
-	messages, err := handler.messageRepository.FindLastByChatUuid(ctx, query.ChatUuid, query.Length)
+	validationError = validation.NewError()
+	if query.Revision > chat.Revision {
+		validationError.AddViolation("revision", fmt.Sprintf("Must not exceed chat revision %d", chat.Revision))
+	}
+
+	if len(validationError.Violations()) > 0 {
+		return nil, validationError
+	}
+
+	messages, err := handler.messageRepository.ListFromRevision(ctx, query.ChatUuid, query.Revision)
 	if err != nil {
-		return nil, fmt.Errorf("finding last messages by chat uuid %q with length %d: %w", query.ChatUuid, query.Length, err)
+		return nil, fmt.Errorf("listing messages by chat uuid %q from revision %d: %w", query.ChatUuid, query.Revision, err)
 	}
 
 	return messages, nil

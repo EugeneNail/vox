@@ -14,8 +14,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultChatMessagesLength = 250
-
 type ListChatMessagesHandler struct {
 	usecase *list_chat_messages.Handler
 }
@@ -33,9 +31,9 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 		return http.StatusBadRequest, fmt.Errorf("parsing chat uuid %q: %w", request.PathValue("chatUuid"), err)
 	}
 
-	length, err := parseChatMessagesLength(request)
+	revision, err := parseChatMessagesRevision(request)
 	if err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, fmt.Errorf("parsing revision query parameter: %w", err)
 	}
 
 	userUuid, ok := authentication.UserUuidFromContext(request.Context())
@@ -46,7 +44,7 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 	messages, err := handler.usecase.Handle(request.Context(), list_chat_messages.Query{
 		ChatUuid: chatUuid,
 		UserUuid: userUuid,
-		Length:   length,
+		Revision: revision,
 	})
 	if err != nil {
 		var validationError validation.Error
@@ -90,16 +88,16 @@ func (handler *ListChatMessagesHandler) Handle(request *http.Request) (int, any)
 	return http.StatusOK, resources
 }
 
-func parseChatMessagesLength(request *http.Request) (int, error) {
-	rawLength := strings.TrimSpace(request.URL.Query().Get("length"))
-	if rawLength == "" {
-		return defaultChatMessagesLength, nil
+func parseChatMessagesRevision(request *http.Request) (int64, error) {
+	rawRevision := strings.TrimSpace(request.URL.Query().Get("revision"))
+	if rawRevision == "" {
+		return 0, nil
 	}
 
-	length, err := strconv.Atoi(rawLength)
+	revision, err := strconv.ParseInt(rawRevision, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("parsing length query parameter %q: %w", rawLength, err)
+		return 0, fmt.Errorf("parsing %q: %w", rawRevision, err)
 	}
 
-	return length, nil
+	return revision, nil
 }
