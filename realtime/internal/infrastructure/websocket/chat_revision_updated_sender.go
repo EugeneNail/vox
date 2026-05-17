@@ -8,7 +8,7 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// ChatRevisionUpdatedSender sends chat-revision-updated websocket events to all active user connections.
+// ChatRevisionUpdatedSender sends chat-revision-updated websocket events to all active recipient connections.
 type ChatRevisionUpdatedSender struct {
 	connectionHub     *ConnectionHub
 	connectionDropper *ConnectionDropper
@@ -22,7 +22,7 @@ func NewChatRevisionUpdatedSender(connectionHub *ConnectionHub, connectionDroppe
 	}
 }
 
-// Send sends a chat-revision-updated event to all active websocket connections of the user.
+// Send sends a chat-revision-updated event to all active websocket connections of the recipients.
 func (sender *ChatRevisionUpdatedSender) Send(ctx context.Context, event events.ChatRevisionUpdated) error {
 	select {
 	case <-ctx.Done():
@@ -38,11 +38,13 @@ func (sender *ChatRevisionUpdatedSender) Send(ctx context.Context, event events.
 		return fmt.Errorf("marshalling chat revision updated websocket event for chat %q: %w", event.ChatUuid, err)
 	}
 
-	connections := sender.connectionHub.FindByUserUuid(event.UserUuid)
-	for _, connection := range connections {
-		if err := connection.WriteText(payload); err != nil {
-			sender.connectionDropper.Drop(connection.Uuid())
-			continue
+	for _, recipientUuid := range event.RecipientUuids {
+		connections := sender.connectionHub.FindByUserUuid(recipientUuid)
+		for _, connection := range connections {
+			if err := connection.WriteText(payload); err != nil {
+				sender.connectionDropper.Drop(connection.Uuid())
+				continue
+			}
 		}
 	}
 
