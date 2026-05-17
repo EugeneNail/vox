@@ -24,12 +24,12 @@ var attachmentNamePattern = regexp.MustCompile(`^.+\.[a-z]{2,5}$`)
 
 // Handler creates messages through the create_message use-case.
 type Handler struct {
-	messageRepository            domain.MessageRepository
-	chatRepository               domain.ChatRepository
-	chatMemberRepository         domain.ChatMemberRepository
-	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher
+	messageRepository                domain.MessageRepository
+	chatRepository                   domain.ChatRepository
+	chatMemberRepository             domain.ChatMemberRepository
+	chatRevisionUpdatedPublisher     events.ChatRevisionUpdatedPublisher
 	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher
-	messageCreatedPublisher      events.MessageCreatedPublisher
+	messageCreatedPublisher          events.MessageCreatedPublisher
 }
 
 // Command contains the input required to create a message.
@@ -50,12 +50,12 @@ func NewHandler(
 	messageCreatedPublisher events.MessageCreatedPublisher,
 ) *Handler {
 	return &Handler{
-		messageRepository:            messageRepository,
-		chatRepository:               chatRepository,
-		chatMemberRepository:         chatMemberRepository,
-		chatRevisionUpdatedPublisher: chatRevisionUpdatedPublisher,
+		messageRepository:                messageRepository,
+		chatRepository:                   chatRepository,
+		chatMemberRepository:             chatMemberRepository,
+		chatRevisionUpdatedPublisher:     chatRevisionUpdatedPublisher,
 		lastSeenRevisionUpdatedPublisher: lastSeenRevisionUpdatedPublisher,
-		messageCreatedPublisher:      messageCreatedPublisher,
+		messageCreatedPublisher:          messageCreatedPublisher,
 	}
 }
 
@@ -159,24 +159,24 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	if err != nil {
 		log.Printf("finding chat members for chat revision updated event in chat %q: %v", chat.Uuid, err)
 	} else {
-		// TODO: replace per-member chat-revision-updated publication with a bulk delivery strategy
-		// to avoid N+1 event fan-out at message creation time.
+		recipientUuids := make([]uuid.UUID, 0, len(members))
 		for _, currentMember := range members {
-			if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
-				ChatUuid: chat.Uuid,
-				UserUuid: currentMember.UserUuid,
-				// TODO: rename messagePiece to messagePreview across the event contract.
-				MessagePiece: buildMessagePiece(message.Text),
-				Revision:     chat.Revision,
-			}); err != nil {
-				log.Printf(
-					"publishing chat revision updated event for chat %q revision %d and user %q: %v",
-					chat.Uuid,
-					chat.Revision,
-					currentMember.UserUuid,
-					err,
-				)
-			}
+			recipientUuids = append(recipientUuids, currentMember.UserUuid)
+		}
+
+		if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
+			ChatUuid:       chat.Uuid,
+			RecipientUuids: recipientUuids,
+			Preview:        buildPreview(message.Text),
+			Revision:       chat.Revision,
+		}); err != nil {
+			log.Printf(
+				"publishing chat revision updated event for chat %q revision %d and recipients count %d: %v",
+				chat.Uuid,
+				chat.Revision,
+				len(recipientUuids),
+				err,
+			)
 		}
 	}
 
@@ -196,7 +196,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	return message.Uuid, nil
 }
 
-func buildMessagePiece(text string) string {
+func buildPreview(text string) string {
 	const maxRunes = 48
 
 	runes := []rune(text)
