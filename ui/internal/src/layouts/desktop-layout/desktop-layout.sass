@@ -1,17 +1,14 @@
 .desktop-layout
   min-height: 100dvh
-  padding: 1rem
+  padding: 0
+  background: #161616
 
 .desktop-layout__shell
-  width: min(var(--tg-max-content-width), 100%)
-  height: calc(100dvh - 2rem)
+  width: 100%
+  height: 100dvh
   min-height: 0
-  margin: 0 auto
   overflow: hidden
 
 @media (max-width: 760px)
-  .desktop-layout
-    padding: 0.5rem
-
   .desktop-layout__shell
-    height: calc(100dvh - 1rem)
+    height: 100dvh
