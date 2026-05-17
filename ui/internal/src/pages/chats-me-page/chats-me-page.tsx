@@ -41,6 +41,7 @@ type ChatMessage = {
     uuid: string;
     chatUuid: string;
     userUuid: string;
+    revision: number;
     text: string;
     attachments: MessageAttachment[];
     createdAt: string;
@@ -81,6 +82,7 @@ export default function ChatsMePage() {
     const { chatUuid } = useParams();
     const messagesContainerRef = useRef<HTMLDivElement | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const messageElementByRevisionRef = useRef<Record<number, HTMLElement | null>>({});
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const chatsRef = useRef<Chat[]>([]);
@@ -90,6 +92,7 @@ export default function ChatsMePage() {
     const shouldAutoScrollSelectedChatOnNextMessageRef = useRef(false);
     const shouldSkipNextBottomScrollSyncRef = useRef(false);
     const pendingLastSeenRevisionSyncByChatUuidRef = useRef<Record<string, number>>({});
+    const targetVisibleRevisionRef = useRef<number | null>(null);
     const [chats, setChats] = useState<Chat[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +132,7 @@ export default function ChatsMePage() {
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
+    const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
     const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
     const isGroupChatSearchActive = isGroupChatSearchFocused || groupChatSearchQuery.length > 0;
@@ -501,22 +505,32 @@ export default function ChatsMePage() {
         if (!selectedChatUuid) {
             setMessages([]);
             isSelectedChatScrolledToBottomRef.current = false;
+            messageElementByRevisionRef.current = {};
+            targetVisibleRevisionRef.current = null;
             return;
         }
 
         let isMounted = true;
+        const selectedChatLastSeenRevision = getSelectedChatLastSeenRevision(
+            chatsRef.current.find((chat) => chat.uuid === selectedChatUuid) ?? null,
+            selectedChatUuid,
+            localLastSeenRevisionByChatUuidRef.current,
+        );
+        const requestRevision = Math.max(0, selectedChatLastSeenRevision - 100);
+        targetVisibleRevisionRef.current = selectedChatLastSeenRevision;
 
         async function loadMessages() {
             setIsMessagesLoading(true);
             setMessagesError(null);
 
             try {
-                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/chats/${selectedChatUuid}/messages?length=250`);
+                const { data } = await apiClient.get<ChatMessage[]>(`/api/v1/message/chats/${selectedChatUuid}/messages?revision=${requestRevision}`);
                 if (!isMounted) {
                     return;
                 }
 
-                setMessages([...data].reverse().map((message) => ({
+                messageElementByRevisionRef.current = {};
+                setMessages(data.map((message) => ({
                     ...message,
                     attachments: message.attachments ?? [],
                 })));
@@ -539,10 +553,22 @@ export default function ChatsMePage() {
         return () => {
             isMounted = false;
         };
-    }, [apiClient, selectedChatUuid]);
+    }, [apiClient, selectedChat?.currentUserLastSeenRevision, selectedChatUuid]);
 
     useLayoutEffect(() => {
         if (!selectedChatUuid || isMessagesLoading || messages.length === 0) {
+            return;
+        }
+
+        const targetVisibleRevision = targetVisibleRevisionRef.current;
+        if (targetVisibleRevision !== null) {
+            scrollMessagesContainerToRevision(
+                messagesContainerRef.current,
+                messageElementByRevisionRef.current,
+                findFirstVisibleRevision(messages, targetVisibleRevision),
+            );
+            targetVisibleRevisionRef.current = null;
+            isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
             return;
         }
 
@@ -634,7 +660,7 @@ export default function ChatsMePage() {
 
             setMessages((currentMessages) => currentMessages.map((message) => (
                 message.uuid === event.messageUuid
-                    ? messageEditedEventToChatMessage(event)
+                    ? messageEditedEventToChatMessage(event, message.revision)
                     : message
             )));
         })
@@ -735,7 +761,6 @@ export default function ChatsMePage() {
         };
     }, []);
 
-    const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
     const isSelectedChatGroup = selectedChat?.chatType === ChatType.Group;
     const isSelectedChatOwnedByAuthenticatedUser = selectedChat?.createdByUserUuid === authenticatedUserUuid;
     const canDeleteAnyMessage = isSelectedChatGroup && (
@@ -781,6 +806,7 @@ export default function ChatsMePage() {
                 uuid: pendingMessageUuid,
                 chatUuid: selectedChat.uuid,
                 userUuid: authenticatedUserUuid,
+                revision: selectedChat.revision + 1,
                 text,
                 attachments: pendingAttachments,
                 createdAt,
@@ -1244,6 +1270,9 @@ export default function ChatsMePage() {
                                             ].filter(Boolean).join(" ")
                                         }
                                         key={message.uuid}
+                                        ref={(element) => {
+                                            messageElementByRevisionRef.current[message.revision] = element;
+                                        }}
                                         onContextMenu={(event) => handleMessageContextMenu(event, message)}
                                     >
                                         <div className="chats-me-page__message-avatar-cell">
@@ -1851,11 +1880,23 @@ function messageCreatedEventToChatMessage(event: MessageCreatedEvent): ChatMessa
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
+        revision: event.revision,
         text: event.text,
         attachments: event.attachments ?? [],
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
     };
+}
+
+function getSelectedChatLastSeenRevision(
+    chat: Chat | null,
+    chatUuid: string,
+    localLastSeenRevisionByChatUuid: Record<string, number>,
+) {
+    return Math.max(
+        localLastSeenRevisionByChatUuid[chatUuid] ?? 0,
+        chat?.currentUserLastSeenRevision ?? 0,
+    );
 }
 
 function getDirtyChats(chats: Chat[]) {
@@ -1905,6 +1946,34 @@ function scrollMessagesContainerToBottom(container: HTMLDivElement | null, messa
     messagesEnd?.scrollIntoView({ block: "end" });
 }
 
+function findFirstVisibleRevision(messages: ChatMessage[], targetRevision: number) {
+    const matchingMessage = messages.find((message) => message.revision >= targetRevision);
+    return matchingMessage?.revision ?? null;
+}
+
+function scrollMessagesContainerToRevision(
+    container: HTMLDivElement | null,
+    messageElementByRevision: Record<number, HTMLElement | null>,
+    revision: number | null,
+) {
+    if (!container) {
+        return;
+    }
+
+    if (revision === null) {
+        container.scrollTop = container.scrollHeight;
+        return;
+    }
+
+    const targetMessage = messageElementByRevision[revision];
+    if (!targetMessage) {
+        container.scrollTop = container.scrollHeight;
+        return;
+    }
+
+    container.scrollTop = Math.max(0, targetMessage.offsetTop - container.clientHeight / 3);
+}
+
 function areLastSeenRevisionMapsEqual(left: Record<string, number>, right: Record<string, number>) {
     const leftKeys = Object.keys(left);
     const rightKeys = Object.keys(right);
@@ -1940,11 +2009,12 @@ function confirmPendingMessage(currentMessages: ChatMessage[], pendingMessageUui
         : currentMessages;
 }
 
-function messageEditedEventToChatMessage(event: MessageEditedEvent): ChatMessage {
+function messageEditedEventToChatMessage(event: MessageEditedEvent, revision: number): ChatMessage {
     return {
         uuid: event.messageUuid,
         chatUuid: event.chatUuid,
         userUuid: event.userUuid,
+        revision,
         text: event.text,
         attachments: event.attachments ?? [],
         createdAt: event.createdAt,
