@@ -64,6 +64,7 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]Result, erro
 			}
 		}
 
+		// TODO: avoid N+1 queries
 		lastMessage, err := handler.messageRepository.FindLastByChatUuid(ctx, chat.Uuid)
 		if err != nil {
 			return nil, fmt.Errorf("finding last message by chat uuid %q: %w", chat.Uuid, err)
