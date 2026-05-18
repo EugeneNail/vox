@@ -377,14 +377,12 @@ export function ChatListLink({
             <span className="chats-me-page__chat-preview">
                 <span className="chats-me-page__chat-row">
                     <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
-                    <span className="chats-me-page__chat-meta">
-                        {chatTime && <span className="chats-me-page__chat-time">{chatTime}</span>}
-                        {unreadRevisionCount > 0 && (
-                            <span className="chats-me-page__chat-badge" aria-label={`${unreadRevisionCount} unread events`}>
-                                {unreadRevisionCount}
-                            </span>
-                        )}
-                    </span>
+                    {chatTime && <span className="chats-me-page__chat-time">{chatTime}</span>}
+                    {unreadRevisionCount > 0 && (
+                        <span className="chats-me-page__chat-badge" aria-label={`${unreadRevisionCount} unread events`}>
+                            {unreadRevisionCount}
+                        </span>
+                    )}
                 </span>
                 {chatPreview && (
                     <span className="chats-me-page__chat-message-piece">

@@ -505,33 +505,35 @@
   width: 44px
   height: 44px
 
+.chats-me-page__chat-preview
+  display: flex
+  flex-direction: column
+  justify-content: center
+  gap: 2px
+  min-width: 0
+
+.chats-me-page__chat-row
+  position: relative
+  display: flex
+  align-items: center
+  min-width: 0
+  min-height: 2.25rem
+
 .chats-me-page__chat-name
+  display: block
   overflow: hidden
   color: var(--chats-page-text)
   font-size: 0.95rem
   font-weight: 600
+  line-height: 1.15
   text-overflow: ellipsis
   white-space: nowrap
 
-.chats-me-page__chat-preview
-  display: grid
-  gap: 5px
-  min-width: 0
-
-.chats-me-page__chat-row
-  display: grid
-  grid-template-columns: minmax(0, 1fr) auto
-  align-items: start
-  gap: 8px
-  min-width: 0
-
-.chats-me-page__chat-meta
-  display: grid
-  justify-items: end
-  gap: 4px
-  min-width: 0
-
 .chats-me-page__chat-badge
+  position: absolute
+  right: 0
+  top: calc(50% + 1.4rem)
+  transform: translateY(-50%)
   flex: 0 0 auto
   min-width: 20px
   padding: 4px 7px
@@ -544,6 +546,10 @@
   text-align: center
 
 .chats-me-page__chat-time
+  position: absolute
+  right: 0
+  top: 50%
+  transform: translateY(-50%)
   overflow: hidden
   color: var(--chats-page-text-soft)
   font-size: 0.74rem
@@ -555,6 +561,8 @@
   overflow: hidden
   color: var(--chats-page-text-soft)
   font-size: 0.84rem
+  line-height: 1.2
+  padding-right: 44px
   text-overflow: ellipsis
   white-space: nowrap
 
