@@ -8,6 +8,8 @@ import {
     MessageText,
     UserAvatar,
     formatMessageTime,
+    getChatAvatarLabel,
+    getChatAvatarUrl,
     getMessageAuthorFirstName,
     hasRenderableMessageText,
     getMessageAuthorAvatarLabel,
@@ -100,6 +102,17 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
     return (
         <section className="chats-me-page__chat" aria-label="Chat">
             <div className={`chats-me-page__chat-shell chats-me-page__chat-shell--${messageViewMode}`}>
+                <header className="chats-me-page__chat-topbar">
+                    <UserAvatar
+                        className="chats-me-page__chat-topbar-avatar"
+                        src={getChatAvatarUrl(selectedChat, authenticatedUserUuid, profilesByUserUuid)}
+                        label={getChatAvatarLabel(selectedChat, authenticatedUserUuid, profilesByUserUuid)}
+                    />
+                    <div className="chats-me-page__chat-topbar-copy">
+                        <h2 className="chats-me-page__chat-topbar-title">{selectedChat.uuid}</h2>
+                        <p className="chats-me-page__chat-topbar-meta">{selectedChat.memberUuids.length} members</p>
+                    </div>
+                </header>
                 <div
                     ref={messagesContainerRef}
                     className={`chats-me-page__messages chats-me-page__messages--${messageViewMode}`}
