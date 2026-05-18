@@ -67,3 +67,16 @@ func (hub *ConnectionHub) FindByUserUuid(userUuid uuid.UUID) []*Connection {
 
 	return connections
 }
+
+// FindAll returns all active websocket connections.
+func (hub *ConnectionHub) FindAll() []*Connection {
+	hub.mutex.RLock()
+	defer hub.mutex.RUnlock()
+
+	connections := make([]*Connection, 0, len(hub.connections))
+	for _, connection := range hub.connections {
+		connections = append(connections, connection)
+	}
+
+	return connections
+}

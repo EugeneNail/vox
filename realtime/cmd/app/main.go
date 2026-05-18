@@ -32,6 +32,8 @@ func main() {
 	openChatRegistry := websocket_infrastructure.NewOpenChatRegistry()
 	connectionDropper := websocket_infrastructure.NewConnectionDropper(connectionHub, openChatRegistry)
 	authorizeChatAccessClient := message_infrastructure.NewAuthorizeChatAccessClient(configuration.Message.BaseURL)
+	// TODO: OpenChatRegistry is still required for open/close chat commands and chat-scoped
+	// message edited/deleted delivery. Remove it only if those flows stop needing chat routing.
 
 	// --- Section: HTTP transport ---
 	openWebSocketHttpHandler := transport_http.NewOpenWebSocketHandler(
@@ -42,13 +44,11 @@ func main() {
 	)
 
 	// --- Section: Event delivery ---
-	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, openChatRegistry, connectionDropper)
-	chatRevisionUpdatedSender := websocket_infrastructure.NewChatRevisionUpdatedSender(connectionHub, connectionDropper)
+	messageCreatedSender := websocket_infrastructure.NewMessageCreatedSender(connectionHub, connectionDropper)
 	lastSeenRevisionUpdatedSender := websocket_infrastructure.NewLastSeenRevisionUpdatedSender(connectionHub, connectionDropper)
 	messageEditedSender := websocket_infrastructure.NewMessageEditedWebSocketSender(connectionHub, openChatRegistry, connectionDropper)
 	messageDeletedSender := websocket_infrastructure.NewMessageDeletedWebSocketSender(connectionHub, openChatRegistry, connectionDropper)
 	messageCreatedRedisConsumer := redis_infrastructure.NewMessageCreatedConsumer(redisClient, messageCreatedSender)
-	chatRevisionUpdatedRedisConsumer := redis_infrastructure.NewChatRevisionUpdatedConsumer(redisClient, chatRevisionUpdatedSender.Send)
 	lastSeenRevisionUpdatedRedisConsumer := redis_infrastructure.NewLastSeenRevisionUpdatedConsumer(redisClient, lastSeenRevisionUpdatedSender.Send)
 	messageEditedRedisConsumer := redis_infrastructure.NewMessageEditedConsumer(redisClient, messageEditedSender.Send)
 	messageDeletedRedisConsumer := redis_infrastructure.NewMessageDeletedConsumer(redisClient, messageDeletedSender.Send)
@@ -58,7 +58,6 @@ func main() {
 	defer cancel()
 
 	messageCreatedRedisConsumer.ListenAndConsume(ctx)
-	chatRevisionUpdatedRedisConsumer.ListenAndConsume(ctx)
 	lastSeenRevisionUpdatedRedisConsumer.ListenAndConsume(ctx)
 	messageEditedRedisConsumer.ListenAndConsume(ctx)
 	messageDeletedRedisConsumer.ListenAndConsume(ctx)

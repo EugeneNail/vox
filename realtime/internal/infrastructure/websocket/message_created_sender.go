@@ -8,23 +8,21 @@ import (
 	"github.com/EugeneNail/vox/lib-common/events"
 )
 
-// MessageCreatedSender sends message-created websocket events to connections with the chat currently open.
+// MessageCreatedSender sends message-created websocket events to all active websocket connections.
 type MessageCreatedSender struct {
 	connectionHub     *ConnectionHub
-	openChatRegistry  *OpenChatRegistry
 	connectionDropper *ConnectionDropper
 }
 
 // NewMessageCreatedSender constructs a message-created websocket sender.
-func NewMessageCreatedSender(connectionHub *ConnectionHub, openChatRegistry *OpenChatRegistry, connectionDropper *ConnectionDropper) *MessageCreatedSender {
+func NewMessageCreatedSender(connectionHub *ConnectionHub, connectionDropper *ConnectionDropper) *MessageCreatedSender {
 	return &MessageCreatedSender{
 		connectionHub:     connectionHub,
-		openChatRegistry:  openChatRegistry,
 		connectionDropper: connectionDropper,
 	}
 }
 
-// Send sends a message-created event to connections with the chat currently open.
+// Send sends a message-created event to all current websocket connections.
 func (sender *MessageCreatedSender) Send(ctx context.Context, event events.MessageCreated) error {
 	select {
 	case <-ctx.Done():
@@ -40,11 +38,8 @@ func (sender *MessageCreatedSender) Send(ctx context.Context, event events.Messa
 		return fmt.Errorf("marshalling message created websocket event for message %q: %w", event.MessageUuid, err)
 	}
 
-	connectionUuids := sender.openChatRegistry.FindConnectionUuidsByChatUuid(event.ChatUuid)
-	for _, connectionUuid := range connectionUuids {
-		connection := sender.connectionHub.FindByUuid(connectionUuid)
+	for _, connection := range sender.connectionHub.FindAll() {
 		if connection == nil {
-			sender.connectionDropper.Drop(connectionUuid)
 			continue
 		}
 
