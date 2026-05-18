@@ -9,14 +9,15 @@ import (
 
 // MessageCreated describes a message that was persisted and can be delivered to realtime subscribers.
 type MessageCreated struct {
-	MessageUuid uuid.UUID    `json:"messageUuid"`
-	ChatUuid    uuid.UUID    `json:"chatUuid"`
-	UserUuid    uuid.UUID    `json:"userUuid"`
-	Revision    int64        `json:"revision"`
-	Text        string       `json:"text"`
-	Attachments []Attachment `json:"attachments"`
-	CreatedAt   time.Time    `json:"createdAt"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
+	MessageUuid    uuid.UUID    `json:"messageUuid"`
+	ChatUuid       uuid.UUID    `json:"chatUuid"`
+	UserUuid       uuid.UUID    `json:"userUuid"`
+	RecipientUuids []uuid.UUID  `json:"recipientUuids"`
+	Revision       int64        `json:"revision"`
+	Text           string       `json:"text"`
+	Attachments    []Attachment `json:"attachments"`
+	CreatedAt      time.Time    `json:"createdAt"`
+	UpdatedAt      time.Time    `json:"updatedAt"`
 }
 
 // MessageCreatedPublisher publishes message-created events.

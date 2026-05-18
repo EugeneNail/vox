@@ -9,8 +9,6 @@ const (
 	MessageEditedStream = "message.edited"
 	// MessageDeletedStream is the Redis stream for deleted messages.
 	MessageDeletedStream = "message.deleted"
-	// ChatRevisionUpdatedStream is the Redis stream for chat revision updates.
-	ChatRevisionUpdatedStream = "chat.revision.updated"
 	// LastSeenRevisionUpdatedStream is the Redis stream for chat member last seen revision updates.
 	LastSeenRevisionUpdatedStream = "chat-member.last-seen-revision.updated"
 )
