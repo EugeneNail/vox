@@ -18,6 +18,7 @@ type Chat struct {
 	MemberUuids                 []uuid.UUID           `json:"memberUuids"`
 	CurrentUserRole             domain.ChatMemberRole `json:"currentUserRole"`
 	CurrentUserLastSeenRevision int64                 `json:"currentUserLastSeenRevision"`
+	LastMessage                 *Message              `json:"lastMessage"`
 	CreatedAt                   time.Time             `json:"createdAt"`
 	UpdatedAt                   time.Time             `json:"updatedAt"`
 }

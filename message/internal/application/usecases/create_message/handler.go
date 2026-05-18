@@ -27,7 +27,6 @@ type Handler struct {
 	messageRepository                domain.MessageRepository
 	chatRepository                   domain.ChatRepository
 	chatMemberRepository             domain.ChatMemberRepository
-	chatRevisionUpdatedPublisher     events.ChatRevisionUpdatedPublisher
 	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher
 	messageCreatedPublisher          events.MessageCreatedPublisher
 }
@@ -45,7 +44,6 @@ func NewHandler(
 	messageRepository domain.MessageRepository,
 	chatRepository domain.ChatRepository,
 	chatMemberRepository domain.ChatMemberRepository,
-	chatRevisionUpdatedPublisher events.ChatRevisionUpdatedPublisher,
 	lastSeenRevisionUpdatedPublisher events.LastSeenRevisionUpdatedPublisher,
 	messageCreatedPublisher events.MessageCreatedPublisher,
 ) *Handler {
@@ -53,7 +51,6 @@ func NewHandler(
 		messageRepository:                messageRepository,
 		chatRepository:                   chatRepository,
 		chatMemberRepository:             chatMemberRepository,
-		chatRevisionUpdatedPublisher:     chatRevisionUpdatedPublisher,
 		lastSeenRevisionUpdatedPublisher: lastSeenRevisionUpdatedPublisher,
 		messageCreatedPublisher:          messageCreatedPublisher,
 	}
@@ -125,8 +122,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		return uuid.Nil, fmt.Errorf("creating message %q in chat %q: %w", message.Uuid, message.ChatUuid, err)
 	}
 
-	// TODO: move chat revision persistence and chat-revision-updated publication after message-created publication
-	// so message creation and delivery remain the primary event ordering contract.
+	// TODO: make chat revision persistence and message publication transactional if ordering ever matters here.
 	if err := handler.chatRepository.SetRevision(ctx, chat.Uuid, chat.Revision); err != nil {
 		return uuid.Nil, fmt.Errorf("setting revision %d for chat %q: %w", chat.Revision, chat.Uuid, err)
 	}
@@ -156,55 +152,37 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 	}
 
 	members, err := handler.chatMemberRepository.FindAllByChatUuid(ctx, chat.Uuid)
+	recipientUuids := make([]uuid.UUID, 0)
 	if err != nil {
-		log.Printf("finding chat members for chat revision updated event in chat %q: %v", chat.Uuid, err)
+		log.Printf("finding chat members for message created event in chat %q: %v", chat.Uuid, err)
 	} else {
-		recipientUuids := make([]uuid.UUID, 0, len(members))
+		recipientUuids = make([]uuid.UUID, 0, len(members))
 		for _, currentMember := range members {
 			recipientUuids = append(recipientUuids, currentMember.UserUuid)
-		}
-
-		if err := handler.chatRevisionUpdatedPublisher.Publish(ctx, events.ChatRevisionUpdated{
-			ChatUuid:       chat.Uuid,
-			RecipientUuids: recipientUuids,
-			Preview:        buildPreview(message.Text),
-			Revision:       chat.Revision,
-		}); err != nil {
-			log.Printf(
-				"publishing chat revision updated event for chat %q revision %d and recipients count %d: %v",
-				chat.Uuid,
-				chat.Revision,
-				len(recipientUuids),
-				err,
-			)
 		}
 	}
 
 	if err := handler.messageCreatedPublisher.Publish(ctx, events.MessageCreated{
-		MessageUuid: message.Uuid,
-		ChatUuid:    message.ChatUuid,
-		UserUuid:    message.UserUuid,
-		Revision:    message.Revision,
-		Text:        message.Text,
-		Attachments: toEventAttachments(message.Attachments),
-		CreatedAt:   message.CreatedAt,
-		UpdatedAt:   message.UpdatedAt,
+		MessageUuid:    message.Uuid,
+		ChatUuid:       message.ChatUuid,
+		UserUuid:       message.UserUuid,
+		RecipientUuids: recipientUuids,
+		Revision:       message.Revision,
+		Text:           message.Text,
+		Attachments:    toEventAttachments(message.Attachments),
+		CreatedAt:      message.CreatedAt,
+		UpdatedAt:      message.UpdatedAt,
 	}); err != nil {
-		log.Printf("publishing message created event for message %q: %v", message.Uuid, err)
+		log.Printf(
+			"publishing message created event for message %q in chat %q to %d recipients: %v",
+			message.Uuid,
+			message.ChatUuid,
+			len(recipientUuids),
+			err,
+		)
 	}
 
 	return message.Uuid, nil
-}
-
-func buildPreview(text string) string {
-	const maxRunes = 48
-
-	runes := []rune(text)
-	if len(runes) <= maxRunes {
-		return text
-	}
-
-	return string(runes[:maxRunes]) + "..."
 }
 
 func buildTextRules(text string, allowEmpty bool) []rules.Rule {

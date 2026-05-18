@@ -52,6 +52,43 @@ func (repository *MessageRepository) FindByUuid(ctx context.Context, messageUuid
 	return &messages[0], nil
 }
 
+// FindLastByChatUuid returns the latest message in the chat or nil when the chat has no messages.
+func (repository *MessageRepository) FindLastByChatUuid(ctx context.Context, chatUuid uuid.UUID) (*domain.Message, error) {
+	const query = `
+		WITH last_message AS (
+			SELECT uuid, chat_uuid, user_uuid, revision, text, created_at, updated_at
+			FROM messages
+			WHERE chat_uuid = $1
+			ORDER BY revision DESC
+			LIMIT 1
+		)
+		SELECT
+			last_message.uuid,
+			last_message.chat_uuid,
+			last_message.user_uuid,
+			last_message.revision,
+			last_message.text,
+			last_message.created_at,
+			last_message.updated_at,
+			attachments.uuid,
+			attachments.name
+		FROM last_message
+		LEFT JOIN attachments ON attachments.message_uuid = last_message.uuid
+		ORDER BY attachments.uuid
+	`
+
+	messages, err := repository.findMessages(ctx, query, "last message by chat uuid", chatUuid)
+	if err != nil {
+		return nil, fmt.Errorf("finding last message by chat uuid %q: %w", chatUuid, err)
+	}
+
+	if len(messages) == 0 {
+		return nil, nil
+	}
+
+	return &messages[0], nil
+}
+
 // ListFromRevision returns chat messages with revision greater than or equal to the provided revision.
 func (repository *MessageRepository) ListFromRevision(ctx context.Context, chatUuid uuid.UUID, revision int64) ([]domain.Message, error) {
 	const query = `

@@ -52,7 +52,6 @@ func main() {
 	messageCreatedPublisher := redis_infrastructure.NewMessageCreatedPublisher(redisClient, configuration.Streams.MessageCreatedMaxLen)
 	messageEditedPublisher := redis_infrastructure.NewMessageEditedPublisher(redisClient, configuration.Streams.MessageEditedMaxLen)
 	messageDeletedPublisher := redis_infrastructure.NewMessageDeletedPublisher(redisClient, configuration.Streams.MessageDeletedMaxLen)
-	chatRevisionUpdatedPublisher := redis_infrastructure.NewChatRevisionUpdatedPublisher(redisClient, configuration.Streams.ChatRevisionUpdatedMaxLen)
 	lastSeenRevisionUpdatedPublisher := redis_infrastructure.NewLastSeenRevisionUpdatedPublisher(redisClient, configuration.Streams.LastSeenRevisionUpdatedMaxLen)
 
 	// --- Section: Application use-cases ---
@@ -65,14 +64,13 @@ func main() {
 		messageRepository,
 		chatRepository,
 		chatMemberRepository,
-		chatRevisionUpdatedPublisher,
 		lastSeenRevisionUpdatedPublisher,
 		messageCreatedPublisher,
 	)
 	deleteMessageHandler := delete_message.NewHandler(messageRepository, chatRepository, chatMemberRepository, messageDeletedPublisher)
 	editMessageHandler := edit_message.NewHandler(messageRepository, messageEditedPublisher)
 	listChatMessagesHandler := list_chat_messages.NewHandler(messageRepository, chatRepository, chatMemberRepository)
-	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository)
+	listChatsHandler := list_chats.NewHandler(chatRepository, chatMemberRepository, messageRepository)
 	setLastSeenRevisionHandler := set_last_seen_revision.NewHandler(chatRepository, chatMemberRepository, lastSeenRevisionUpdatedPublisher)
 
 	// --- Section: HTTP transport ---

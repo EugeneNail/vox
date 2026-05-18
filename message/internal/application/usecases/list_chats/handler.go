@@ -12,6 +12,7 @@ import (
 type Handler struct {
 	chatRepository       domain.ChatRepository
 	chatMemberRepository domain.ChatMemberRepository
+	messageRepository    domain.MessageRepository
 }
 
 // Query contains the input required to list chats.
@@ -25,13 +26,15 @@ type Result struct {
 	MemberUuids                 []uuid.UUID
 	CurrentUserRole             domain.ChatMemberRole
 	CurrentUserLastSeenRevision int64
+	LastMessage                 *domain.Message
 }
 
 // NewHandler constructs a list_chats handler with its dependencies.
-func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository) *Handler {
+func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository, messageRepository domain.MessageRepository) *Handler {
 	return &Handler{
 		chatRepository:       chatRepository,
 		chatMemberRepository: chatMemberRepository,
+		messageRepository:    messageRepository,
 	}
 }
 
@@ -61,11 +64,17 @@ func (handler *Handler) Handle(ctx context.Context, query Query) ([]Result, erro
 			}
 		}
 
+		lastMessage, err := handler.messageRepository.FindLastByChatUuid(ctx, chat.Uuid)
+		if err != nil {
+			return nil, fmt.Errorf("finding last message by chat uuid %q: %w", chat.Uuid, err)
+		}
+
 		results = append(results, Result{
 			Chat:                        chat,
 			MemberUuids:                 memberUuids,
 			CurrentUserRole:             currentUserRole,
 			CurrentUserLastSeenRevision: currentUserLastSeenRevision,
+			LastMessage:                 lastMessage,
 		})
 	}
 

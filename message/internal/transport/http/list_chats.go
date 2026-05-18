@@ -6,6 +6,7 @@ import (
 
 	"github.com/EugeneNail/vox/lib-common/authentication"
 	"github.com/EugeneNail/vox/message/internal/application/usecases/list_chats"
+	"github.com/EugeneNail/vox/message/internal/domain"
 	"github.com/EugeneNail/vox/message/internal/transport/http/resource"
 )
 
@@ -44,10 +45,36 @@ func (handler *ListChatsHandler) Handle(request *http.Request) (int, any) {
 			MemberUuids:                 result.MemberUuids,
 			CurrentUserRole:             result.CurrentUserRole,
 			CurrentUserLastSeenRevision: result.CurrentUserLastSeenRevision,
+			LastMessage:                 toMessageResource(result.LastMessage),
 			CreatedAt:                   chat.CreatedAt,
 			UpdatedAt:                   chat.UpdatedAt,
 		})
 	}
 
 	return http.StatusOK, resources
+}
+
+func toMessageResource(message *domain.Message) *resource.Message {
+	if message == nil {
+		return nil
+	}
+
+	attachments := make([]resource.Attachment, 0, len(message.Attachments))
+	for _, attachment := range message.Attachments {
+		attachments = append(attachments, resource.Attachment{
+			Uuid: attachment.Uuid,
+			Name: attachment.Name,
+		})
+	}
+
+	return &resource.Message{
+		Uuid:        message.Uuid,
+		ChatUuid:    message.ChatUuid,
+		UserUuid:    message.UserUuid,
+		Revision:    message.Revision,
+		Text:        message.Text,
+		Attachments: attachments,
+		CreatedAt:   message.CreatedAt,
+		UpdatedAt:   message.UpdatedAt,
+	}
 }
