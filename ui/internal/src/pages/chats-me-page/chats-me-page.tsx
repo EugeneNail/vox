@@ -68,7 +68,6 @@ export default function ChatsMePage() {
         messageCreatedListener,
         messageDeletedListener,
         messageEditedListener,
-        chatRevisionUpdatedListener,
         lastSeenRevisionUpdatedListener,
         subscribeChat,
         unsubscribeChat,
@@ -122,7 +121,6 @@ export default function ChatsMePage() {
     const [isAddingMembers, setIsAddingMembers] = useState(false);
     const [isKickingMember, setIsKickingMember] = useState(false);
     const [localLastSeenRevisionByChatUuid, setLocalLastSeenRevisionByChatUuid] = useState<Record<string, number>>({});
-    const [chatPreviewByChatUuid, setChatPreviewByChatUuid] = useState<Record<string, string>>({});
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const [sidebarWidth, setSidebarWidth] = useState(() => loadChatsSidebarWidth());
     const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -557,11 +555,6 @@ export default function ChatsMePage() {
 
     useEffect(() => (
         messageCreatedListener((event) => {
-            const wasSelectedChatScrolledToBottom = (
-                event.chatUuid === selectedChatUuidRef.current
-                && isMessagesContainerScrolledToBottom(messagesContainerRef.current)
-            );
-
             setChats((currentChats) => currentChats.map((chat) => {
                 if (chat.uuid !== event.chatUuid) {
                     return chat;
@@ -570,16 +563,18 @@ export default function ChatsMePage() {
                 return {
                     ...chat,
                     revision: Math.max(chat.revision, event.revision),
+                    lastMessage: messageCreatedEventToChatMessage(event),
                 };
             }));
 
+            if (event.chatUuid !== selectedChatUuidRef.current) {
+                return;
+            }
+
+            const wasSelectedChatScrolledToBottom = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
             if (wasSelectedChatScrolledToBottom) {
                 shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
                 updateLocalLastSeenRevision(event.chatUuid, event.revision);
-            }
-
-            if (event.chatUuid !== selectedChatUuidRef.current) {
-                return;
             }
 
             if (event.userUuid !== authenticatedUserUuid) {
@@ -600,23 +595,6 @@ export default function ChatsMePage() {
 
         })
     ), [authenticatedUserUuid, messageCreatedListener]);
-
-    useEffect(() => (
-        chatRevisionUpdatedListener((event) => {
-            setChatPreviewByChatUuid((currentChatPreviewByChatUuid) => ({
-                ...currentChatPreviewByChatUuid,
-                [event.chatUuid]: event.preview,
-            }));
-            setChats((currentChats) => currentChats.map((chat) => (
-                chat.uuid === event.chatUuid
-                    ? {
-                        ...chat,
-                        revision: Math.max(chat.revision, event.revision),
-                    }
-                    : chat
-            )));
-        })
-    ), [chatRevisionUpdatedListener]);
 
     useEffect(() => (
         messageEditedListener((event) => {
@@ -1101,7 +1079,6 @@ export default function ChatsMePage() {
         >
             <ChatsSidebar
                 authenticatedUserUuid={authenticatedUserUuid}
-                chatPreviewByChatUuid={chatPreviewByChatUuid}
                 chats={chats}
                 clearSearch={clearSearch}
                 createPrivateChat={createPrivateChat}

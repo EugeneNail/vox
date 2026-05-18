@@ -75,13 +75,11 @@
   height: 100%
   min-height: 0
 
-.chats-me-page__chat-shell--bubble
+.chats-me-page__chat-shell--bubble,
+.chats-me-page__chat-shell--plain
   background-color: #181818
   background-image: radial-gradient(circle at 24px 24px, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0.03) 2px, transparent 2px), radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(135deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0))
   background-size: 48px 48px, 32px 32px, 100% 100%
-
-.chats-me-page__chat-shell--plain
-  background: #161616
 
 .chats-me-page__chat-topbar
   box-sizing: border-box
@@ -499,7 +497,8 @@
   background: #3f8cff
 
 .chats-me-page__chat-button--active .chats-me-page__chat-name,
-.chats-me-page__chat-button--active .chats-me-page__chat-message-piece
+.chats-me-page__chat-button--active .chats-me-page__chat-message-piece,
+.chats-me-page__chat-button--active .chats-me-page__chat-time
   color: #fff
 
 .chats-me-page__avatar
@@ -516,19 +515,26 @@
 
 .chats-me-page__chat-preview
   display: grid
-  gap: 4px
+  gap: 5px
   min-width: 0
 
 .chats-me-page__chat-row
-  display: flex
-  align-items: center
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: start
   gap: 8px
+  min-width: 0
+
+.chats-me-page__chat-meta
+  display: grid
+  justify-items: end
+  gap: 4px
   min-width: 0
 
 .chats-me-page__chat-badge
   flex: 0 0 auto
   min-width: 20px
-  padding: 4px 8px
+  padding: 4px 7px
   border-radius: 999px
   background: #3f8cff
   color: #fff
@@ -537,10 +543,18 @@
   line-height: 1
   text-align: center
 
+.chats-me-page__chat-time
+  overflow: hidden
+  color: var(--chats-page-text-soft)
+  font-size: 0.74rem
+  line-height: 1.05
+  text-overflow: ellipsis
+  white-space: nowrap
+
 .chats-me-page__chat-message-piece
   overflow: hidden
   color: var(--chats-page-text-soft)
-  font-size: 0.82rem
+  font-size: 0.84rem
   text-overflow: ellipsis
   white-space: nowrap
 

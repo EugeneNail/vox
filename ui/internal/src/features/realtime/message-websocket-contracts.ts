@@ -9,18 +9,12 @@ export type MessageCreatedEvent = {
     messageUuid: string;
     chatUuid: string;
     userUuid: string;
+    recipientUuids: string[];
     revision: number;
     text: string;
     attachments: MessageAttachment[];
     createdAt: string;
     updatedAt: string;
-};
-
-export type ChatRevisionUpdatedEvent = {
-    chatUuid: string;
-    recipientUuids: string[];
-    preview: string;
-    revision: number;
 };
 
 export type LastSeenRevisionUpdatedEvent = {

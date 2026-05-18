@@ -5,7 +5,6 @@ import { getValidLoginToken } from "../../auth/refresh-login-token";
 import {
     buildCloseChatCommand,
     buildOpenChatCommand,
-    ChatRevisionUpdatedEvent,
     LastSeenRevisionUpdatedEvent,
     MessageCreatedEvent,
     MessageDeletedEvent,
@@ -14,7 +13,6 @@ import {
 } from "../../features/realtime/message-websocket-contracts";
 
 export type {
-    ChatRevisionUpdatedEvent,
     LastSeenRevisionUpdatedEvent,
     MessageCreatedEvent,
     MessageDeletedEvent,
@@ -28,7 +26,6 @@ type MessageWebSocketContextValue = {
     messageCreatedListener: (listener: MessageCreatedListener) => () => void;
     messageEditedListener: (listener: MessageEditedListener) => () => void;
     messageDeletedListener: (listener: MessageDeletedListener) => () => void;
-    chatRevisionUpdatedListener: (listener: ChatRevisionUpdatedListener) => () => void;
     lastSeenRevisionUpdatedListener: (listener: LastSeenRevisionUpdatedListener) => () => void;
 };
 
@@ -39,7 +36,6 @@ type MessageWebSocketProviderProps = {
 type MessageCreatedListener = (event: MessageCreatedEvent) => void;
 type MessageEditedListener = (event: MessageEditedEvent) => void;
 type MessageDeletedListener = (event: MessageDeletedEvent) => void;
-type ChatRevisionUpdatedListener = (event: ChatRevisionUpdatedEvent) => void;
 type LastSeenRevisionUpdatedListener = (event: LastSeenRevisionUpdatedEvent) => void;
 type MessageWebSocketListeners = {
     handleOpen: () => void;
@@ -54,7 +50,6 @@ const MessageWebSocketContext = createContext<MessageWebSocketContextValue>({
     messageCreatedListener,
     messageEditedListener,
     messageDeletedListener,
-    chatRevisionUpdatedListener,
     lastSeenRevisionUpdatedListener,
 });
 
@@ -65,7 +60,6 @@ let messageWebSocketReconnectAttempt = 0;
 const messageCreatedListeners = new Set<MessageCreatedListener>();
 const messageEditedListeners = new Set<MessageEditedListener>();
 const messageDeletedListeners = new Set<MessageDeletedListener>();
-const chatRevisionUpdatedListeners = new Set<ChatRevisionUpdatedListener>();
 const lastSeenRevisionUpdatedListeners = new Set<LastSeenRevisionUpdatedListener>();
 const messageWebSocketReconnectBaseDelayMs = 500;
 const messageWebSocketReconnectMaxDelayMs = 5000;
@@ -153,14 +147,6 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
                     return;
                 }
 
-                if (websocketEvent.type === "ChatRevisionUpdated") {
-                    console.log("message websocket ChatRevisionUpdated:", websocketEvent.data);
-                    chatRevisionUpdatedListeners.forEach((listener) => {
-                        listener(websocketEvent.data as ChatRevisionUpdatedEvent);
-                    });
-                    return;
-                }
-
                 if (websocketEvent.type === "LastSeenRevisionUpdated") {
                     lastSeenRevisionUpdatedListeners.forEach((listener) => {
                         listener(websocketEvent.data as LastSeenRevisionUpdatedEvent);
@@ -191,7 +177,6 @@ export function MessageWebSocketProvider({ children }: MessageWebSocketProviderP
             messageCreatedListener,
             messageEditedListener,
             messageDeletedListener,
-            chatRevisionUpdatedListener,
             lastSeenRevisionUpdatedListener,
         }}
         >
@@ -320,14 +305,6 @@ function messageDeletedListener(listener: MessageDeletedListener) {
 
     return () => {
         messageDeletedListeners.delete(listener);
-    };
-}
-
-function chatRevisionUpdatedListener(listener: ChatRevisionUpdatedListener) {
-    chatRevisionUpdatedListeners.add(listener);
-
-    return () => {
-        chatRevisionUpdatedListeners.delete(listener);
     };
 }
 

@@ -4,7 +4,6 @@ import { type PublicProfile } from "../../../profiles/profile-cache";
 
 type ChatsSidebarProps = {
     authenticatedUserUuid: string | null;
-    chatPreviewByChatUuid: Record<string, string>;
     chats: Chat[];
     clearSearch: () => void;
     createPrivateChat: (profile: PublicProfile) => Promise<void>;
@@ -29,7 +28,6 @@ type ChatsSidebarProps = {
 export function ChatsSidebar(props: ChatsSidebarProps) {
     const {
         authenticatedUserUuid,
-        chatPreviewByChatUuid,
         chats,
         clearSearch,
         createPrivateChat,
@@ -121,7 +119,6 @@ export function ChatsSidebar(props: ChatsSidebarProps) {
                             <ChatListLink
                                 authenticatedUserUuid={authenticatedUserUuid}
                                 chat={chat}
-                                chatPreview={chatPreviewByChatUuid[chat.uuid]}
                                 key={chat.uuid}
                                 localLastSeenRevisionByChatUuid={localLastSeenRevisionByChatUuid}
                                 profilesByUserUuid={profilesByUserUuid}

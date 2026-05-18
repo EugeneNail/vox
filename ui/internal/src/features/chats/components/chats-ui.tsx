@@ -116,6 +116,28 @@ export function getMessageAuthorFirstName(message: ChatMessage, profilesByUserUu
     return firstWord || fullName;
 }
 
+export function getChatLastMessagePreview(chat: Chat, profilesByUserUuid: Record<string, PublicProfile>) {
+    const message = chat.lastMessage;
+    if (!message) {
+        return null;
+    }
+
+    if (hasRenderableMessageText(message.text)) {
+        const authorFirstName = getMessageAuthorFirstName(message, profilesByUserUuid);
+        return `${authorFirstName}: ${truncatePreviewText(message.text, 60)}`;
+    }
+
+    if (message.attachments.length > 0) {
+        return `${message.attachments.length} attachments`;
+    }
+
+    return null;
+}
+
+export function getChatLastMessageTime(chat: Chat) {
+    return chat.lastMessage ? formatMessageTime(chat.lastMessage.createdAt) : null;
+}
+
 export function getMessageAuthorAvatarUrl(message: ChatMessage, profilesByUserUuid: Record<string, PublicProfile>) {
     return getProfileAvatarUrl(profilesByUserUuid[message.userUuid] ?? null);
 }
@@ -182,6 +204,15 @@ export function isOwnConfirmedMessage(message: ChatMessage, authenticatedUserUui
 
 export function hasRenderableMessageText(text: string) {
     return text.trim().length > 0;
+}
+
+function truncatePreviewText(text: string, maxLength: number) {
+    const characters = Array.from(text.trim());
+    if (characters.length <= maxLength) {
+        return text.trim();
+    }
+
+    return `${characters.slice(0, maxLength).join("")}...`;
 }
 
 export function renderMessageText(text: string) {
@@ -278,6 +309,7 @@ export function profilesByUserUuidFromProfiles(profiles: PublicProfile[]) {
 export function collectReferencedUserUuids(chats: Chat[], messages: ChatMessage[], searchProfiles: PublicProfile[]) {
     return Array.from(new Set([
         ...chats.flatMap((chat) => chat.memberUuids),
+        ...chats.flatMap((chat) => chat.lastMessage ? [chat.lastMessage.userUuid] : []),
         ...messages.map((message) => message.userUuid),
         ...searchProfiles.map((profile) => profile.userUuid),
     ]));
@@ -314,17 +346,17 @@ export function SearchResultButton({
 export function ChatListLink({
     authenticatedUserUuid,
     chat,
-    chatPreview,
     localLastSeenRevisionByChatUuid,
     profilesByUserUuid,
 }: {
     authenticatedUserUuid: string | null;
     chat: Chat;
-    chatPreview?: string;
     localLastSeenRevisionByChatUuid: Record<string, number>;
     profilesByUserUuid: Record<string, PublicProfile>;
 }) {
     const unreadRevisionCount = getUnreadRevisionCount(chat, localLastSeenRevisionByChatUuid);
+    const chatPreview = getChatLastMessagePreview(chat, profilesByUserUuid);
+    const chatTime = getChatLastMessageTime(chat);
 
     return (
         <NavLink
@@ -345,11 +377,14 @@ export function ChatListLink({
             <span className="chats-me-page__chat-preview">
                 <span className="chats-me-page__chat-row">
                     <span className="chats-me-page__chat-name">{getChatTitle(chat, authenticatedUserUuid, profilesByUserUuid)}</span>
-                    {unreadRevisionCount > 0 && (
-                        <span className="chats-me-page__chat-badge" aria-label={`${unreadRevisionCount} unread events`}>
-                            {unreadRevisionCount}
-                        </span>
-                    )}
+                    <span className="chats-me-page__chat-meta">
+                        {chatTime && <span className="chats-me-page__chat-time">{chatTime}</span>}
+                        {unreadRevisionCount > 0 && (
+                            <span className="chats-me-page__chat-badge" aria-label={`${unreadRevisionCount} unread events`}>
+                                {unreadRevisionCount}
+                            </span>
+                        )}
+                    </span>
                 </span>
                 {chatPreview && (
                     <span className="chats-me-page__chat-message-piece">

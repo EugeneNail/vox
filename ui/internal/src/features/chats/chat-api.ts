@@ -11,6 +11,7 @@ export type Chat = {
     memberUuids: string[];
     currentUserRole: string;
     currentUserLastSeenRevision: number;
+    lastMessage: ChatMessage | null;
     createdAt: string;
     updatedAt: string;
 };
