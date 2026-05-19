@@ -39,9 +39,9 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 		validationError.AddViolation("creatorUuid", "Required")
 	}
 
-	seenMemberUuids := make(map[uuid.UUID]struct{}, len(command.MemberUuids)+1)
+	membersToAdd := make(map[uuid.UUID]struct{}, len(command.MemberUuids)+1)
 	if command.CreatorUuid != uuid.Nil {
-		seenMemberUuids[command.CreatorUuid] = struct{}{}
+		membersToAdd[command.CreatorUuid] = struct{}{}
 	}
 
 	for index, memberUuid := range command.MemberUuids {
@@ -50,12 +50,12 @@ func (handler *Handler) Handle(ctx context.Context, command Command) (uuid.UUID,
 			continue
 		}
 
-		if _, exists := seenMemberUuids[memberUuid]; exists {
+		if _, exists := membersToAdd[memberUuid]; exists {
 			validationError.AddViolation(fmt.Sprintf("memberUuids.%d", index), "Must not contain duplicate UUID values")
 			continue
 		}
 
-		seenMemberUuids[memberUuid] = struct{}{}
+		membersToAdd[memberUuid] = struct{}{}
 	}
 
 	if len(validationError.Violations()) > 0 {
