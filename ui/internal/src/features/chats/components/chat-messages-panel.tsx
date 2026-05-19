@@ -10,6 +10,7 @@ import {
     formatMessageTime,
     getChatAvatarLabel,
     getChatAvatarUrl,
+    getChatTitle,
     getMessageAuthorFirstName,
     hasRenderableMessageText,
     getMessageAuthorAvatarLabel,
@@ -109,7 +110,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
                         label={getChatAvatarLabel(selectedChat, authenticatedUserUuid, profilesByUserUuid)}
                     />
                     <div className="chats-me-page__chat-topbar-copy">
-                        <h2 className="chats-me-page__chat-topbar-title">{selectedChat.uuid}</h2>
+                        <h2 className="chats-me-page__chat-topbar-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
                         <p className="chats-me-page__chat-topbar-meta">{selectedChat.memberUuids.length} members</p>
                     </div>
                 </header>
