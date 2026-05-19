@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { useApiClient } from "../../../hooks/use-api-client";
-import { Chat, ChatMessage, listChatMessages } from "../chat-api";
+import { ChatMessage, listChatMessages } from "../chat-api";
 
 type UseSelectedChatMessagesParams = {
     selectedChatUuid: string | null;
-    selectedChat: Chat | undefined;
-    localLastSeenRevisionByChatUuid: Record<string, number>;
+    selectedChatLastSeenRevision: number;
 };
 
 export function useSelectedChatMessages({
     selectedChatUuid,
-    selectedChat,
-    localLastSeenRevisionByChatUuid,
+    selectedChatLastSeenRevision,
 }: UseSelectedChatMessagesParams) {
     const apiClient = useApiClient();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -28,10 +26,6 @@ export function useSelectedChatMessages({
 
         let isMounted = true;
         const currentSelectedChatUuid = selectedChatUuid;
-        const selectedChatLastSeenRevision = Math.max(
-            localLastSeenRevisionByChatUuid[currentSelectedChatUuid] ?? 0,
-            selectedChat?.currentUserLastSeenRevision ?? 0,
-        );
         const requestRevision = Math.max(0, selectedChatLastSeenRevision - 100);
 
         async function loadMessages() {
@@ -68,7 +62,23 @@ export function useSelectedChatMessages({
         return () => {
             isMounted = false;
         };
-    }, [apiClient, localLastSeenRevisionByChatUuid, selectedChat?.currentUserLastSeenRevision, selectedChatUuid]);
+    }, [apiClient, selectedChatUuid]);
+
+    useEffect(() => {
+        if (!selectedChatUuid || messages.length === 0) {
+            return;
+        }
+
+        if (targetVisibleRevision !== 0) {
+            return;
+        }
+
+        if (selectedChatLastSeenRevision <= 0) {
+            return;
+        }
+
+        setTargetVisibleRevision(selectedChatLastSeenRevision);
+    }, [messages.length, selectedChatLastSeenRevision, selectedChatUuid, targetVisibleRevision]);
 
     return {
         messages,

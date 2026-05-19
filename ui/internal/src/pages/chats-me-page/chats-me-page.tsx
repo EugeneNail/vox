@@ -1,4 +1,5 @@
 import { MouseEvent, type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAuthenticatedUserUuid, getLoginToken } from "../../auth/auth-tokens";
 import {
@@ -80,6 +81,7 @@ export default function ChatsMePage() {
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messageElementByRevisionRef = useRef<Record<number, HTMLElement | null>>({});
     const messageReceivedAudioRef = useRef<HTMLAudioElement | null>(null);
+    const preservedMessagesScrollTopRef = useRef<number | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const chatsRef = useRef<Chat[]>([]);
     const localLastSeenRevisionByChatUuidRef = useRef<Record<string, number>>({});
@@ -124,6 +126,7 @@ export default function ChatsMePage() {
     const [isAddingMembers, setIsAddingMembers] = useState(false);
     const [isKickingMember, setIsKickingMember] = useState(false);
     const [localLastSeenRevisionByChatUuid, setLocalLastSeenRevisionByChatUuid] = useState<Record<string, number>>({});
+    const [messagesScrollPreservationTick, setMessagesScrollPreservationTick] = useState(0);
     const [profilesByUserUuid, setProfilesByUserUuid] = useState<Record<string, PublicProfile>>({});
     const [sidebarWidth, setSidebarWidth] = useState(() => loadChatsSidebarWidth());
     const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -132,6 +135,12 @@ export default function ChatsMePage() {
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
+    const selectedChatLastSeenRevision = selectedChat
+        ? Math.max(
+            localLastSeenRevisionByChatUuid[selectedChat.uuid] ?? 0,
+            selectedChat.currentUserLastSeenRevision,
+        )
+        : 0;
     const isMobileLayout = useIsPortraitLayout();
     const {
         messages,
@@ -142,8 +151,7 @@ export default function ChatsMePage() {
         setTargetVisibleRevision,
     } = useSelectedChatMessages({
         selectedChatUuid,
-        selectedChat,
-        localLastSeenRevisionByChatUuid,
+        selectedChatLastSeenRevision,
     });
     const isSearchActive = isSearchFocused || searchQuery.length > 0;
     const groupChatSearchInputRef = useRef<HTMLInputElement | null>(null);
@@ -551,7 +559,7 @@ export default function ChatsMePage() {
 
         if (shouldAutoScrollSelectedChatOnNextMessageRef.current) {
             shouldSkipNextBottomScrollSyncRef.current = true;
-            scrollMessagesContainerToBottom(messagesContainerRef.current, messagesEndRef.current);
+            scrollMessagesContainerToBottom(messagesContainerRef.current);
             shouldAutoScrollSelectedChatOnNextMessageRef.current = false;
             isSelectedChatScrolledToBottomRef.current = true;
             return;
@@ -559,6 +567,20 @@ export default function ChatsMePage() {
 
         isSelectedChatScrolledToBottomRef.current = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
     }, [isMessagesLoading, messages, selectedChatUuid, setTargetVisibleRevision, targetVisibleRevision]);
+
+    useLayoutEffect(() => {
+        const preservedScrollTop = preservedMessagesScrollTopRef.current;
+        if (preservedScrollTop === null) {
+            return;
+        }
+
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.scrollTop = preservedScrollTop;
+        }
+
+        preservedMessagesScrollTopRef.current = null;
+    }, [messagesScrollPreservationTick]);
 
     useEffect(() => {
         setEditingMessage(null);
@@ -568,43 +590,55 @@ export default function ChatsMePage() {
 
     useEffect(() => (
         messageCreatedListener((event) => {
-            setChats((currentChats) => currentChats.map((chat) => {
-                if (chat.uuid !== event.chatUuid) {
-                    return chat;
+            const isSelectedChat = event.chatUuid === selectedChatUuidRef.current;
+            const wasSelectedChatScrolledToBottom = isSelectedChat
+                ? isMessagesContainerScrolledToBottom(messagesContainerRef.current)
+                : false;
+
+            flushSync(() => {
+                setChats((currentChats) => currentChats.map((chat) => {
+                    if (chat.uuid !== event.chatUuid) {
+                        return chat;
+                    }
+
+                    return {
+                        ...chat,
+                        revision: Math.max(chat.revision, event.revision),
+                        lastMessage: messageCreatedEventToChatMessage(event),
+                    };
+                }));
+
+                if (!isSelectedChat) {
+                    return;
                 }
 
-                return {
-                    ...chat,
-                    revision: Math.max(chat.revision, event.revision),
-                    lastMessage: messageCreatedEventToChatMessage(event),
-                };
-            }));
+                if (wasSelectedChatScrolledToBottom) {
+                    shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
+                    updateLocalLastSeenRevision(event.chatUuid, event.revision);
+                }
 
-            if (event.chatUuid !== selectedChatUuidRef.current) {
+                setMessages((currentMessages) => {
+                    if (currentMessages.some((message) => message.uuid === event.messageUuid && !message.isPending)) {
+                        return currentMessages;
+                    }
+
+                    const confirmedMessage = messageCreatedEventToChatMessage(event);
+                    return [
+                        ...currentMessages,
+                        confirmedMessage,
+                    ];
+                });
+            });
+
+            if (!isSelectedChat) {
+                preservedMessagesScrollTopRef.current = messagesContainerRef.current?.scrollTop ?? null;
+                setMessagesScrollPreservationTick((currentTick) => currentTick + 1);
                 return;
-            }
-
-            const wasSelectedChatScrolledToBottom = isMessagesContainerScrolledToBottom(messagesContainerRef.current);
-            if (wasSelectedChatScrolledToBottom) {
-                shouldAutoScrollSelectedChatOnNextMessageRef.current = true;
-                updateLocalLastSeenRevision(event.chatUuid, event.revision);
             }
 
             if (event.userUuid !== authenticatedUserUuid) {
                 void messageReceivedAudioRef.current?.play();
             }
-
-            setMessages((currentMessages) => {
-                if (currentMessages.some((message) => message.uuid === event.messageUuid && !message.isPending)) {
-                    return currentMessages;
-                }
-
-                const confirmedMessage = messageCreatedEventToChatMessage(event);
-                return [
-                    ...currentMessages,
-                    confirmedMessage,
-                ];
-            });
 
         })
     ), [authenticatedUserUuid, messageCreatedListener]);
@@ -649,6 +683,11 @@ export default function ChatsMePage() {
                     }
                     : chat
             )));
+
+            if (event.chatUuid !== selectedChatUuidRef.current) {
+                preservedMessagesScrollTopRef.current = messagesContainerRef.current?.scrollTop ?? null;
+                setMessagesScrollPreservationTick((currentTick) => currentTick + 1);
+            }
 
             if (pendingLastSeenRevisionSyncByChatUuidRef.current[event.chatUuid] === event.lastSeenRevision) {
                 delete pendingLastSeenRevisionSyncByChatUuidRef.current[event.chatUuid];
@@ -1349,12 +1388,10 @@ function isMessagesContainerScrolledToBottom(container: HTMLDivElement | null) {
     return container.scrollHeight - container.scrollTop - container.clientHeight <= chatBottomThresholdPx;
 }
 
-function scrollMessagesContainerToBottom(container: HTMLDivElement | null, messagesEnd: HTMLDivElement | null) {
+function scrollMessagesContainerToBottom(container: HTMLDivElement | null) {
     if (container) {
-        container.scrollTop = container.scrollHeight;
+        container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
     }
-
-    messagesEnd?.scrollIntoView({ block: "end" });
 }
 
 function findFirstVisibleRevision(messages: ChatMessage[], targetRevision: number) {
