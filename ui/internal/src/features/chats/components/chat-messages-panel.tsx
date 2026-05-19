@@ -29,6 +29,10 @@ export type MessageContextMenu = {
 
 export type ChatMessageViewMode = "bubble" | "plain";
 
+const contextMenuViewportPaddingPx = 8;
+const messageContextMenuWidthPx = 220;
+const messageContextMenuHeightPx = 220;
+
 type ChatMessagesPanelProps = {
     authenticatedUserUuid: string | null;
     canDeleteAnyMessage: boolean;
@@ -164,10 +168,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
                 {messageContextMenu && (
                     <div
                         className="chats-me-page__context-menu"
-                        style={{
-                            left: messageContextMenu.x,
-                            top: messageContextMenu.y,
-                        }}
+                        style={clampContextMenuPosition(messageContextMenu.x, messageContextMenu.y, messageContextMenuWidthPx, messageContextMenuHeightPx)}
                         onClick={(event) => event.stopPropagation()}
                     >
                         {messageContextMenu.message.userUuid === authenticatedUserUuid && (
@@ -243,6 +244,20 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
             </div>
         </section>
     );
+}
+
+function clampContextMenuPosition(x: number, y: number, menuWidth: number, menuHeight: number) {
+    if (typeof window === "undefined") {
+        return { left: x, top: y };
+    }
+
+    const maxLeft = Math.max(contextMenuViewportPaddingPx, window.innerWidth - menuWidth - contextMenuViewportPaddingPx);
+    const maxTop = Math.max(contextMenuViewportPaddingPx, window.innerHeight - menuHeight - contextMenuViewportPaddingPx);
+
+    return {
+        left: Math.min(Math.max(x, contextMenuViewportPaddingPx), maxLeft),
+        top: Math.min(Math.max(y, contextMenuViewportPaddingPx), maxTop),
+    };
 }
 
 function MessageRow({

@@ -49,8 +49,17 @@ type CropInteraction = {
     initialCrop: CropRect;
 };
 
+type MemberContextMenu = {
+    memberUuid: string;
+    x: number;
+    y: number;
+};
+
 const defaultCropSizeRatio = 0.72;
 const minimumCropSizeRatio = 0.2;
+const contextMenuViewportPaddingPx = 8;
+const memberContextMenuWidthPx = 220;
+const memberContextMenuHeightPx = 72;
 
 export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
     const {
@@ -80,6 +89,7 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
     const [isSavingChat, setIsSavingChat] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [memberContextMenu, setMemberContextMenu] = useState<MemberContextMenu | null>(null);
 
     const canEditChat = Boolean(selectedChat && isSelectedChatOwnedByAuthenticatedUser);
     const readOnlyChatTitle = selectedChat ? getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid) : "";
@@ -112,6 +122,7 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
         setError(null);
         setIsSavingChat(false);
         setIsUploadingAvatar(false);
+        setMemberContextMenu(null);
     }, [selectedChat?.uuid]);
 
     useEffect(() => {
@@ -177,6 +188,26 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
         };
     }, [sourceImage]);
 
+    useEffect(() => {
+        function handleWindowClick() {
+            setMemberContextMenu(null);
+        }
+
+        function handleWindowKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setMemberContextMenu(null);
+            }
+        }
+
+        window.addEventListener("click", handleWindowClick);
+        window.addEventListener("keydown", handleWindowKeyDown);
+
+        return () => {
+            window.removeEventListener("click", handleWindowClick);
+            window.removeEventListener("keydown", handleWindowKeyDown);
+        };
+    }, []);
+
     function startEditMode() {
         if (!canEditChat || !selectedChat) {
             return;
@@ -235,6 +266,20 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
         }
 
         void loadImageFile(file);
+    }
+
+    function handleMemberContextMenu(event: ReactMouseEvent<HTMLElement>, memberUuid: string) {
+        if (!selectedChat || !isSelectedChatGroup || !isSelectedChatOwnedByAuthenticatedUser || memberUuid === authenticatedUserUuid) {
+            return;
+        }
+
+        event.preventDefault();
+
+        setMemberContextMenu({
+            memberUuid,
+            x: event.clientX,
+            y: event.clientY,
+        });
     }
 
     async function loadImageFile(file: File) {
@@ -483,6 +528,7 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
                                         ].filter(Boolean).join(" ")
                                     }
                                     key={memberUuid}
+                                    onContextMenu={(event) => handleMemberContextMenu(event, memberUuid)}
                                 >
                                     <UserAvatar
                                         className="chats-me-page__member-avatar"
@@ -492,25 +538,39 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
                                     <span className="chats-me-page__member-name">
                                         {getChatMemberName(memberUuid, profilesByUserUuid)}
                                     </span>
-                                    {selectedChat.createdByUserUuid === memberUuid && (
-                                        <span className="chats-me-page__member-role">owner</span>
-                                    )}
-                                    {isSelectedChatGroup && isSelectedChatOwnedByAuthenticatedUser && memberUuid !== authenticatedUserUuid && (
-                                        <button
-                                            className="chats-me-page__member-remove-button"
-                                            type="button"
-                                            disabled={isKickingMember || isEditingChatInfo}
-                                            title="Remove member"
-                                            aria-label={`Remove member ${getChatMemberName(memberUuid, profilesByUserUuid)}`}
-                                            onClick={() => onKickMember(memberUuid)}
-                                        >
-                                            <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
-                                        </button>
-                                    )}
+                                    <div className="chats-me-page__member-badges">
+                                        {selectedChat.createdByUserUuid === memberUuid && (
+                                            <span className="chats-me-page__member-role">owner</span>
+                                        )}
+                                        {memberUuid === authenticatedUserUuid && (
+                                            <span className="chats-me-page__member-role chats-me-page__member-role--me">me</span>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
+
+                    {memberContextMenu && (
+                        <div
+                            className="chats-me-page__context-menu"
+                            style={clampContextMenuPosition(memberContextMenu.x, memberContextMenu.y, memberContextMenuWidthPx, memberContextMenuHeightPx)}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <button
+                                className="chats-me-page__context-menu-button chats-me-page__context-menu-button--danger"
+                                type="button"
+                                disabled={isKickingMember}
+                                onClick={() => {
+                                    setMemberContextMenu(null);
+                                    onKickMember(memberContextMenu.memberUuid);
+                                }}
+                            >
+                                <span className="material-symbols-rounded" aria-hidden="true">person_remove</span>
+                                Kick User
+                            </button>
+                        </div>
+                    )}
 
                     {isSelectedChatGroup && !isEditingChatInfo && (
                         <button
@@ -723,6 +783,20 @@ async function exportCroppedAvatar(image: HTMLImageElement | null, sourceImage: 
 
 function buildAvatarFileName() {
     return `chat-avatar-${Date.now()}.png`;
+}
+
+function clampContextMenuPosition(x: number, y: number, menuWidth: number, menuHeight: number) {
+    if (typeof window === "undefined") {
+        return { left: x, top: y };
+    }
+
+    const maxLeft = Math.max(contextMenuViewportPaddingPx, window.innerWidth - menuWidth - contextMenuViewportPaddingPx);
+    const maxTop = Math.max(contextMenuViewportPaddingPx, window.innerHeight - menuHeight - contextMenuViewportPaddingPx);
+
+    return {
+        left: Math.min(Math.max(x, contextMenuViewportPaddingPx), maxLeft),
+        top: Math.min(Math.max(y, contextMenuViewportPaddingPx), maxTop),
+    };
 }
 
 function clampNumber(value: number, min: number, max: number) {
