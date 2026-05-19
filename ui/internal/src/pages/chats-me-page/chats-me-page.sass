@@ -287,32 +287,48 @@
   text-align: center
 
 .chats-me-page__details-name-field
+  position: relative
   display: grid
   gap: 8px
-  width: min(100%, 280px)
+  width: calc(100% - 52px)
+  margin: 0 26px
+
+.chats-me-page__details-chat-name-label
+  position: absolute
+  top: 0
+  left: 16px
+  z-index: 1
+  display: inline-flex
+  align-items: center
+  min-height: 1rem
+  padding: 2px 4px
+  border-radius: 999px
+  background: var(--chats-page-bg-mid)
+  color: var(--chats-page-text-faint)
+  font-size: 0.56rem
+  font-weight: 700
+  letter-spacing: 0.12em
+  line-height: 1
+  text-transform: uppercase
+  transform: translateY(-50%)
 
 .chats-me-page__details-chat-name-input
   width: 100%
-  min-height: 42px
-  padding: 0 14px
+  min-height: 48px
+  padding: 18px
   border: 1px solid var(--chats-page-border-strong)
-  border-radius: 14px
+  border-radius: 18px
   background: var(--chats-page-bg-mid)
   color: var(--chats-page-text)
   font: inherit
   font-size: 1.05rem
-  font-weight: 600
-  text-align: center
+  font-weight: 400
+  text-align: left
   outline: none
-  transition: border-color 120ms ease, background-color 120ms ease
-
-.chats-me-page__details-chat-name-input::placeholder
-  color: var(--chats-page-text-faint)
-  font-weight: 500
+  transition: border-color 120ms ease
 
 .chats-me-page__details-chat-name-input:focus
   border-color: #3f8cff
-  background: #202020
 
 .chats-me-page__members-panel
   flex: 0 1 auto

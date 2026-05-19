@@ -452,11 +452,14 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
 
                         {isEditingChatInfo ? (
                             <div className="chats-me-page__details-name-field">
+                                <label className="chats-me-page__details-chat-name-label" htmlFor="chat-name-input">
+                                    Group name
+                                </label>
                                 <input
+                                    id="chat-name-input"
                                     className="chats-me-page__details-chat-name-input"
                                     type="text"
                                     value={draftName}
-                                    placeholder={readOnlyChatTitle}
                                     onChange={handleNameChange}
                                     autoComplete="off"
                                 />
