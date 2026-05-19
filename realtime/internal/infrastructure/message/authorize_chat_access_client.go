@@ -13,6 +13,7 @@ import (
 var ErrChatNotFound = errors.New("chat not found")
 var ErrChatAccessDenied = errors.New("chat access denied")
 
+// TODO rename to ChatAppClient
 // AuthorizeChatAccessClient authorizes chat access through the message service.
 type AuthorizeChatAccessClient struct {
 	baseURL    string
