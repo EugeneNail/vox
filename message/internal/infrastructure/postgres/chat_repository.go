@@ -188,6 +188,23 @@ func (repository *ChatRepository) CreateWithMembers(ctx context.Context, chat do
 	return nil
 }
 
+// Update persists chat metadata changes in PostgreSQL.
+func (repository *ChatRepository) Update(ctx context.Context, chat domain.Chat) error {
+	if _, err := repository.database.ExecContext(
+		ctx,
+		`UPDATE chats SET name = $2, avatar = $3, revision = $4, updated_at = $5 WHERE uuid = $1`,
+		chat.Uuid,
+		chat.Name,
+		chat.Avatar,
+		chat.Revision,
+		chat.UpdatedAt,
+	); err != nil {
+		return fmt.Errorf("updating chat %q: %w", chat.Uuid, err)
+	}
+
+	return nil
+}
+
 // SetRevision sets the chat revision to the provided value.
 func (repository *ChatRepository) SetRevision(ctx context.Context, chatUuid uuid.UUID, revision int64) error {
 	if _, err := repository.database.ExecContext(
