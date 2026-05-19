@@ -94,8 +94,14 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return ErrChatAccessDenied
 	}
 
-	chat.Name = command.Name
-	chat.Avatar = command.Avatar
+	if command.Name != nil {
+		chat.Name = command.Name
+	}
+
+	if command.Avatar != nil {
+		chat.Avatar = command.Avatar
+	}
+
 	chat.UpdatedAt = time.Now().UTC()
 
 	if err := handler.chatRepository.Update(ctx, *chat); err != nil {
