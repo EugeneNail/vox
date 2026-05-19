@@ -251,7 +251,9 @@
 .chats-me-page__details-chat-avatar
   width: 133px
   height: 133px
+  box-sizing: border-box
   border-radius: 50%
+  border: 1px solid var(--chats-page-border)
   overflow: hidden
   background: linear-gradient(180deg, #4e89c7, #3d6c9b)
   color: #fff
@@ -293,7 +295,7 @@
   width: 100%
   min-height: 42px
   padding: 0 14px
-  border: 1px solid var(--chats-page-border)
+  border: 1px solid var(--chats-page-border-strong)
   border-radius: 14px
   background: var(--chats-page-bg-mid)
   color: var(--chats-page-text)
@@ -1214,19 +1216,19 @@
   overflow-y: auto
 
 .chats-me-page__avatar-modal
-  position: absolute
+  position: fixed
   inset: 0
-  z-index: 30
+  z-index: 40
   display: grid
   place-items: center
   padding: 18px
-  background: rgba(0, 0, 0, 0.58)
+  background: rgba(0, 0, 0, 0.54)
   backdrop-filter: blur(10px)
 
 .chats-me-page__avatar-dialog
   display: grid
   gap: 14px
-  width: min(560px, 100%)
+  width: min(100%, clamp(250px, 38vw, 430px))
   padding: 18px
   border: 1px solid #3a3a3a
   border-radius: 24px
@@ -1255,7 +1257,10 @@
 
 .chats-me-page__avatar-stage
   position: relative
-  min-height: 340px
+  width: 100%
+  aspect-ratio: 1 / 1
+  min-height: 250px
+  max-height: min(430px, calc(100dvh - 180px))
   border: 1px solid var(--chats-page-border)
   border-radius: 22px
   background: #111
