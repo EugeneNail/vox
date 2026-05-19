@@ -39,16 +39,6 @@ func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domai
 
 // Handle validates input and renames the chat.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
-	validationError := validation.NewError()
-
-	if command.ChatUuid == uuid.Nil {
-		validationError.AddViolation("chatUuid", "Required")
-	}
-
-	if command.UserUuid == uuid.Nil {
-		validationError.AddViolation("userUuid", "Required")
-	}
-
 	name := ""
 	if command.Name != nil {
 		name = strings.TrimSpace(*command.Name)
@@ -65,16 +55,11 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	})
 
 	if err := validator.Validate(); err != nil {
-		var currentValidationError validation.Error
-		if errors.As(err, &currentValidationError) {
-			mergeValidationErrors(validationError, currentValidationError)
-		} else {
-			return fmt.Errorf("validating rename chat command: %w", err)
+		var validationError validation.Error
+		if errors.As(err, &validationError) {
+			return validationError
 		}
-	}
-
-	if len(validationError.Violations()) > 0 {
-		return validationError
+		return fmt.Errorf("validating rename chat command: %w", err)
 	}
 
 	chat, err := handler.chatRepository.FindByUuid(ctx, command.ChatUuid)
@@ -107,10 +92,4 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	return nil
-}
-
-func mergeValidationErrors(target validation.Error, source validation.Error) {
-	for field, message := range source.Violations() {
-		target.AddViolation(field, message)
-	}
 }
