@@ -148,9 +148,15 @@
   height: 100%
   min-height: 0
   padding: 15px
+  background: transparent
+  transition: background-color 140ms ease
 
 .chats-me-page__details-shell--empty
   justify-content: center
+
+.chats-me-page__details-shell--editing
+  padding-bottom: 84px
+  background: var(--chats-page-bg-mid)
 
 .chats-me-page__details-topbar
   display: grid
@@ -186,11 +192,61 @@
 .chats-me-page__details-icon-button:hover
   background: var(--chats-page-bg-mid-hover)
 
+.chats-me-page__details-icon-button:disabled
+  opacity: 0.55
+
 .chats-me-page__details-profile
   display: grid
   justify-items: center
   gap: 10px
   margin-bottom: 15px
+
+.chats-me-page__details-avatar-shell
+  position: relative
+  width: 133px
+  height: 133px
+
+.chats-me-page__details-avatar-button
+  position: relative
+  display: block
+  width: 100%
+  height: 100%
+  padding: 0
+  border: 0
+  border-radius: 50%
+  background: transparent
+  overflow: hidden
+  cursor: pointer
+
+.chats-me-page__details-avatar-button:disabled
+  cursor: default
+
+.chats-me-page__details-avatar-overlay
+  position: absolute
+  inset: 0
+  display: grid
+  place-items: center
+  border-radius: 50%
+  background: rgba(0, 0, 0, 0.5)
+  color: #fff
+  opacity: 0
+  transition: opacity 140ms ease, transform 140ms ease
+
+.chats-me-page__details-avatar-button:hover .chats-me-page__details-avatar-overlay
+  opacity: 1
+
+.chats-me-page__details-avatar-overlay-icon
+  font-size: 1.8rem
+  transition: transform 140ms ease
+
+.chats-me-page__details-avatar-button:hover .chats-me-page__details-avatar-overlay-icon
+  transform: scale(1.14)
+
+.chats-me-page__details-file-input
+  position: absolute
+  inset: 0
+  opacity: 0
+  pointer-events: none
 
 .chats-me-page__details-chat-avatar
   width: 133px
@@ -227,6 +283,34 @@
   color: var(--chats-page-text-soft)
   font-size: 0.82rem
   text-align: center
+
+.chats-me-page__details-name-field
+  display: grid
+  gap: 8px
+  width: min(100%, 280px)
+
+.chats-me-page__details-chat-name-input
+  width: 100%
+  min-height: 42px
+  padding: 0 14px
+  border: 1px solid var(--chats-page-border)
+  border-radius: 14px
+  background: var(--chats-page-bg-mid)
+  color: var(--chats-page-text)
+  font: inherit
+  font-size: 1.05rem
+  font-weight: 600
+  text-align: center
+  outline: none
+  transition: border-color 120ms ease, background-color 120ms ease
+
+.chats-me-page__details-chat-name-input::placeholder
+  color: var(--chats-page-text-faint)
+  font-weight: 500
+
+.chats-me-page__details-chat-name-input:focus
+  border-color: #3f8cff
+  background: #202020
 
 .chats-me-page__members-panel
   flex: 0 1 auto
@@ -358,6 +442,20 @@
 
 .chats-me-page__details-floating-action:hover
   background: #5a9cff
+
+.chats-me-page__details-floating-action--save
+  bottom: 16px
+  right: 16px
+  z-index: 2
+
+.chats-me-page__details-feedback
+  margin: 0
+  min-height: 1.2rem
+  font-size: 0.86rem
+  text-align: center
+
+.chats-me-page__details-feedback--error
+  color: var(--chats-page-danger)
 
 .chats-me-page__sidebar-header
   display: grid
@@ -1114,6 +1212,116 @@
   max-height: 280px
   min-height: 0
   overflow-y: auto
+
+.chats-me-page__avatar-modal
+  position: absolute
+  inset: 0
+  z-index: 30
+  display: grid
+  place-items: center
+  padding: 18px
+  background: rgba(0, 0, 0, 0.58)
+  backdrop-filter: blur(10px)
+
+.chats-me-page__avatar-dialog
+  display: grid
+  gap: 14px
+  width: min(560px, 100%)
+  padding: 18px
+  border: 1px solid #3a3a3a
+  border-radius: 24px
+  background: #1d1d1d
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42)
+
+.chats-me-page__avatar-dialog-header
+  display: flex
+  align-items: start
+  justify-content: space-between
+  gap: 16px
+
+.chats-me-page__avatar-dialog-eyebrow
+  margin: 0 0 4px
+  color: var(--chats-page-text-faint)
+  font-size: 0.74rem
+  font-weight: 700
+  letter-spacing: 0.18em
+  text-transform: uppercase
+
+.chats-me-page__avatar-dialog-title
+  margin: 0
+  color: var(--chats-page-text)
+  font-size: 1.28rem
+  letter-spacing: -0.03em
+
+.chats-me-page__avatar-stage
+  position: relative
+  min-height: 340px
+  border: 1px solid var(--chats-page-border)
+  border-radius: 22px
+  background: #111
+  overflow: hidden
+  touch-action: none
+
+.chats-me-page__avatar-stage-image
+  position: absolute
+  inset: 0
+  width: 100%
+  height: 100%
+  object-fit: contain
+  user-select: none
+  pointer-events: none
+
+.chats-me-page__avatar-crop
+  position: absolute
+  border: 2px solid rgba(63, 140, 255, 0.95)
+  border-radius: 50%
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 0 999px rgba(0, 0, 0, 0.58)
+  cursor: move
+  touch-action: none
+
+.chats-me-page__avatar-controls
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  gap: 12px
+  align-items: center
+
+.chats-me-page__avatar-size
+  display: grid
+  gap: 8px
+  min-width: 0
+
+.chats-me-page__avatar-size-label
+  color: var(--chats-page-text-soft)
+  font-size: 0.74rem
+  font-weight: 700
+  letter-spacing: 0.16em
+  text-transform: uppercase
+
+.chats-me-page__avatar-size-input
+  width: 100%
+  accent-color: #3f8cff
+
+.chats-me-page__avatar-confirm
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 46px
+  height: 46px
+  padding: 0
+  border: 0
+  border-radius: 50%
+  background: #3f8cff
+  color: #fff
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32)
+  transition: transform 120ms ease, background-color 120ms ease, opacity 120ms ease
+
+.chats-me-page__avatar-confirm:hover
+  transform: translateY(-1px)
+  background: #5a9cff
+
+.chats-me-page__avatar-confirm:disabled
+  opacity: 0.65
+  transform: none
 
 @media (max-width: 1180px)
   .chats-me-page

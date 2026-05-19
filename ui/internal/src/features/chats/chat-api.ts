@@ -41,6 +41,11 @@ export type AddChatMembersRequest = {
     memberUuids: string[];
 };
 
+export type UpdateChatRequest = {
+    name?: string;
+    avatar?: string;
+};
+
 export type CreateMessageRequest = {
     text: string;
     attachments: string[];
@@ -77,6 +82,10 @@ export async function createGroupChat(apiClient: AxiosInstance, payload: CreateG
 
 export async function addChatMembers(apiClient: AxiosInstance, chatUuid: string, payload: AddChatMembersRequest) {
     await apiClient.post(`/api/v1/message/chats/${chatUuid}/members`, payload);
+}
+
+export async function updateChat(apiClient: AxiosInstance, chatUuid: string, payload: UpdateChatRequest) {
+    await apiClient.put(`/api/v1/message/chats/${chatUuid}`, payload);
 }
 
 export async function kickChatMember(apiClient: AxiosInstance, chatUuid: string, memberUuid: string) {

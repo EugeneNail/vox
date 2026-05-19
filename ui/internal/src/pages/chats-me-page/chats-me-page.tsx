@@ -16,6 +16,7 @@ import {
     kickChatMember,
     listChats,
     setLastSeenRevision,
+    updateChat as updateChatRequest,
 } from "../../features/chats/chat-api";
 import { useChatsList } from "../../features/chats/hooks/use-chats-list";
 import { useSelectedChatMessages } from "../../features/chats/hooks/use-selected-chat-messages";
@@ -949,6 +950,17 @@ export default function ChatsMePage() {
         }
     }
 
+    async function saveChatDetails(payload: { name?: string; avatar?: string; }) {
+        if (!selectedChat) {
+            return;
+        }
+
+        await updateChatRequest(apiClient, selectedChat.uuid, payload);
+
+        const nextChats = await listChats(apiClient);
+        setChats(nextChats);
+    }
+
     async function kickMemberFromChat(memberUuid: string) {
         if (!selectedChat) {
             return;
@@ -1137,6 +1149,7 @@ export default function ChatsMePage() {
                 isSelectedChatOwnedByAuthenticatedUser={isSelectedChatOwnedByAuthenticatedUser}
                 onKickMember={(memberUuid) => void kickMemberFromChat(memberUuid)}
                 onOpenAddMembersModal={openAddMembersModal}
+                onSaveChat={saveChatDetails}
                 profilesByUserUuid={profilesByUserUuid}
                 selectedChat={selectedChat ?? null}
             />
