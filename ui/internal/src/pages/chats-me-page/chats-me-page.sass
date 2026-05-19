@@ -118,6 +118,34 @@
   gap: 2px
   min-width: 0
 
+.chats-me-page__chat-topbar-back-button
+  display: none
+  align-items: center
+  justify-content: center
+  width: 34px
+  height: 34px
+  padding: 0
+  border: 0
+  border-radius: 999px
+  background: transparent
+  color: var(--chats-page-text)
+  font: inherit
+
+.chats-me-page__chat-topbar-back-button:hover
+  background: var(--chats-page-bg-mid-hover)
+
+.chats-me-page__chat-topbar-title-button
+  display: inline-flex
+  flex-direction: column
+  gap: 2px
+  padding: 0
+  border: 0
+  background: transparent
+  color: inherit
+  font: inherit
+  text-align: left
+  cursor: pointer
+
 .chats-me-page__chat-topbar-title
   margin: 0
   overflow: hidden
@@ -336,7 +364,7 @@
   max-height: calc(100dvh - 270px)
   margin-top: 15px
   padding: 7px
-  border-radius: 14px
+  border-radius: 26px
   background: var(--chats-page-bg-mid)
 
 .chats-me-page__members
@@ -1332,24 +1360,67 @@
   opacity: 0.65
   transform: none
 
-@media (max-width: 1180px)
+@media (orientation: portrait)
   .chats-me-page
-    grid-template-columns: var(--chats-sidebar-width, 350px) minmax(0, 1fr)
+    position: relative
+    display: block
+    width: 100%
+    height: 100dvh
+    min-height: 100dvh
+    overflow: hidden
 
+  .chats-me-page__sidebar,
+  .chats-me-page__chat,
+  .chats-me-page__details
+    position: absolute
+    inset: 0
+    width: 100%
+    height: 100%
+
+  .chats-me-page__sidebar,
+  .chats-me-page__chat,
   .chats-me-page__details
     display: none
 
-@media (max-width: 760px)
-  .chats-me-page
-    grid-template-columns: 1fr
-    height: auto
-    min-height: 100dvh
+  .chats-me-page--mobile-list .chats-me-page__sidebar
+    display: flex
 
-  .chats-me-page__sidebar
-    max-height: 40dvh
+  .chats-me-page--mobile-chat .chats-me-page__chat
+    display: flex
 
-  .chats-me-page__chat
-    min-height: 60dvh
+  .chats-me-page--mobile-details .chats-me-page__details
+    display: block
 
   .chats-me-page__sidebar-resize-handle
     display: none
+
+  .chats-me-page__chat-topbar
+    grid-template-columns: auto 40px minmax(0, 1fr)
+    gap: 10px
+    padding: 0 12px
+
+  .chats-me-page__chat-topbar-back-button
+    display: inline-flex
+
+  .chats-me-page__chat-topbar-copy
+    min-width: 0
+
+  .chats-me-page__details
+    border-left: 0
+
+  .chats-me-page__details-shell
+    padding: 12px
+
+  .chats-me-page__details-shell--editing
+    padding-bottom: 84px
+
+  .chats-me-page__details-topbar
+    margin-bottom: 18px
+
+  .chats-me-page__details-profile
+    flex: 0 0 auto
+
+  .chats-me-page__members-panel
+    flex: 1 1 auto
+    max-height: none
+    margin-top: 12px

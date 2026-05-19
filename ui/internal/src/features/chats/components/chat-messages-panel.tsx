@@ -50,6 +50,7 @@ type ChatMessagesPanelProps = {
     messagesEndRef: RefObject<HTMLDivElement | null>;
     messagesError: string | null;
     onCancelEdit: () => void;
+    onBackToChatsList: () => void;
     onCloseMessageContextMenu: () => void;
     onCopyMessageLink: (message: ChatMessage) => Promise<void>;
     onCopyMessageText: (message: ChatMessage) => Promise<void>;
@@ -58,6 +59,8 @@ type ChatMessagesPanelProps = {
     onKickMemberRequest: (memberUuid: string) => void;
     onScroll: () => void;
     onSubmit: (text: string, attachments: string[]) => Promise<void>;
+    isMobileLayout: boolean;
+    onOpenChatDetails: () => void;
     profilesByUserUuid: Record<string, PublicProfile>;
     selectedChat: Chat | null;
     setMessageViewMode: (mode: ChatMessageViewMode) => void;
@@ -81,6 +84,7 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         messagesEndRef,
         messagesError,
         onCancelEdit,
+        onBackToChatsList,
         onCloseMessageContextMenu,
         onCopyMessageLink,
         onCopyMessageText,
@@ -89,6 +93,8 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         onKickMemberRequest,
         onScroll,
         onSubmit,
+        isMobileLayout,
+        onOpenChatDetails,
         profilesByUserUuid,
         selectedChat,
         setMessageViewMode,
@@ -108,13 +114,33 @@ export function ChatMessagesPanel(props: ChatMessagesPanelProps) {
         <section className="chats-me-page__chat" aria-label="Chat">
             <div className={`chats-me-page__chat-shell chats-me-page__chat-shell--${messageViewMode}`}>
                 <header className="chats-me-page__chat-topbar">
+                    {isMobileLayout && (
+                        <button
+                            className="chats-me-page__chat-topbar-back-button"
+                            type="button"
+                            aria-label="Back to chats list"
+                            onClick={onBackToChatsList}
+                        >
+                            <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+                        </button>
+                    )}
                     <UserAvatar
                         className="chats-me-page__chat-topbar-avatar"
                         src={getChatAvatarUrl(selectedChat, authenticatedUserUuid, profilesByUserUuid)}
                         label={getChatAvatarLabel(selectedChat, authenticatedUserUuid, profilesByUserUuid)}
                     />
                     <div className="chats-me-page__chat-topbar-copy">
-                        <h2 className="chats-me-page__chat-topbar-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
+                        {isMobileLayout ? (
+                            <button
+                                className="chats-me-page__chat-topbar-title-button"
+                                type="button"
+                                onClick={onOpenChatDetails}
+                            >
+                                <h2 className="chats-me-page__chat-topbar-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
+                            </button>
+                        ) : (
+                            <h2 className="chats-me-page__chat-topbar-title">{getChatTitle(selectedChat, authenticatedUserUuid, profilesByUserUuid)}</h2>
+                        )}
                         <p className="chats-me-page__chat-topbar-meta">{selectedChat.memberUuids.length} members</p>
                     </div>
                 </header>

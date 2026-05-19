@@ -56,6 +56,7 @@ const chatMessageViewModeStorageKey = "vox.chats.messageViewMode";
 const chatsSidebarMinWidthPx = 230;
 const chatsSidebarMaxWidthPx = 520;
 const chatsSidebarDefaultWidthPx = 350;
+type MobilePanel = "list" | "chat" | "details";
 
 async function searchProfilesByQuery(apiClient: ReturnType<typeof useApiClient>, query: string, authenticatedUserUuid: string | null) {
     const data = await searchProfiles(apiClient, query, 10);
@@ -127,9 +128,11 @@ export default function ChatsMePage() {
     const [sidebarWidth, setSidebarWidth] = useState(() => loadChatsSidebarWidth());
     const [isSidebarResizing, setIsSidebarResizing] = useState(false);
     const [messageViewMode, setMessageViewMode] = useState<ChatMessageViewMode>(() => loadChatMessageViewMode());
+    const [mobilePanel, setMobilePanel] = useState<MobilePanel>(() => (chatUuid ? "chat" : "list"));
     const authenticatedUserUuid = getAuthenticatedUserUuid();
     const selectedChatUuid = chatUuid ?? null;
     const selectedChat = chats.find((chat) => chat.uuid === selectedChatUuid);
+    const isMobileLayout = useIsPortraitLayout();
     const {
         messages,
         setMessages,
@@ -180,6 +183,14 @@ export default function ChatsMePage() {
     useEffect(() => {
         window.localStorage.setItem(chatMessageViewModeStorageKey, messageViewMode);
     }, [messageViewMode]);
+
+    useEffect(() => {
+        if (!isMobileLayout) {
+            return;
+        }
+
+        setMobilePanel(selectedChatUuid ? "chat" : "list");
+    }, [isMobileLayout, selectedChatUuid]);
 
     useEffect(() => {
         const audio = new Audio("/message-received.mp3");
@@ -1095,9 +1106,41 @@ export default function ChatsMePage() {
         setIsSidebarResizing(true);
     }
 
+    function openMobileChatDetails() {
+        if (!isMobileLayout || !selectedChat) {
+            return;
+        }
+
+        setMobilePanel("details");
+    }
+
+    function returnToMobileChat() {
+        if (!isMobileLayout || !selectedChat) {
+            return;
+        }
+
+        setMobilePanel("chat");
+    }
+
+    function returnToMobileChatsList() {
+        if (!isMobileLayout) {
+            return;
+        }
+
+        setMobilePanel("list");
+        navigate("/chats/@me");
+    }
+
+    const mobileLayoutClassName = isMobileLayout ? `chats-me-page--mobile chats-me-page--mobile-${mobilePanel}` : "";
+    const rootClassName = [
+        "chats-me-page",
+        isSidebarResizing ? "chats-me-page--resizing" : "",
+        mobileLayoutClassName,
+    ].filter(Boolean).join(" ");
+
     return (
         <section
-            className={isSidebarResizing ? "chats-me-page chats-me-page--resizing" : "chats-me-page"}
+            className={rootClassName}
             style={{ "--chats-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
         >
             <ChatsSidebar
@@ -1148,6 +1191,9 @@ export default function ChatsMePage() {
                 onKickMemberRequest={(memberUuid) => void kickMemberFromChat(memberUuid)}
                 onScroll={handleMessagesScroll}
                 onSubmit={submitMessage}
+                isMobileLayout={isMobileLayout}
+                onOpenChatDetails={openMobileChatDetails}
+                onBackToChatsList={returnToMobileChatsList}
                 profilesByUserUuid={profilesByUserUuid}
                 selectedChat={selectedChat ?? null}
                 setMessageViewMode={setMessageViewMode}
@@ -1160,6 +1206,8 @@ export default function ChatsMePage() {
                 isSelectedChatOwnedByAuthenticatedUser={isSelectedChatOwnedByAuthenticatedUser}
                 onKickMember={(memberUuid) => void kickMemberFromChat(memberUuid)}
                 onOpenAddMembersModal={openAddMembersModal}
+                onCloseDetails={returnToMobileChat}
+                isMobileLayout={isMobileLayout}
                 onSaveChat={saveChatDetails}
                 profilesByUserUuid={profilesByUserUuid}
                 selectedChat={selectedChat ?? null}
@@ -1230,6 +1278,37 @@ export default function ChatsMePage() {
             />
         </section>
     );
+}
+
+function useIsPortraitLayout() {
+    const [isPortraitLayout, setIsPortraitLayout] = useState(() => (
+        typeof window !== "undefined" && window.innerWidth <= window.innerHeight
+    ));
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(orientation: portrait)");
+        const updateLayout = () => {
+            setIsPortraitLayout(mediaQuery.matches);
+        };
+
+        updateLayout();
+
+        if (typeof mediaQuery.addEventListener === "function") {
+            mediaQuery.addEventListener("change", updateLayout);
+
+            return () => {
+                mediaQuery.removeEventListener("change", updateLayout);
+            };
+        }
+
+        mediaQuery.addListener(updateLayout);
+
+        return () => {
+            mediaQuery.removeListener(updateLayout);
+        };
+    }, []);
+
+    return isPortraitLayout;
 }
 
 function copyTextWithFallback(text: string) {

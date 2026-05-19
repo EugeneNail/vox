@@ -15,8 +15,10 @@ import {
 type ChatDetailsPanelProps = {
     authenticatedUserUuid: string | null;
     isKickingMember: boolean;
+    isMobileLayout: boolean;
     isSelectedChatGroup: boolean;
     isSelectedChatOwnedByAuthenticatedUser: boolean;
+    onCloseDetails: () => void;
     onKickMember: (memberUuid: string) => void;
     onOpenAddMembersModal: () => void;
     onSaveChat: (payload: { name?: string; avatar?: string; }) => Promise<void>;
@@ -65,8 +67,10 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
     const {
         authenticatedUserUuid,
         isKickingMember,
+        isMobileLayout,
         isSelectedChatGroup,
         isSelectedChatOwnedByAuthenticatedUser,
+        onCloseDetails,
         onKickMember,
         onOpenAddMembersModal,
         onSaveChat,
@@ -441,7 +445,7 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
                             className="chats-me-page__details-icon-button"
                             type="button"
                             aria-label={isEditingChatInfo ? "Cancel editing" : "Close chat info"}
-                            onClick={isEditingChatInfo ? stopEditMode : undefined}
+                            onClick={isEditingChatInfo ? stopEditMode : (isMobileLayout ? onCloseDetails : undefined)}
                         >
                             <span className="material-symbols-rounded" aria-hidden="true">close</span>
                         </button>
