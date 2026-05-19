@@ -1,4 +1,4 @@
-package update_chat
+package rename_chat
 
 import (
 	"context"
@@ -16,21 +16,20 @@ import (
 var ErrChatNotFound = errors.New("chat not found")
 var ErrChatAccessDenied = errors.New("chat access denied")
 
-// Handler updates chat metadata through the update_chat use-case.
+// Handler renames chats through the rename_chat use-case.
 type Handler struct {
 	chatRepository       domain.ChatRepository
 	chatMemberRepository domain.ChatMemberRepository
 }
 
-// Command contains the input required to update a chat.
+// Command contains the input required to rename a chat.
 type Command struct {
 	ChatUuid uuid.UUID
 	UserUuid uuid.UUID
 	Name     *string
-	Avatar   *string
 }
 
-// NewHandler constructs an update_chat handler with its dependencies.
+// NewHandler constructs a rename_chat handler with its dependencies.
 func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domain.ChatMemberRepository) *Handler {
 	return &Handler{
 		chatRepository:       chatRepository,
@@ -38,10 +37,8 @@ func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domai
 	}
 }
 
-// Handle validates input and updates the chat metadata.
+// Handle validates input and renames the chat.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
-	var name string
-	var avatar string
 	validationError := validation.NewError()
 
 	if command.ChatUuid == uuid.Nil {
@@ -52,48 +49,27 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		validationError.AddViolation("userUuid", "Required")
 	}
 
-	if command.Name == nil && command.Avatar == nil {
-		validationError.AddViolation("name", "At least one of name or avatar is required")
-		validationError.AddViolation("avatar", "At least one of name or avatar is required")
-	}
-
+	name := ""
 	if command.Name != nil {
 		name = strings.TrimSpace(*command.Name)
 	}
 
-	if command.Avatar != nil {
-		avatar = strings.TrimSpace(*command.Avatar)
-	}
-
-	validatorData := map[string]any{
+	validator := validation.NewValidator(map[string]any{
 		"chatUuid": command.ChatUuid,
 		"userUuid": command.UserUuid,
-	}
-	validatorRules := map[string][]rules.Rule{
+		"name":     name,
+	}, map[string][]rules.Rule{
 		"chatUuid": {rules.Required()},
 		"userUuid": {rules.Required()},
-	}
+		"name":     {rules.Required(), rules.Min(3), rules.Max(128), rules.Regex(rules.SlugWithSpacesPattern)},
+	})
 
-	if command.Name != nil {
-		validatorData["name"] = name
-		validatorRules["name"] = []rules.Rule{rules.Required(), rules.Min(3), rules.Max(128), rules.Regex(rules.SlugWithSpacesPattern)}
-	}
-
-	if command.Avatar != nil {
-		validatorData["avatar"] = avatar
-		validatorRules["avatar"] = []rules.Rule{rules.Required(), rules.Regex(`^.+\.[a-z]{3,4}$`)}
-	}
-
-	validator := validation.NewValidator(validatorData, validatorRules)
 	if err := validator.Validate(); err != nil {
 		var currentValidationError validation.Error
 		if errors.As(err, &currentValidationError) {
-			// TODO replace with .Merge() method
-			for field, message := range currentValidationError.Violations() {
-				validationError.AddViolation(field, message)
-			}
+			mergeValidationErrors(validationError, currentValidationError)
 		} else {
-			return fmt.Errorf("validating update chat command: %w", err)
+			return fmt.Errorf("validating rename chat command: %w", err)
 		}
 	}
 
@@ -123,14 +99,7 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 		return ErrChatAccessDenied
 	}
 
-	if command.Name != nil {
-		chat.Name = &name
-	}
-
-	if command.Avatar != nil {
-		chat.Avatar = &avatar
-	}
-
+	chat.Name = &name
 	chat.UpdatedAt = time.Now().UTC()
 
 	if err := handler.chatRepository.Update(ctx, *chat); err != nil {
@@ -138,4 +107,10 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	return nil
+}
+
+func mergeValidationErrors(target validation.Error, source validation.Error) {
+	for field, message := range source.Violations() {
+		target.AddViolation(field, message)
+	}
 }

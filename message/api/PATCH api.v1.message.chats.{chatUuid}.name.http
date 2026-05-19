@@ -1,0 +1,7 @@
+PATCH http://127.0.0.1:10000/api/v1/message/chats/019d6778-5f15-7b80-b69f-4ed86cb5ba99/name
+Content-Type: application/json
+Authorization: Bearer <login-token>
+
+{
+    "name": "New chat name"
+}
