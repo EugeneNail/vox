@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EugeneNail/vox/lib-common/validation"
+	"github.com/EugeneNail/vox/lib-common/validation/rules"
 	"github.com/EugeneNail/vox/message/internal/domain"
 	"github.com/google/uuid"
 )
@@ -39,6 +40,8 @@ func NewHandler(chatRepository domain.ChatRepository, chatMemberRepository domai
 
 // Handle validates input and updates the chat metadata.
 func (handler *Handler) Handle(ctx context.Context, command Command) error {
+	var name string
+	var avatar string
 	validationError := validation.NewError()
 
 	if command.ChatUuid == uuid.Nil {
@@ -55,16 +58,42 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	if command.Name != nil {
-		*command.Name = strings.TrimSpace(*command.Name)
-		if *command.Name == "" {
-			validationError.AddViolation("name", "Must not be empty")
-		}
+		name = strings.TrimSpace(*command.Name)
 	}
 
 	if command.Avatar != nil {
-		*command.Avatar = strings.TrimSpace(*command.Avatar)
-		if *command.Avatar == "" {
-			validationError.AddViolation("avatar", "Must not be empty")
+		avatar = strings.TrimSpace(*command.Avatar)
+	}
+
+	validatorData := map[string]any{
+		"chatUuid": command.ChatUuid,
+		"userUuid": command.UserUuid,
+	}
+	validatorRules := map[string][]rules.Rule{
+		"chatUuid": {rules.Required()},
+		"userUuid": {rules.Required()},
+	}
+
+	if command.Name != nil {
+		validatorData["name"] = name
+		validatorRules["name"] = []rules.Rule{rules.Required(), rules.Min(3), rules.Max(128), rules.Regex(rules.SlugWithSpacesPattern)}
+	}
+
+	if command.Avatar != nil {
+		validatorData["avatar"] = avatar
+		validatorRules["avatar"] = []rules.Rule{rules.Required(), rules.Regex(`^.+\.[a-z]{3,4}$`)}
+	}
+
+	validator := validation.NewValidator(validatorData, validatorRules)
+	if err := validator.Validate(); err != nil {
+		var currentValidationError validation.Error
+		if errors.As(err, &currentValidationError) {
+			// TODO replace with .Merge() method
+			for field, message := range currentValidationError.Violations() {
+				validationError.AddViolation(field, message)
+			}
+		} else {
+			return fmt.Errorf("validating update chat command: %w", err)
 		}
 	}
 
@@ -95,11 +124,11 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	}
 
 	if command.Name != nil {
-		chat.Name = command.Name
+		chat.Name = &name
 	}
 
 	if command.Avatar != nil {
-		chat.Avatar = command.Avatar
+		chat.Avatar = &avatar
 	}
 
 	chat.UpdatedAt = time.Now().UTC()
