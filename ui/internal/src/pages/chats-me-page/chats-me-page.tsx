@@ -8,6 +8,7 @@ import {
 } from "../../contexts/message-web-socket-context/message-web-socket-context";
 import {
     addChatMembers,
+    changeChatAvatar,
     createDirectChat,
     createGroupChat as createGroupChatRequest,
     createMessage,
@@ -15,8 +16,8 @@ import {
     editMessage as editMessageRequest,
     kickChatMember,
     listChats,
+    renameChat,
     setLastSeenRevision,
-    updateChat as updateChatRequest,
 } from "../../features/chats/chat-api";
 import { useChatsList } from "../../features/chats/hooks/use-chats-list";
 import { useSelectedChatMessages } from "../../features/chats/hooks/use-selected-chat-messages";
@@ -955,7 +956,17 @@ export default function ChatsMePage() {
             return;
         }
 
-        await updateChatRequest(apiClient, selectedChat.uuid, payload);
+        if (payload.name) {
+            await renameChat(apiClient, selectedChat.uuid, {
+                name: payload.name,
+            });
+        }
+
+        if (payload.avatar) {
+            await changeChatAvatar(apiClient, selectedChat.uuid, {
+                avatar: payload.avatar,
+            });
+        }
 
         const nextChats = await listChats(apiClient);
         setChats(nextChats);

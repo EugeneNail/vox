@@ -41,9 +41,12 @@ export type AddChatMembersRequest = {
     memberUuids: string[];
 };
 
-export type UpdateChatRequest = {
-    name?: string;
-    avatar?: string;
+export type RenameChatRequest = {
+    name: string;
+};
+
+export type ChangeChatAvatarRequest = {
+    avatar: string;
 };
 
 export type CreateMessageRequest = {
@@ -84,8 +87,12 @@ export async function addChatMembers(apiClient: AxiosInstance, chatUuid: string,
     await apiClient.post(`/api/v1/message/chats/${chatUuid}/members`, payload);
 }
 
-export async function updateChat(apiClient: AxiosInstance, chatUuid: string, payload: UpdateChatRequest) {
-    await apiClient.put(`/api/v1/message/chats/${chatUuid}`, payload);
+export async function renameChat(apiClient: AxiosInstance, chatUuid: string, payload: RenameChatRequest) {
+    await apiClient.patch(`/api/v1/message/chats/${chatUuid}/name`, payload);
+}
+
+export async function changeChatAvatar(apiClient: AxiosInstance, chatUuid: string, payload: ChangeChatAvatarRequest) {
+    await apiClient.patch(`/api/v1/message/chats/${chatUuid}/avatar`, payload);
 }
 
 export async function kickChatMember(apiClient: AxiosInstance, chatUuid: string, memberUuid: string) {

@@ -11,7 +11,6 @@ import {
     getChatMemberName,
     getChatTitle,
 } from "./chats-ui";
-import { type UpdateChatRequest } from "../chat-api";
 
 type ChatDetailsPanelProps = {
     authenticatedUserUuid: string | null;
@@ -20,7 +19,7 @@ type ChatDetailsPanelProps = {
     isSelectedChatOwnedByAuthenticatedUser: boolean;
     onKickMember: (memberUuid: string) => void;
     onOpenAddMembersModal: () => void;
-    onSaveChat: (payload: UpdateChatRequest) => Promise<void>;
+    onSaveChat: (payload: { name?: string; avatar?: string; }) => Promise<void>;
     profilesByUserUuid: Record<string, PublicProfile>;
     selectedChat: Chat | null;
 };
@@ -361,7 +360,7 @@ export function ChatDetailsPanel(props: ChatDetailsPanelProps) {
             return;
         }
 
-        const nextPayload: UpdateChatRequest = {};
+        const nextPayload: { name?: string; avatar?: string; } = {};
         const nextName = draftName.trim();
         if (hasNameChange) {
             nextPayload.name = nextName;
