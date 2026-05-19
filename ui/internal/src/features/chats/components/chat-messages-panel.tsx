@@ -18,7 +18,6 @@ import {
     getMessageAuthorName,
     isMessageEdited,
     isMessageThreadStart,
-    isOwnConfirmedMessage,
 } from "./chats-ui";
 
 export type MessageContextMenu = {
@@ -315,7 +314,8 @@ function MessageRow({
     const shouldShowPlainAvatar = messageViewMode === "plain" && isThreadStart;
     const hasMessageText = hasRenderableMessageText(message.text);
     const isEditedMessage = isMessageEdited(message);
-    const hasDeliveryMark = isOwnConfirmedMessage(message, authenticatedUserUuid);
+    const hasDeliveryMark = isOwnMessage;
+    const isPendingMessage = message.isPending;
     const bubbleInlineMeta = (
         <span className="chats-me-page__message-inline-meta">
             {isEditedMessage && (
@@ -328,7 +328,12 @@ function MessageRow({
                 {formatMessageTime(message.createdAt)}
             </time>
             {hasDeliveryMark && (
-                <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+                <span
+                    className={isPendingMessage ? "material-symbols-rounded chats-me-page__message-delivery-icon chats-me-page__message-delivery-icon--pending" : "material-symbols-rounded chats-me-page__message-delivery-icon"}
+                    aria-label={isPendingMessage ? "Sending" : "Delivered"}
+                >
+                    done
+                </span>
             )}
         </span>
     );
@@ -396,8 +401,13 @@ function MessageRow({
                                     >
                                         {formatMessageTime(message.createdAt)}
                                     </time>
-                                    {isOwnConfirmedMessage(message, authenticatedUserUuid) && (
-                                        <span className="material-symbols-rounded chats-me-page__message-delivery-icon" aria-label="Delivered">done</span>
+                                    {isOwnMessage && (
+                                        <span
+                                            className={message.isPending ? "material-symbols-rounded chats-me-page__message-delivery-icon chats-me-page__message-delivery-icon--pending" : "material-symbols-rounded chats-me-page__message-delivery-icon"}
+                                            aria-label={message.isPending ? "Sending" : "Delivered"}
+                                        >
+                                            done
+                                        </span>
                                     )}
                                 </div>
                             </div>
